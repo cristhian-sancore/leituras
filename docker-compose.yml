@@ -19,9 +19,7 @@ services:
     restart: unless-stopped
 
   backend:
-    build: 
-      context: ./backend
-      dockerfile: Dockerfile
+    image: ghcr.io/cristhian-sancore/leituras/backend:latest
     container_name: saemi_backend
     depends_on:
       db:
@@ -41,9 +39,7 @@ services:
       start_period: 15s
 
   nginx:
-    build: 
-      context: ./nginx
-      dockerfile: Dockerfile
+    image: ghcr.io/cristhian-sancore/leituras/nginx:latest
     container_name: saemi_proxy
     ports:
       - "${PORT:-8080}:80"
