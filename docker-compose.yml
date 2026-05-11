@@ -18,7 +18,7 @@ services:
     restart: unless-stopped
 
   backend:
-    image: ghcr.io/cristhian-sancore/leituras/backend:${APP_VERSION:-latest}
+    image: ghcr.io/cristhian-sancore/leituras/backend:latest
     container_name: saemi_backend
     depends_on:
       db:
@@ -30,21 +30,14 @@ services:
     volumes:
       - saemi_uploads_data:/app/uploads
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 15s
 
   nginx:
-    image: ghcr.io/cristhian-sancore/leituras/nginx:${APP_VERSION:-latest}
+    image: ghcr.io/cristhian-sancore/leituras/nginx:latest
     container_name: saemi_proxy
     ports:
       - "${PORT:-8080}:80"
     depends_on:
-      backend:
-        condition: service_healthy
+      - backend
     restart: unless-stopped
 
 volumes:
