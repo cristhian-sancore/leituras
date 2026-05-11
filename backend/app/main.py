@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
 from app.database import engine, Base
-from app.routers import auth, empresas, usuarios, importacao, leituras, exportacao, dashboard
+from app.routers import auth, empresas, usuarios, importacao, leituras, exportacao, dashboard, superadmin
 
 settings = get_settings()
 
@@ -45,6 +45,7 @@ app.include_router(importacao.router, prefix="/api/v1")
 app.include_router(leituras.router, prefix="/api/v1")
 app.include_router(exportacao.router, prefix="/api/v1")
 app.include_router(dashboard.router, prefix="/api/v1")
+app.include_router(superadmin.router, prefix="/api/v1")
 
 
 @app.get("/api/v1/health")

@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAEMI - SuperAdmin Master</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body style="background: #0f172a; color: white;">
+
+    <div class="main" style="margin-left: 0; max-width: 1200px; margin: 0 auto; padding: 40px;">
+        <div class="page-header">
+            <div>
+                <h1 class="page-title" style="color: white;">SaaS Master Panel</h1>
+                <p class="page-subtitle" style="color: #94a3b8;">Controle Global da Plataforma SAEMI</p>
+            </div>
+            <button class="btn btn-outline" onclick="window.location.href='/app.html'">Voltar ao App</button>
+        </div>
+
+        <!-- Global Stats -->
+        <div class="stats-grid">
+            <div class="stat-card blue">
+                <div class="stat-label">Total de Empresas</div>
+                <div class="stat-value" id="s-total-emp">0</div>
+            </div>
+            <div class="stat-card green">
+                <div class="stat-label">Total de Usuários</div>
+                <div class="stat-value" id="s-total-user">0</div>
+            </div>
+            <div class="stat-card orange">
+                <div class="stat-label">Leituras Processadas</div>
+                <div class="stat-value" id="s-total-leit">0</div>
+            </div>
+            <div class="stat-card blue">
+                <div class="stat-label">Faturamento Global</div>
+                <div class="stat-value" id="s-total-fat">R$ 0,00</div>
+            </div>
+        </div>
+
+        <div class="card" style="background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.1);">
+            <div class="card-title" style="color: white; margin-bottom: 20px;">Clientes (Tenants)</div>
+            <table style="color: #e2e8f0;">
+                <thead>
+                    <tr style="background: rgba(255,255,255,0.05);">
+                        <th style="color: #94a3b8;">ID</th>
+                        <th style="color: #94a3b8;">Empresa</th>
+                        <th style="color: #94a3b8;">CNPJ</th>
+                        <th style="color: #94a3b8;">Slug</th>
+                        <th style="color: #94a3b8;">Plano</th>
+                        <th style="color: #94a3b8;">Status</th>
+                        <th style="color: #94a3b8;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="lista-empresas">
+                    <!-- Preenchido via JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script src="/js/utils.js"></script>
+    <script>
+        async function initSuper() {
+            if (!api.isLoggedIn()) { window.location.href='/'; return; }
+            const user = api.getUser();
+            if (user.role !== 'superadmin') {
+                alert('Acesso negado!');
+                window.location.href='/app.html';
+                return;
+            }
+            loadStats();
+            loadEmpresas();
+        }
+
+        async function loadStats() {
+            try {
+                const data = await api._json('/superadmin/stats');
+                document.getElementById('s-total-emp').textContent = data.total_empresas;
+                document.getElementById('s-total-user').textContent = data.total_usuarios;
+                document.getElementById('s-total-leit').textContent = data.total_leituras;
+                document.getElementById('s-total-fat').textContent = fmtMoeda(data.total_faturamento_global);
+            } catch(e) { showToast(e.message, 'error'); }
+        }
+
+        async function loadEmpresas() {
+            try {
+                const empresas = await api._json('/superadmin/empresas');
+                const tbody = document.getElementById('lista-empresas');
+                tbody.innerHTML = '';
+                empresas.forEach(e => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${e.id}</td>
+                        <td style="font-weight:700">${e.nome}</td>
+                        <td>${e.cnpj || '-'}</td>
+                        <td><code>${e.slug}</code></td>
+                        <td><span class="badge badge-comercial">${e.plano}</span></td>
+                        <td>
+                            <span class="status-dot ${e.ativa ? 'status-ativo' : 'status-finalizado'}"></span>
+                            ${e.ativa ? 'Ativa' : 'Bloqueada'}
+                        </td>
+                        <td>
+                            <button class="btn btn-sm ${e.ativa ? 'btn-danger' : 'btn-accent'}" 
+                                onclick="toggleStatus(${e.id}, ${!e.ativa})">
+                                ${e.ativa ? 'Bloquear' : 'Desbloquear'}
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch(e) { showToast(e.message, 'error'); }
+        }
+
+        async function toggleStatus(id, status) {
+            if (!confirm(`Deseja ${status ? 'desbloquear' : 'bloquear'} esta empresa?`)) return;
+            try {
+                await api._json(`/superadmin/empresas/${id}/status?ativa=${status}`, { method: 'PUT' });
+                showToast('Status atualizado');
+                loadEmpresas();
+                loadStats();
+            } catch(e) { showToast(e.message, 'error'); }
+        }
+
+        initSuper();
+    </script>
+</body>
+</html>
