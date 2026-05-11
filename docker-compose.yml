@@ -10,7 +10,6 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-saemi_secure_2026}
     volumes:
       - saemi_postgres_data:/var/lib/postgresql/data
-      - ./backend/app/migrations/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U saemi"]
       interval: 10s
@@ -19,7 +18,7 @@ services:
     restart: unless-stopped
 
   backend:
-    image: ghcr.io/cristhian-sancore/leituras/backend:latest
+    image: ghcr.io/cristhian-sancore/leituras/backend:${APP_VERSION:-latest}
     container_name: saemi_backend
     depends_on:
       db:
@@ -39,15 +38,13 @@ services:
       start_period: 15s
 
   nginx:
-    image: ghcr.io/cristhian-sancore/leituras/nginx:latest
+    image: ghcr.io/cristhian-sancore/leituras/nginx:${APP_VERSION:-latest}
     container_name: saemi_proxy
     ports:
       - "${PORT:-8080}:80"
     depends_on:
       backend:
         condition: service_healthy
-    volumes:
-      - ./frontend:/usr/share/nginx/html:ro
     restart: unless-stopped
 
 volumes:
