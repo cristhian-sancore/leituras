@@ -1,7 +1,7 @@
 FROM python:3.11-alpine AS builder
 
 WORKDIR /app
-COPY requirements.txt .
+COPY backend/requirements.txt .
 RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
 FROM python:3.11-alpine AS runtime
@@ -12,7 +12,7 @@ RUN addgroup -g 1001 -S appgroup && \
 WORKDIR /app
 
 COPY --from=builder /install /usr/local
-COPY --chown=appuser:appgroup ./app ./app
+COPY --chown=appuser:appgroup backend/app ./app
 
 RUN mkdir -p /app/uploads && chown -R appuser:appgroup /app/uploads
 
