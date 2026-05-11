@@ -1,6 +1,8 @@
 import re
+import time
+from collections import defaultdict
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func as sqlfunc
 from app.database import get_db
@@ -12,6 +14,26 @@ from app.auth.deps import get_current_user
 
 router = APIRouter(prefix="/auth", tags=["Autenticação"])
 
+# ============================================
+# RATE LIMITING (em memória - simples e eficaz)
+# ============================================
+_login_attempts = defaultdict(list)  # ip -> [timestamps]
+RATE_LIMIT_WINDOW = 300   # 5 minutos
+RATE_LIMIT_MAX = 10       # máximo 10 tentativas por janela
+
+
+def _check_rate_limit(ip: str):
+    """Verifica se o IP excedeu o limite de tentativas de login."""
+    now = time.time()
+    # Limpar tentativas antigas
+    _login_attempts[ip] = [t for t in _login_attempts[ip] if now - t < RATE_LIMIT_WINDOW]
+    if len(_login_attempts[ip]) >= RATE_LIMIT_MAX:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Muitas tentativas de login. Tente novamente em {RATE_LIMIT_WINDOW // 60} minutos."
+        )
+    _login_attempts[ip].append(now)
+
 
 def slugify(text: str) -> str:
     """Gera slug URL-friendly a partir do nome."""
@@ -22,8 +44,8 @@ def slugify(text: str) -> str:
     text = re.sub(r'[òóôõö]', 'o', text)
     text = re.sub(r'[ùúûü]', 'u', text)
     text = re.sub(r'[ç]', 'c', text)
-    text = re.sub(r'[^a-z0-9\s-]', '', text)
-    text = re.sub(r'[\s]+', '-', text)
+    text = re.sub(r'[^a-z0-9\\s-]', '', text)
+    text = re.sub(r'[\\s]+', '-', text)
     text = re.sub(r'-+', '-', text)
     return text.strip('-')
 
@@ -42,6 +64,9 @@ async def register(data: EmpresaRegister, db: AsyncSession = Depends(get_db)):
         existing_cnpj = await db.execute(select(Empresa).where(Empresa.cnpj == data.cnpj))
         if existing_cnpj.scalar_one_or_none():
             raise HTTPException(status_code=400, detail="CNPJ já cadastrado")
+
+    # Verificar limite de leituristas (plano)
+    # (novas empresas começam com plano básico, sem limite no registro)
 
     # Gerar slug único
     base_slug = slugify(data.nome)
@@ -95,8 +120,12 @@ async def register(data: EmpresaRegister, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(data: LoginRequest, db: AsyncSession = Depends(get_db)):
-    """Login com email e senha."""
+async def login(data: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)):
+    """Login com email e senha (rate limited)."""
+    # Rate limiting por IP
+    client_ip = request.client.host if request.client else "unknown"
+    _check_rate_limit(client_ip)
+
     result = await db.execute(select(Usuario).where(Usuario.email == data.email.lower()))
     usuario = result.scalar_one_or_none()
 
@@ -120,6 +149,7 @@ async def login(data: LoginRequest, db: AsyncSession = Depends(get_db)):
         empresa_id=usuario.empresa_id,
         usuario_id=usuario.id,
         acao="login",
+        ip_address=client_ip,
     ))
 
     token_data = {"sub": str(usuario.id), "empresa_id": usuario.empresa_id, "role": usuario.role}

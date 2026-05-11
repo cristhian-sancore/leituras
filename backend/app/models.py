@@ -1,5 +1,5 @@
 from sqlalchemy import (
-    BigInteger, Boolean, Column, DateTime, ForeignKey, Integer,
+    BigInteger, Boolean, Column, DateTime, ForeignKey, Index, Integer,
     Numeric, String, Text, func, UniqueConstraint
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -18,6 +18,8 @@ class Empresa(Base):
     ativa = Column(Boolean, nullable=False, default=True)
     plano = Column(Text, nullable=False, default="basico")
     max_leituristas = Column(Integer, nullable=False, default=5)
+    percentual_esgoto = Column(Numeric(5, 2), nullable=False, default=70.00)
+    consumo_minimo_m3 = Column(Integer, nullable=False, default=10)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     usuarios = relationship("Usuario", back_populates="empresa", cascade="all, delete-orphan")
@@ -37,6 +39,10 @@ class Usuario(Base):
     ultimo_login = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
+    __table_args__ = (
+        Index("ix_usuario_empresa", "empresa_id"),
+    )
+
     empresa = relationship("Empresa", back_populates="usuarios")
 
 
@@ -51,6 +57,10 @@ class Importacao(Base):
     total_clientes = Column(Integer, nullable=False, default=0)
     status = Column(Text, nullable=False, default="ativo")
     mes_referencia = Column(Text, nullable=True)
+
+    __table_args__ = (
+        Index("ix_importacao_empresa_status", "empresa_id", "status"),
+    )
 
     empresa = relationship("Empresa", back_populates="importacoes")
     usuario = relationship("Usuario")
@@ -72,6 +82,10 @@ class Tarifa(Base):
     valor_minimo = Column(Numeric(12, 2), nullable=True)
     limite_metros = Column(Numeric(10, 2), nullable=True)
     preco_metro = Column(Numeric(10, 5), nullable=True)
+
+    __table_args__ = (
+        Index("ix_tarifa_importacao", "importacao_id"),
+    )
 
     importacao = relationship("Importacao", back_populates="tarifas")
 
@@ -116,6 +130,13 @@ class Cliente(Base):
     data_leit_anterior = Column(Text, nullable=True)
     ocorr_anterior = Column(Text, nullable=True)
 
+    __table_args__ = (
+        Index("ix_cliente_importacao", "importacao_id"),
+        Index("ix_cliente_empresa", "empresa_id"),
+        Index("ix_cliente_matricula", "matricula"),
+        Index("ix_cliente_rota", "rota"),
+    )
+
     importacao = relationship("Importacao", back_populates="clientes")
     leitura = relationship("Leitura", back_populates="cliente", uselist=False)
 
@@ -141,6 +162,8 @@ class Leitura(Base):
 
     __table_args__ = (
         UniqueConstraint("cliente_id", "importacao_id", name="uq_leitura_cliente_importacao"),
+        Index("ix_leitura_importacao", "importacao_id"),
+        Index("ix_leitura_empresa", "empresa_id"),
     )
 
     cliente = relationship("Cliente", back_populates="leitura")
@@ -169,3 +192,7 @@ class AuditLog(Base):
     detalhes = Column(JSONB, nullable=True)
     ip_address = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    __table_args__ = (
+        Index("ix_audit_empresa", "empresa_id"),
+    )

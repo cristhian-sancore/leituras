@@ -280,8 +280,31 @@ async function salvarLeitura(clienteId) {
         });
 
         // Atualizar UI
-        document.getElementById(`cons-${clienteId}`).textContent = result.consumo;
-        document.getElementById(`tot-${clienteId}`).textContent = fmtMoeda(result.valor_total);
+        const consCell = document.getElementById(`cons-${clienteId}`);
+        const totCell = document.getElementById(`tot-${clienteId}`);
+        consCell.textContent = result.consumo;
+        totCell.textContent = fmtMoeda(result.valor_total);
+
+        // Alertas de consumo alto/baixo/zero
+        consCell.style.color = '';
+        consCell.style.fontWeight = '';
+        consCell.title = '';
+        if (result.alerta === 'alto') {
+            consCell.style.color = '#ef4444';
+            consCell.style.fontWeight = '800';
+            consCell.title = result.mensagem;
+            showToast(result.mensagem, 'error');
+        } else if (result.alerta === 'zero') {
+            consCell.style.color = '#f59e0b';
+            consCell.style.fontWeight = '800';
+            consCell.title = result.mensagem;
+            showToast(result.mensagem, 'error');
+        } else if (result.alerta === 'baixo') {
+            consCell.style.color = '#3b82f6';
+            consCell.style.fontWeight = '800';
+            consCell.title = result.mensagem;
+            showToast(result.mensagem, 'error');
+        }
 
         // Atualizar stats (sem bloquear)
         updateStats();

@@ -1,14 +1,14 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func as sqlfunc
 from app.database import get_db
-from app.models import Usuario
+from app.models import Usuario, Empresa
 from app.schemas import UsuarioCreate, UsuarioOut, UsuarioUpdate
 from app.auth.password import hash_password
 from app.auth.deps import require_role
 
-router = APIRouter(prefix="/usuarios", tags=["Usuários"])
+router = APIRouter(prefix="/usuarios", tags=["Usuarios"])
 
 
 @router.get("/", response_model=List[UsuarioOut])
@@ -16,7 +16,7 @@ async def list_usuarios(
     current_user: Usuario = Depends(require_role("admin")),
     db: AsyncSession = Depends(get_db),
 ):
-    """Listar todos os usuários da empresa."""
+    """Listar todos os usuarios da empresa."""
     result = await db.execute(
         select(Usuario).where(Usuario.empresa_id == current_user.empresa_id).order_by(Usuario.nome)
     )
@@ -29,11 +29,28 @@ async def create_usuario(
     current_user: Usuario = Depends(require_role("admin")),
     db: AsyncSession = Depends(get_db),
 ):
-    """Criar novo usuário na empresa (admin only)."""
+    """Criar novo usuario na empresa (admin only). Verifica limite do plano."""
     # Verificar email duplicado
     existing = await db.execute(select(Usuario).where(Usuario.email == data.email.lower()))
     if existing.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="Email já cadastrado")
+        raise HTTPException(status_code=400, detail="Email ja cadastrado")
+
+    # Verificar limite de leituristas do plano
+    emp_result = await db.execute(select(Empresa).where(Empresa.id == current_user.empresa_id))
+    empresa = emp_result.scalar_one_or_none()
+    if empresa:
+        count_result = await db.execute(
+            select(sqlfunc.count(Usuario.id)).where(
+                Usuario.empresa_id == current_user.empresa_id,
+                Usuario.ativo == True,
+            )
+        )
+        total_ativos = count_result.scalar() or 0
+        if total_ativos >= empresa.max_leituristas:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Limite do plano atingido ({empresa.max_leituristas} usuarios). Contate o suporte para upgrade."
+            )
 
     usuario = Usuario(
         empresa_id=current_user.empresa_id,
@@ -54,7 +71,7 @@ async def update_usuario(
     current_user: Usuario = Depends(require_role("admin")),
     db: AsyncSession = Depends(get_db),
 ):
-    """Atualizar um usuário da empresa."""
+    """Atualizar um usuario da empresa."""
     result = await db.execute(
         select(Usuario).where(
             Usuario.id == user_id,
@@ -63,7 +80,7 @@ async def update_usuario(
     )
     usuario = result.scalar_one_or_none()
     if not usuario:
-        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+        raise HTTPException(status_code=404, detail="Usuario nao encontrado")
 
     if data.nome is not None:
         usuario.nome = data.nome
@@ -83,9 +100,9 @@ async def delete_usuario(
     current_user: Usuario = Depends(require_role("admin")),
     db: AsyncSession = Depends(get_db),
 ):
-    """Desativar um usuário da empresa."""
+    """Desativar um usuario da empresa."""
     if user_id == current_user.id:
-        raise HTTPException(status_code=400, detail="Não é possível desativar a si mesmo")
+        raise HTTPException(status_code=400, detail="Nao eh possivel desativar a si mesmo")
 
     result = await db.execute(
         select(Usuario).where(
@@ -95,7 +112,7 @@ async def delete_usuario(
     )
     usuario = result.scalar_one_or_none()
     if not usuario:
-        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+        raise HTTPException(status_code=404, detail="Usuario nao encontrado")
 
     usuario.ativo = False
-    return {"detail": "Usuário desativado"}
+    return {"detail": "Usuario desativado"}

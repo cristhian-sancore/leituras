@@ -3,12 +3,24 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func as sqlfunc
 from app.database import get_db
-from app.models import Cliente, Leitura, Tarifa, Ocorrencia, Importacao, Usuario, AuditLog
-from app.schemas import ClienteComLeitura, LeituraUpdate, LeituraBatch, StatsOut, OcorrenciaOut, TarifaOut
+from app.models import Cliente, Leitura, Tarifa, Ocorrencia, Importacao, Empresa, Usuario, AuditLog
+from app.schemas import ClienteComLeitura, LeituraUpdate, StatsOut, OcorrenciaOut, TarifaOut
 from app.auth.deps import get_current_user
-from app.services.calculadora import calcular_consumo, calcular_conta
+from app.services.calculadora import calcular_consumo, calcular_conta, validar_consumo
 
 router = APIRouter(prefix="/leituras", tags=["Leituras"])
+
+
+async def _get_empresa_config(db: AsyncSession, empresa_id: int) -> dict:
+    """Busca configurações da empresa (% esgoto, consumo mínimo)."""
+    result = await db.execute(select(Empresa).where(Empresa.id == empresa_id))
+    empresa = result.scalar_one_or_none()
+    if not empresa:
+        return {'percentual_esgoto': 70.0, 'consumo_minimo_m3': 10}
+    return {
+        'percentual_esgoto': float(empresa.percentual_esgoto or 70),
+        'consumo_minimo_m3': int(empresa.consumo_minimo_m3 or 10),
+    }
 
 
 async def _get_tarifas_dict(db: AsyncSession, imp_id: int, empresa_id: int) -> dict:
@@ -53,10 +65,12 @@ async def _get_ocorrencias_dict(db: AsyncSession, imp_id: int, empresa_id: int) 
 async def list_clientes_com_leituras(
     imp_id: int,
     busca: Optional[str] = Query(None, description="Buscar por nome, matrícula, endereço, rota ou setor"),
+    page: int = Query(1, ge=1, description="Página"),
+    limit: int = Query(100, ge=10, le=500, description="Itens por página"),
     current_user: Usuario = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Listar clientes de uma importação com suas leituras."""
+    """Listar clientes de uma importação com suas leituras (paginado)."""
     # Verificar acesso
     result = await db.execute(
         select(Importacao).where(
@@ -67,7 +81,7 @@ async def list_clientes_com_leituras(
     if not result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="Importação não encontrada")
 
-    # Buscar clientes
+    # Buscar clientes com paginação
     query = select(Cliente).where(
         Cliente.importacao_id == imp_id,
         Cliente.empresa_id == current_user.empresa_id,
@@ -84,15 +98,22 @@ async def list_clientes_com_leituras(
             (Cliente.rota.ilike(term))
         )
 
-    query = query.order_by(Cliente.id)
+    offset = (page - 1) * limit
+    query = query.order_by(Cliente.id).offset(offset).limit(limit)
     result = await db.execute(query)
     clientes = result.scalars().all()
 
-    # Buscar leituras existentes
-    leitura_result = await db.execute(
-        select(Leitura).where(Leitura.importacao_id == imp_id)
-    )
-    leituras_map = {l.cliente_id: l for l in leitura_result.scalars().all()}
+    # Buscar leituras existentes para esses clientes
+    cliente_ids = [c.id for c in clientes]
+    leituras_map = {}
+    if cliente_ids:
+        leitura_result = await db.execute(
+            select(Leitura).where(
+                Leitura.importacao_id == imp_id,
+                Leitura.cliente_id.in_(cliente_ids),
+            )
+        )
+        leituras_map = {l.cliente_id: l for l in leitura_result.scalars().all()}
 
     # Montar resposta
     items = []
@@ -127,7 +148,7 @@ async def salvar_leitura(
     current_user: Usuario = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Salvar/atualizar a leitura de um cliente."""
+    """Salvar/atualizar a leitura de um cliente com validação de consumo."""
     # Buscar cliente
     result = await db.execute(
         select(Cliente).where(
@@ -139,23 +160,34 @@ async def salvar_leitura(
     if not cliente:
         raise HTTPException(status_code=404, detail="Cliente não encontrado")
 
+    # Buscar config da empresa
+    config = await _get_empresa_config(db, current_user.empresa_id)
+
     # Buscar tarifas e ocorrências
     tarifas_dict = await _get_tarifas_dict(db, cliente.importacao_id, current_user.empresa_id)
     ocorrencias_dict = await _get_ocorrencias_dict(db, cliente.importacao_id, current_user.empresa_id)
 
-    # Calcular consumo
+    # Calcular consumo (com suporte a virada de hidrômetro)
     ocorrencia = ocorrencias_dict.get(data.ocorrencia_codigo) if data.ocorrencia_codigo else None
     consumo = calcular_consumo(
         leitura_atual=data.leitura_atual or 0,
         leitura_anterior=cliente.leitura_anterior,
         ocorrencia=ocorrencia,
         consumo_medio=cliente.consumo_medio,
+        consumo_minimo=config['consumo_minimo_m3'],
     )
 
-    # Calcular valores
+    # Validar consumo (alertas)
+    alerta = validar_consumo(consumo, cliente.consumo_medio)
+
+    # Calcular valores (com % esgoto configurável)
     tarifas_agua = tarifas_dict.get(f"{cliente.categoria}_agua", [])
     tarifas_lixo = tarifas_dict.get(f"{cliente.categoria}_lixo", [])
-    valores = calcular_conta(consumo, tarifas_agua, tarifas_lixo)
+    valores = calcular_conta(
+        consumo, tarifas_agua, tarifas_lixo,
+        percentual_esgoto=config['percentual_esgoto'],
+        consumo_minimo=config['consumo_minimo_m3'],
+    )
 
     # Upsert leitura
     result = await db.execute(
@@ -200,6 +232,7 @@ async def salvar_leitura(
     return {
         "consumo": consumo,
         **valores,
+        **alerta,
     }
 
 
@@ -210,7 +243,6 @@ async def get_stats(
     db: AsyncSession = Depends(get_db),
 ):
     """Estatísticas de uma importação."""
-    # Total clientes
     total_result = await db.execute(
         select(sqlfunc.count(Cliente.id)).where(
             Cliente.importacao_id == imp_id,
@@ -219,7 +251,6 @@ async def get_stats(
     )
     total_clientes = total_result.scalar() or 0
 
-    # Leituras realizadas
     leit_result = await db.execute(
         select(
             sqlfunc.count(Leitura.id),
