@@ -1,0 +1,164 @@
+import re
+from datetime import datetime, timezone
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func as sqlfunc
+from app.database import get_db
+from app.models import Empresa, Usuario, AuditLog
+from app.schemas import EmpresaRegister, LoginRequest, TokenResponse, RefreshRequest, UsuarioOut
+from app.auth.password import hash_password, verify_password
+from app.auth.jwt import create_access_token, create_refresh_token, decode_token
+from app.auth.deps import get_current_user
+
+router = APIRouter(prefix="/auth", tags=["Autenticação"])
+
+
+def slugify(text: str) -> str:
+    """Gera slug URL-friendly a partir do nome."""
+    text = text.lower().strip()
+    text = re.sub(r'[àáâãäå]', 'a', text)
+    text = re.sub(r'[èéêë]', 'e', text)
+    text = re.sub(r'[ìíîï]', 'i', text)
+    text = re.sub(r'[òóôõö]', 'o', text)
+    text = re.sub(r'[ùúûü]', 'u', text)
+    text = re.sub(r'[ç]', 'c', text)
+    text = re.sub(r'[^a-z0-9\s-]', '', text)
+    text = re.sub(r'[\s]+', '-', text)
+    text = re.sub(r'-+', '-', text)
+    return text.strip('-')
+
+
+@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+async def register(data: EmpresaRegister, db: AsyncSession = Depends(get_db)):
+    """Cadastrar nova empresa com o primeiro usuário admin."""
+
+    # Verificar se email já existe
+    existing = await db.execute(select(Usuario).where(Usuario.email == data.admin_email.lower()))
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="Email já cadastrado")
+
+    # Verificar CNPJ duplicado
+    if data.cnpj:
+        existing_cnpj = await db.execute(select(Empresa).where(Empresa.cnpj == data.cnpj))
+        if existing_cnpj.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="CNPJ já cadastrado")
+
+    # Gerar slug único
+    base_slug = slugify(data.nome)
+    slug = base_slug
+    counter = 1
+    while True:
+        existing_slug = await db.execute(select(Empresa).where(Empresa.slug == slug))
+        if not existing_slug.scalar_one_or_none():
+            break
+        slug = f"{base_slug}-{counter}"
+        counter += 1
+
+    # Criar empresa
+    empresa = Empresa(
+        nome=data.nome,
+        cnpj=data.cnpj,
+        slug=slug,
+    )
+    db.add(empresa)
+    await db.flush()
+
+    # Criar admin
+    usuario = Usuario(
+        empresa_id=empresa.id,
+        nome=data.admin_nome,
+        email=data.admin_email.lower(),
+        senha_hash=hash_password(data.admin_senha),
+        role="admin",
+    )
+    db.add(usuario)
+    await db.flush()
+
+    # Audit
+    db.add(AuditLog(
+        empresa_id=empresa.id,
+        usuario_id=usuario.id,
+        acao="register",
+        detalhes={"empresa": data.nome},
+    ))
+
+    # Gerar tokens
+    token_data = {"sub": str(usuario.id), "empresa_id": empresa.id, "role": "admin"}
+    access = create_access_token(token_data)
+    refresh = create_refresh_token(token_data)
+
+    return TokenResponse(
+        access_token=access,
+        refresh_token=refresh,
+        user=UsuarioOut.model_validate(usuario),
+    )
+
+
+@router.post("/login", response_model=TokenResponse)
+async def login(data: LoginRequest, db: AsyncSession = Depends(get_db)):
+    """Login com email e senha."""
+    result = await db.execute(select(Usuario).where(Usuario.email == data.email.lower()))
+    usuario = result.scalar_one_or_none()
+
+    if not usuario or not verify_password(data.senha, usuario.senha_hash):
+        raise HTTPException(status_code=401, detail="Email ou senha inválidos")
+
+    if not usuario.ativo:
+        raise HTTPException(status_code=403, detail="Usuário desativado")
+
+    # Verificar se empresa está ativa
+    result_emp = await db.execute(select(Empresa).where(Empresa.id == usuario.empresa_id))
+    empresa = result_emp.scalar_one_or_none()
+    if not empresa or not empresa.ativa:
+        raise HTTPException(status_code=403, detail="Empresa desativada")
+
+    # Atualizar último login
+    usuario.ultimo_login = datetime.now(timezone.utc)
+
+    # Audit
+    db.add(AuditLog(
+        empresa_id=usuario.empresa_id,
+        usuario_id=usuario.id,
+        acao="login",
+    ))
+
+    token_data = {"sub": str(usuario.id), "empresa_id": usuario.empresa_id, "role": usuario.role}
+    access = create_access_token(token_data)
+    refresh = create_refresh_token(token_data)
+
+    return TokenResponse(
+        access_token=access,
+        refresh_token=refresh,
+        user=UsuarioOut.model_validate(usuario),
+    )
+
+
+@router.post("/refresh", response_model=TokenResponse)
+async def refresh_token(data: RefreshRequest, db: AsyncSession = Depends(get_db)):
+    """Renovar access token usando refresh token."""
+    payload = decode_token(data.refresh_token)
+    if not payload or payload.get("type") != "refresh":
+        raise HTTPException(status_code=401, detail="Refresh token inválido")
+
+    user_id = payload.get("sub")
+    result = await db.execute(select(Usuario).where(Usuario.id == int(user_id)))
+    usuario = result.scalar_one_or_none()
+
+    if not usuario or not usuario.ativo:
+        raise HTTPException(status_code=401, detail="Usuário não encontrado")
+
+    token_data = {"sub": str(usuario.id), "empresa_id": usuario.empresa_id, "role": usuario.role}
+    access = create_access_token(token_data)
+    refresh = create_refresh_token(token_data)
+
+    return TokenResponse(
+        access_token=access,
+        refresh_token=refresh,
+        user=UsuarioOut.model_validate(usuario),
+    )
+
+
+@router.get("/me", response_model=UsuarioOut)
+async def me(current_user: Usuario = Depends(get_current_user)):
+    """Retorna dados do usuário logado."""
+    return UsuarioOut.model_validate(current_user)
