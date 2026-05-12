@@ -284,6 +284,7 @@ async function handleSetup(e) {
   document.getElementById('btn-label').textContent = 'Criando...';
 
   try {
+    // 1. Criar o superadmin
     const res = await fetch(`${API}/superadmin/setup-first-run`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -292,14 +293,31 @@ async function handleSetup(e) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || 'Erro desconhecido');
 
+    step(2);
+    document.getElementById('btn-label').textContent = 'Fazendo login...';
+
+    // 2. Login automático com as credenciais recém-criadas (estilo Chatwoot)
+    const loginRes = await fetch(`${API}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, senha }),
+    });
+    const loginData = await loginRes.json();
+    if (!loginRes.ok) throw new Error('Conta criada, mas erro no login automático: ' + (loginData.detail || ''));
+
+    // 3. Salvar tokens no localStorage (mesmas chaves que api.js usa)
+    localStorage.setItem('saemi_token', loginData.access_token);
+    localStorage.setItem('saemi_refresh', loginData.refresh_token);
+    localStorage.setItem('saemi_user', JSON.stringify(loginData.user));
+
     step(3);
     document.getElementById('form-area').style.display = 'none';
     document.getElementById('success-screen').style.display = 'block';
     document.getElementById('success-msg').innerHTML =
       `Conta <strong>${email}</strong> criada como Administrador Geral.<br>
-       Agora cadastre as empresas no painel.`;
+       Você já está logado! Redirecionando para o painel...`;
 
-    setTimeout(() => window.location.href = '/superadmin.html', 3500);
+    setTimeout(() => window.location.href = '/superadmin.html', 2500);
   } catch (err) {
     step(1);
     showAlert('❌ ' + err.message);

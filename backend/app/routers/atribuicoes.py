@@ -5,7 +5,7 @@ Permite ao Supervisor distribuir rotas específicas para cada leiturista.
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func as sqlfunc, update, distinct
+from sqlalchemy import select, func as sqlfunc, update, distinct, or_
 from pydantic import BaseModel
 from app.database import get_db
 from app.models import Cliente, Leitura, Usuario, Importacao
@@ -170,17 +170,29 @@ async def salvar_atribuicoes(
                     detail=f"Leiturista ID {atrib.leiturista_id} não encontrado ou inativo"
                 )
 
-        # Atualizar todos os clientes da rota
-        rota_val = atrib.rota if atrib.rota != "S/Rota" else None
-        stmt = (
-            update(Cliente)
-            .where(
-                Cliente.importacao_id == imp_id,
-                Cliente.empresa_id == current_user.empresa_id,
-                Cliente.rota == rota_val,
+        # Atualizar todos os clientes da rota (normalizado — corrige espaços)
+        rota_val = atrib.rota.strip() if atrib.rota else ""
+        if rota_val == "S/Rota" or rota_val == "":
+            # Rota vazia ou None
+            stmt = (
+                update(Cliente)
+                .where(
+                    Cliente.importacao_id == imp_id,
+                    Cliente.empresa_id == current_user.empresa_id,
+                    or_(Cliente.rota.is_(None), sqlfunc.trim(Cliente.rota) == ""),
+                )
+                .values(leiturista_atribuido_id=atrib.leiturista_id)
             )
-            .values(leiturista_atribuido_id=atrib.leiturista_id)
-        )
+        else:
+            stmt = (
+                update(Cliente)
+                .where(
+                    Cliente.importacao_id == imp_id,
+                    Cliente.empresa_id == current_user.empresa_id,
+                    sqlfunc.trim(Cliente.rota) == rota_val,
+                )
+                .values(leiturista_atribuido_id=atrib.leiturista_id)
+            )
         result = await db.execute(stmt)
         total_atualizados += result.rowcount
 
