@@ -97,6 +97,10 @@ class SetupRequest(BaseModel):
 
 
 class FirstRunRequest(BaseModel):
+    # Dados da empresa
+    empresa_nome: str
+    empresa_cnpj: Optional[str] = None
+    # Dados do administrador (supervisor da empresa)
     nome: str
     email: str
     senha: str
@@ -106,12 +110,11 @@ class FirstRunRequest(BaseModel):
 async def setup_status(db: AsyncSession = Depends(get_db)):
     """
     Endpoint PÚBLICO — verifica se o sistema precisa de configuração inicial.
-    Retorna needs_setup=true se não houver superadmin cadastrado.
-    Usado pelo frontend para redirecionar para a tela de primeiro acesso.
+    Retorna needs_setup=true se não houver nenhuma empresa cadastrada.
     """
-    existing = await db.execute(select(Usuario).where(Usuario.role == "superadmin"))
-    superadmin = existing.scalar_one_or_none()
-    return {"needs_setup": superadmin is None}
+    existing = await db.execute(select(Empresa).limit(1))
+    empresa = existing.scalar_one_or_none()
+    return {"needs_setup": empresa is None}
 
 
 @router.post("/setup-first-run")
@@ -120,21 +123,22 @@ async def setup_first_run(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Endpoint PÚBLICO — cria o SuperAdmin na primeira inicialização do sistema.
-    Só funciona se NÃO existir nenhum superadmin cadastrado (one-time use).
-    Após o primeiro uso, retorna 400 permanentemente.
+    Endpoint PÚBLICO — cria a primeira empresa + supervisor na inicialização.
+    Estilo Chatwoot: só funciona enquanto não houver nenhuma empresa cadastrada.
     """
-    # Verificar se já existe superadmin (segurança: só executa uma vez)
-    existing = await db.execute(select(Usuario).where(Usuario.role == "superadmin"))
+    # Segurança: só executa uma vez
+    existing = await db.execute(select(Empresa).limit(1))
     if existing.scalar_one_or_none():
         raise HTTPException(
             status_code=400,
             detail="Sistema já configurado. Use o painel de login."
         )
 
-    # Validações básicas
+    # Validações
+    if len(data.empresa_nome.strip()) < 2:
+        raise HTTPException(status_code=422, detail="Nome da empresa deve ter pelo menos 2 caracteres")
     if len(data.nome.strip()) < 2:
-        raise HTTPException(status_code=422, detail="Nome deve ter pelo menos 2 caracteres")
+        raise HTTPException(status_code=422, detail="Seu nome deve ter pelo menos 2 caracteres")
     if len(data.senha) < 6:
         raise HTTPException(status_code=422, detail="Senha deve ter pelo menos 6 caracteres")
     if "@" not in data.email or "." not in data.email:
@@ -145,20 +149,49 @@ async def setup_first_run(
     if dup.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Este email já está em uso")
 
-    # Criar superadmin
-    novo = Usuario(
-        empresa_id=None,
+    # Gerar slug único para a empresa
+    from app.routers.superadmin import slugify
+    base_slug = slugify(data.empresa_nome)
+    slug = base_slug
+    count = 1
+    while True:
+        existing_slug = await db.execute(select(Empresa).where(Empresa.slug == slug))
+        if not existing_slug.scalar_one_or_none():
+            break
+        slug = f"{base_slug}-{count}"
+        count += 1
+
+    # Criar empresa
+    nova_empresa = Empresa(
+        nome=data.empresa_nome.strip(),
+        cnpj=data.empresa_cnpj,
+        slug=slug,
+        ativa=True,
+        plano="basico",
+        max_leituristas=5,
+        percentual_esgoto=70.00,
+        consumo_minimo_m3=10,
+    )
+    db.add(nova_empresa)
+    await db.flush()  # gera o ID
+
+    # Criar supervisor (admin da empresa)
+    novo_usuario = Usuario(
+        empresa_id=nova_empresa.id,
         nome=data.nome.strip(),
         email=data.email.lower().strip(),
         senha_hash=hash_password(data.senha),
-        role="superadmin",
+        role="supervisor",
         ativo=True,
     )
-    db.add(novo)
+    db.add(novo_usuario)
     await db.flush()
+
     return {
-        "detail": f"SuperAdmin '{novo.email}' criado com sucesso!",
-        "email": novo.email
+        "detail": f"Empresa '{nova_empresa.nome}' e administrador '{novo_usuario.email}' criados com sucesso!",
+        "empresa": nova_empresa.nome,
+        "email": novo_usuario.email,
+        "role": "supervisor"
     }
 
 

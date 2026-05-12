@@ -71,7 +71,7 @@ class UsuarioCreate(BaseModel):
 
 class UsuarioOut(BaseModel):
     id: int
-    empresa_id: int
+    empresa_id: Optional[int] = None  # None para superadmin
     nome: str
     email: str
     role: str
