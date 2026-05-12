@@ -159,7 +159,12 @@
 <script>
 // Redirecionar se já logado
 if (api.isLoggedIn()) {
-    window.location.href = '/app.html';
+    const user = api.getUser();
+    if (user && user.role === 'superadmin') {
+        window.location.href = '/superadmin.html';
+    } else {
+        window.location.href = '/app.html';
+    }
 }
 
 // ── Detectar empresa pelo slug na URL ──
@@ -237,13 +242,18 @@ async function handleLogin(e) {
     btn.textContent = 'Entrando...';
 
     try {
-        await api.login(
+        // api.login() retorna o JSON mas NÃO salva automaticamente
+        const data = await api.login(
             document.getElementById('login-email').value,
             document.getElementById('login-senha').value
         );
+
+        // Salvar tokens e usuário no localStorage
+        api.setTokens(data.access_token, data.refresh_token);
+        api.setUser(data.user);
+
         // Redirecionar por role
-        const user = api.getUser();
-        if (user && user.role === 'superadmin') {
+        if (data.user && data.user.role === 'superadmin') {
             window.location.href = '/superadmin.html';
         } else {
             window.location.href = '/app.html';
