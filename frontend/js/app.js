@@ -717,9 +717,205 @@ async function desativarUsuario(id) {
 
 // ============================================
 // DISTRIBUICAO DE LEITURAS POR LEITURISTA
+// Workflow: 1 arquivo .REM = 1 rota = 1 leiturista
 // ============================================
 
 let _leituristas = [];
+
+/** Upload do .REM — adiciona à lista sem substituir */
+async function handleUploadDistribuicao(file) {
+    if (!file) return;
+    const loading = document.getElementById('distrib-loading');
+    const zone    = document.getElementById('distrib-upload-zone');
+    loading.style.display = '';
+    zone.style.pointerEvents = 'none';
+    try {
+        const imp = await api.uploadREM(file);
+        document.getElementById('file-rem-distrib').value = '';
+        showToast(`📂 ${imp.total_clientes} clientes importados! Selecione o leiturista.`);
+        await loadDistribuicao();
+    } catch (err) {
+        showToast('Erro ao importar: ' + (err.message || err), 'error');
+    } finally {
+        loading.style.display = 'none';
+        zone.style.pointerEvents = '';
+    }
+}
+
+/** Drag & drop */
+function handleDropDistribuicao(event) {
+    const file = event.dataTransfer.files[0];
+    if (file) handleUploadDistribuicao(file);
+}
+
+/** Carrega a aba — sempre mostra upload + lista todas as importações ativas */
+async function loadDistribuicao() {
+    try {
+        const [imps, usuarios] = await Promise.all([
+            api.listImportacoes(),
+            api._json('/usuarios/').catch(() => []),
+        ]);
+        _leituristas = (usuarios || []).filter(u => (u.role || '').toLowerCase() === 'leiturista' && u.ativo);
+        const ativas = (imps || []).filter(i => i.status === 'ativo');
+
+        // Busca rotas e atribuições de cada importação em paralelo
+        const rotasLists = await Promise.all(
+            ativas.map(imp => api._json(`/atribuicoes/${imp.id}/rotas`).catch(() => []))
+        );
+        renderImportacoesList(ativas, rotasLists);
+    } catch (err) {
+        showToast('Erro ao carregar distribuição: ' + err.message, 'error');
+    }
+}
+
+/** Renderiza os cards de cada importação ativa */
+function renderImportacoesList(importacoes, rotasPorImp) {
+    const header    = document.getElementById('distrib-lista-header');
+    const container = document.getElementById('distrib-lista-cards');
+    const btnSalvar = document.getElementById('btn-salvar-distrib');
+
+    if (!importacoes.length) {
+        header.style.display = 'none';
+        btnSalvar.style.display = 'none';
+        container.innerHTML = `
+            <div style="text-align:center;padding:32px;color:var(--text-muted)">
+                <div style="font-size:2rem;margin-bottom:8px">📭</div>
+                <p>Nenhuma rota importada ainda. Use a área acima para importar um arquivo .REM.</p>
+            </div>`;
+        return;
+    }
+
+    header.style.display = '';
+    btnSalvar.style.display = '';
+
+    const optsLeit = _leituristas.map(u =>
+        `<option value="${u.id}">${sanitize(u.nome)}</option>`
+    ).join('');
+
+    container.innerHTML = importacoes.map((imp, idx) => {
+        const rotas    = rotasPorImp[idx] || [];
+        const rotaNome = rotas.length ? rotas.map(r => r.rota).join(', ') : '—';
+        const leitAtrib = rotas.length && rotas[0].leiturista_id ? rotas[0].leiturista_id : '';
+        const dataRotas = sanitize(JSON.stringify(rotas.map(r => r.rota)));
+        const totalFeito = rotas.reduce((s, r) => s + (r.leituras_feitas || 0), 0);
+        const totalClientes = imp.total_clientes || 0;
+        const perc = totalClientes > 0 ? Math.round(totalFeito / totalClientes * 100) : 0;
+
+        return `
+        <div class="card" style="margin-bottom:12px;padding:16px 20px"
+             data-imp-id="${imp.id}" data-rotas='${dataRotas}'>
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+                <div style="display:flex;align-items:center;gap:14px;flex:1;min-width:200px">
+                    <span style="font-size:2rem">📄</span>
+                    <div>
+                        <div style="font-weight:700;font-size:0.95rem">${sanitize(imp.nome_arquivo || 'Arquivo')}</div>
+                        <div style="color:var(--text-muted);font-size:0.8rem;margin-top:2px">
+                            Rota: <strong>${sanitize(rotaNome)}</strong>
+                            &nbsp;·&nbsp; ${totalClientes} clientes
+                            &nbsp;·&nbsp; Ref: ${sanitize(imp.mes_referencia || '—')}
+                            &nbsp;·&nbsp; <span style="color:${perc>=100?'#22c55e':'var(--primary)'}">${perc}% feito</span>
+                        </div>
+                    </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                    <div style="display:flex;align-items:center;gap:8px">
+                        <label style="font-size:0.82rem;color:var(--text-muted);white-space:nowrap">👤 Leiturista:</label>
+                        <select id="leit-imp-${imp.id}" style="min-width:160px">
+                            <option value="">-- Sem atribuição --</option>
+                            ${optsLeit}
+                        </select>
+                    </div>
+                    <button class="btn btn-outline btn-sm"
+                            onclick="removerImportacao(${imp.id})"
+                            title="Remover esta rota">🗑️</button>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+
+    // Pré-selecionar leituristas já atribuídos
+    importacoes.forEach((imp, idx) => {
+        const rotas = rotasPorImp[idx] || [];
+        if (rotas.length && rotas[0].leiturista_id) {
+            const sel = document.getElementById(`leit-imp-${imp.id}`);
+            if (sel) sel.value = String(rotas[0].leiturista_id);
+        }
+    });
+}
+
+/** Salva todas as atribuições (uma por importação/rota) */
+async function salvarDistribuicaoCompleta() {
+    const cards = document.querySelectorAll('[data-imp-id]');
+    if (!cards.length) return showToast('Nenhuma rota para salvar', 'error');
+
+    const btn = document.getElementById('btn-salvar-distrib');
+    btn.disabled = true;
+    btn.textContent = '⏳ Salvando…';
+
+    let totalClientes = 0;
+    let erros = 0;
+
+    try {
+        for (const card of cards) {
+            const impId  = card.dataset.impId;
+            const rotas  = JSON.parse(card.dataset.rotas || '[]');
+            const leitId = document.getElementById(`leit-imp-${impId}`)?.value;
+
+            if (!rotas.length) continue;
+
+            // Monta atribuições para todas as rotas deste arquivo
+            const atribuicoes = rotas.map(rota => ({
+                rota,
+                leiturista_id: leitId ? parseInt(leitId) : null,
+            }));
+
+            try {
+                const res = await api._json(`/atribuicoes/${impId}/atribuir`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ atribuicoes }),
+                });
+                totalClientes += res.clientes_atualizados || 0;
+            } catch (e) {
+                erros++;
+                console.error(`Erro ao salvar importação ${impId}:`, e.message);
+            }
+        }
+
+        if (erros === 0) {
+            showToast(`✅ Distribuição salva! ${totalClientes} clientes distribuídos.`);
+        } else {
+            showToast(`⚠️ Salvo com ${erros} erro(s). Verifique o console.`, 'error');
+        }
+        await loadDistribuicao();
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '💾 Salvar Distribuição';
+    }
+}
+
+/** Remove uma importação (muda status para cancelado) */
+async function removerImportacao(impId) {
+    if (!confirm('Remover esta rota? Os dados de leitura serão perdidos.')) return;
+    try {
+        await api._json(`/importacao/${impId}/status?status=cancelado`, { method: 'PUT' });
+        showToast('Rota removida.');
+        await loadDistribuicao();
+    } catch (err) {
+        showToast('Erro ao remover: ' + err.message, 'error');
+    }
+}
+
+// Funções legadas mantidas para compatibilidade (não usadas na nova UI)
+function resetDistribuicao() { loadDistribuicao(); }
+async function salvarAtribuicoes() { await salvarDistribuicaoCompleta(); }
+async function limparAtribuicoes() {}
+function renderLeitureistaCards() {}
+function renderRotasTable() {}
+function atribuirTodosParaUm() {}
+function aplicarTodosParaUm() {}
+async function _carregarAtribuicoes() {}
+
 
 /** Mostra a zona de upload e esconde o conteúdo de atribuição */
 function _distribModoUpload() {
