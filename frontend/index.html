@@ -157,26 +157,53 @@
 
 <script src="/js/api.js"></script>
 <script>
-// Redirecionar se já logado
-if (api.isLoggedIn()) {
-    const user = api.getUser();
-    if (user && user.role === 'superadmin') {
-        window.location.href = '/superadmin.html';
-    } else {
-        window.location.href = '/app.html';
+// ── PASSO 1: Verificar se precisa de setup ANTES de qualquer coisa ──
+// A página começa visível, mas verificamos imediatamente
+(async () => {
+    try {
+        const res = await fetch('/api/v1/superadmin/setup-status');
+        if (res.ok) {
+            const data = await res.json();
+            if (data.needs_setup) {
+                // Sistema sem superadmin → ir para a tela de primeiro acesso
+                window.location.replace('/setup.html');
+                return; // Para a execução aqui
+            }
+        } else {
+            console.warn('[SAEMI] setup-status retornou:', res.status, res.statusText);
+        }
+    } catch (err) {
+        // API offline — mostra o login normalmente mas loga o erro
+        console.warn('[SAEMI] Erro ao verificar setup-status:', err.message);
     }
-}
 
-// ── Detectar empresa pelo slug na URL ──
-// Ex: /?empresa=dae-mirassol  ou  /?slug=dae-mirassol
-const params = new URLSearchParams(location.search);
-const slug = params.get('empresa') || params.get('slug') || detectSubdomain();
+    // ── PASSO 2: Se já logado, redirecionar ──
+    if (api.isLoggedIn()) {
+        const user = api.getUser();
+        if (user && user.role === 'superadmin') {
+            window.location.href = '/superadmin.html';
+        } else {
+            window.location.href = '/app.html';
+        }
+        return;
+    }
+
+    // ── PASSO 3: Detectar empresa pelo slug na URL ──
+    const params = new URLSearchParams(location.search);
+    const slug = params.get('empresa') || params.get('slug') || detectSubdomain();
+
+    if (slug) {
+        carregarEmpresa(slug);
+    } else {
+        document.getElementById('logo-skeleton').style.display = 'none';
+        document.getElementById('empresa-nome').textContent = '💧 SAEMI';
+        document.getElementById('empresa-nome').style.display = 'block';
+    }
+})();
 
 function detectSubdomain() {
-    // Se hostname for dae-mirassol.leitura.com.br, extrai "dae-mirassol"
     const host = location.hostname;
     const parts = host.split('.');
-    // Se tiver 3+ partes e não for www, usa o primeiro segmento
     if (parts.length >= 3 && parts[0] !== 'www' && parts[0] !== 'leitura') {
         return parts[0];
     }
@@ -194,9 +221,7 @@ async function carregarEmpresa(slug) {
         if (!resp.ok) throw new Error('Empresa não encontrada');
         const emp = await resp.json();
 
-        // Atualizar título da página
         document.getElementById('page-title').textContent = `${emp.nome} - Login`;
-
         skeletonEl.style.display = 'none';
 
         if (emp.logo_url) {
@@ -205,31 +230,17 @@ async function carregarEmpresa(slug) {
             logoEl.style.display = 'block';
             poweredEl.style.display = 'block';
         } else {
-            // Sem logo: mostrar nome em texto
             nomeEl.textContent = `💧 ${emp.nome}`;
             nomeEl.style.display = 'block';
             poweredEl.style.display = 'block';
         }
 
-        // Esconder link de cadastro (empresa específica não deve exibir)
         document.getElementById('auth-footer').style.display = 'none';
-
     } catch (e) {
-        // Slug inválido ou sem empresa: modo padrão SAEMI
         skeletonEl.style.display = 'none';
         nomeEl.textContent = '💧 SAEMI';
         nomeEl.style.display = 'block';
     }
-}
-
-// Carregar empresa se tiver slug
-if (slug) {
-    carregarEmpresa(slug);
-} else {
-    // Modo padrão: logo SAEMI
-    document.getElementById('logo-skeleton').style.display = 'none';
-    document.getElementById('empresa-nome').textContent = '💧 SAEMI';
-    document.getElementById('empresa-nome').style.display = 'block';
 }
 
 // ── Login ──
@@ -242,17 +253,14 @@ async function handleLogin(e) {
     btn.textContent = 'Entrando...';
 
     try {
-        // api.login() retorna o JSON mas NÃO salva automaticamente
         const data = await api.login(
             document.getElementById('login-email').value,
             document.getElementById('login-senha').value
         );
 
-        // Salvar tokens e usuário no localStorage
         api.setTokens(data.access_token, data.refresh_token);
         api.setUser(data.user);
 
-        // Redirecionar por role
         if (data.user && data.user.role === 'superadmin') {
             window.location.href = '/superadmin.html';
         } else {
@@ -265,23 +273,7 @@ async function handleLogin(e) {
         btn.textContent = 'Entrar';
     }
 }
-
-// ── Verificar se o sistema precisa de configuração inicial ────────────────
-// Roda ao carregar a página ANTES de mostrar o login
-(async () => {
-    try {
-        const res = await fetch('/api/v1/superadmin/setup-status');
-        if (res.ok) {
-            const data = await res.json();
-            if (data.needs_setup) {
-                // Sistema sem superadmin → ir para a tela de primeiro acesso
-                window.location.replace('/setup.html');
-            }
-        }
-    } catch {
-        // API offline ou erro de rede — mantém na tela de login normalmente
-    }
-})();
 </script>
 </body>
 </html>
+
