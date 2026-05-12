@@ -734,21 +734,22 @@ function _distribModoAtribuicao(imp) {
 async function handleUploadDistribuicao(file) {
     if (!file) return;
     const loading = document.getElementById('distrib-loading');
-    const zone = document.getElementById('distrib-upload-zone');
+    const zone    = document.getElementById('distrib-upload-zone');
     loading.style.display = '';
     zone.style.pointerEvents = 'none';
     try {
+        console.log('[SAEMI] Iniciando upload:', file.name, file.size, 'bytes');
         const imp = await api.uploadREM(file);
+        console.log('[SAEMI] Upload OK:', imp);
         currentImportacao = imp;
         showToast(`📂 ${imp.total_clientes} clientes carregados!`);
-        // Limpa o input para permitir re-upload do mesmo arquivo
         document.getElementById('file-rem-distrib').value = '';
         _distribModoAtribuicao(imp);
         await _carregarAtribuicoes(imp.id);
-        // Atualiza dashboard em segundo plano
         loadDashboard();
     } catch (err) {
-        showToast('Erro ao importar: ' + err.message, 'error');
+        console.error('[SAEMI] Erro no upload/carregamento:', err);
+        showToast('Erro ao importar: ' + (err.message || err), 'error');
     } finally {
         loading.style.display = 'none';
         zone.style.pointerEvents = '';
@@ -769,20 +770,23 @@ function resetDistribuicao() {
 
 /** Carrega leituristas + rotas + progresso para uma importação */
 async function _carregarAtribuicoes(impId) {
+    console.log('[SAEMI] _carregarAtribuicoes impId=', impId);
     try {
         const [usuarios, rotas, progresso] = await Promise.all([
-            api._json('/usuarios/').catch(() => []),
-            api._json(`/atribuicoes/${impId}/rotas`),
-            api._json(`/atribuicoes/${impId}/leituristas`).catch(() => []),
+            api._json('/usuarios/').catch(e => { console.warn('usuarios erro:', e.message); return []; }),
+            api._json(`/atribuicoes/${impId}/rotas`).catch(e => { console.warn('rotas erro:', e.message); return []; }),
+            api._json(`/atribuicoes/${impId}/leituristas`).catch(e => { console.warn('leituristas erro:', e.message); return []; }),
         ]);
+        console.log('[SAEMI] usuarios:', usuarios?.length, '| rotas:', rotas?.length, '| progresso:', progresso?.length);
         _leituristas = (usuarios || []).filter(u => u.role === 'leiturista' && u.ativo);
-        renderLeitureistaCards(progresso, _leituristas);
-        renderRotasTable(rotas, _leituristas);
+        renderLeitureistaCards(progresso || [], _leituristas);
+        renderRotasTable(rotas || [], _leituristas);
         // Popula select do painel "atribuir todos"
         const sel = document.getElementById('atrib-todos-select');
         sel.innerHTML = '<option value="">-- Selecione --</option>' +
             _leituristas.map(u => `<option value="${u.id}">${sanitize(u.nome)}</option>`).join('');
     } catch (err) {
+        console.error('[SAEMI] _carregarAtribuicoes erro:', err);
         showToast('Erro ao carregar distribuição: ' + err.message, 'error');
     }
 }

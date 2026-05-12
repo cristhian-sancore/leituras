@@ -53,7 +53,7 @@ async def upload_rem(
         mes_referencia=mes_ref,
     )
     db.add(importacao)
-    await db.flush()
+    await db.flush()  # garante que importacao.id seja gerado
 
     # Salvar tarifas
     for t in dados['tarifas']:
@@ -91,6 +91,11 @@ async def upload_rem(
             "ocorrencias": len(dados['ocorrencias']),
         },
     ))
+
+    # Commit explícito ANTES de retornar — o frontend faz nova requisição
+    # imediatamente após receber a resposta e precisa encontrar os dados no banco.
+    await db.commit()
+    await db.refresh(importacao)
 
     return ImportacaoOut.model_validate(importacao)
 
