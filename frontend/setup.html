@@ -170,10 +170,10 @@
 
         <div class="field">
           <label for="sa-senha">Senha *</label>
-          <input type="password" id="sa-senha" placeholder="Mínimo 6 caracteres" required oninput="checkSenha(this.value)">
+          <input type="password" id="sa-senha" placeholder="Mínimo 8 caracteres (letras e números)" required oninput="checkSenha(this.value)">
           <div class="strength-bar"><div class="strength-fill" id="sfl"></div></div>
           <div class="strength-label" id="slb">Digite uma senha</div>
-          <div class="field-error" id="err-senha">Senha deve ter pelo menos 6 caracteres</div>
+          <div class="field-error" id="err-senha">Senha deve ter no mínimo 8 caracteres, com letras e números</div>
         </div>
 
         <div class="field">
@@ -272,7 +272,8 @@ async function handleSetup(e) {
   showErr('err-nome', nome.length < 2); if (nome.length < 2) ok = false;
   const emailOk = email && email.includes('@') && email.includes('.');
   showErr('err-email', !emailOk); if (!emailOk) ok = false;
-  showErr('err-senha', senha.length < 6); if (senha.length < 6) ok = false;
+  const senhaOk = senha.length >= 8 && /[A-Za-z]/.test(senha) && /[0-9]/.test(senha);
+  showErr('err-senha', !senhaOk); if (!senhaOk) ok = false;
   showErr('err-confirma', senha !== confirma); if (senha !== confirma) ok = false;
   if (!ok) return;
 
