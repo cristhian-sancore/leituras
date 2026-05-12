@@ -67,7 +67,7 @@ class UsuarioSuperOut(BaseModel):
 
 class AuditLogOut(BaseModel):
     id: int
-    empresa_id: int
+    empresa_id: Optional[int] = None  # None para logs do superadmin
     acao: str
     ip_address: Optional[str] = None
     created_at: datetime
@@ -154,45 +154,8 @@ async def setup_first_run(
     }
 
 
-@router.post("/setup")
-async def initial_setup(
-    data: SetupRequest,
-    db: AsyncSession = Depends(get_db),
-):
-    """
-    Endpoint legado com master_key para setup manual via API.
-    Mantido para recuperação de emergência via curl/Postman.
-    """
-    if data.master_key != settings.JWT_SECRET:
-        raise HTTPException(status_code=403, detail="Chave master invalida")
-
-    existing = await db.execute(select(Usuario).where(Usuario.role == "superadmin"))
-    if existing.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="Setup ja foi realizado")
-
-    result = await db.execute(select(Usuario).order_by(Usuario.created_at.asc()).limit(1))
-    user = result.scalar_one_or_none()
-
-    if user:
-        user.role = "superadmin"
-        user.ativo = True
-        return {"detail": f"Usuario {user.email} agora eh SuperAdmin Master!"}
-    else:
-        dup = await db.execute(select(Usuario).where(Usuario.email == data.email.lower()))
-        if dup.scalar_one_or_none():
-            raise HTTPException(status_code=400, detail="Email ja cadastrado")
-
-        novo = Usuario(
-            empresa_id=None,
-            nome=data.nome,
-            email=data.email.lower(),
-            senha_hash=hash_password(data.senha),
-            role="superadmin",
-            ativo=True,
-        )
-        db.add(novo)
-        await db.flush()
-        return {"detail": f"SuperAdmin '{data.email}' criado com sucesso!"}
+# Endpoint /setup legado removido por segurança (C1 — audit 12/05/2026)
+# Use /setup-first-run para criar o superadmin inicial.
 
 
 @router.get("/stats", response_model=GlobalStats)
@@ -222,23 +185,40 @@ async def list_todas_empresas(
     current_user: Usuario = Depends(require_role("superadmin")),
     db: AsyncSession = Depends(get_db),
 ):
-    """Lista todas as empresas com detalhes."""
-    result = await db.execute(select(Empresa).order_by(Empresa.created_at.desc()))
-    empresas = result.scalars().all()
-    items = []
-    for e in empresas:
-        u_count = await db.execute(select(sqlfunc.count(Usuario.id)).where(Usuario.empresa_id == e.id))
-        l_count = await db.execute(select(sqlfunc.count(Leitura.id)).where(Leitura.empresa_id == e.id))
-        item = EmpresaDetalhada(
-            id=e.id, nome=e.nome, cnpj=e.cnpj, slug=e.slug,
-            ativa=e.ativa, plano=e.plano, max_leituristas=e.max_leituristas,
-            created_at=e.created_at,
-            percentual_esgoto=float(e.percentual_esgoto or 70),
-            consumo_minimo_m3=int(e.consumo_minimo_m3 or 10),
-            total_usuarios=u_count.scalar() or 0,
-            total_leituras=l_count.scalar() or 0,
+    """Lista todas as empresas com detalhes. Query otimizada (sem N+1)."""
+    # Subquery: contagem de usuários por empresa
+    u_subq = (
+        select(Usuario.empresa_id, sqlfunc.count(Usuario.id).label("total"))
+        .group_by(Usuario.empresa_id)
+        .subquery("u_counts")
+    )
+    # Subquery: contagem de leituras por empresa
+    l_subq = (
+        select(Leitura.empresa_id, sqlfunc.count(Leitura.id).label("total"))
+        .group_by(Leitura.empresa_id)
+        .subquery("l_counts")
+    )
+    rows = await db.execute(
+        select(
+            Empresa,
+            sqlfunc.coalesce(u_subq.c.total, 0).label("total_usuarios"),
+            sqlfunc.coalesce(l_subq.c.total, 0).label("total_leituras"),
         )
-        items.append(item)
+        .outerjoin(u_subq, u_subq.c.empresa_id == Empresa.id)
+        .outerjoin(l_subq, l_subq.c.empresa_id == Empresa.id)
+        .order_by(Empresa.created_at.desc())
+    )
+    items = []
+    for empresa, total_u, total_l in rows.all():
+        items.append(EmpresaDetalhada(
+            id=empresa.id, nome=empresa.nome, cnpj=empresa.cnpj, slug=empresa.slug,
+            ativa=empresa.ativa, plano=empresa.plano, max_leituristas=empresa.max_leituristas,
+            created_at=empresa.created_at,
+            percentual_esgoto=float(empresa.percentual_esgoto or 70),
+            consumo_minimo_m3=int(empresa.consumo_minimo_m3 or 10),
+            total_usuarios=total_u,
+            total_leituras=total_l,
+        ))
     return items
 
 
@@ -368,8 +348,9 @@ async def superadmin_reset_senha(
     usuario = result.scalar_one_or_none()
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuario nao encontrado")
-    if len(data.nova_senha) < 6:
-        raise HTTPException(status_code=400, detail="Senha deve ter pelo menos 6 caracteres")
+    # Política de senha unificada (C2 — audit 12/05/2026)
+    if len(data.nova_senha) < 8 or not any(c.isalpha() for c in data.nova_senha) or not any(c.isdigit() for c in data.nova_senha):
+        raise HTTPException(status_code=400, detail="Senha deve ter no mínimo 8 caracteres, com letras e números")
     usuario.senha_hash = hash_password(data.nova_senha)
     return {"detail": f"Senha de {usuario.nome} ({usuario.email}) redefinida com sucesso"}
 

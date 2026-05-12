@@ -180,6 +180,14 @@ async def salvar_leitura(
     if not cliente:
         raise HTTPException(status_code=404, detail="Cliente não encontrado")
 
+    # A3 — Leiturista só pode salvar leitura de cliente atribuído a ele
+    if current_user.role == "leiturista" and cliente.leiturista_atribuido_id is not None:
+        if cliente.leiturista_atribuido_id != current_user.id:
+            raise HTTPException(
+                status_code=403,
+                detail="Este cliente não está atribuído a você"
+            )
+
     # Buscar config da empresa
     config = await _get_empresa_config(db, current_user.empresa_id)
 

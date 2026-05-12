@@ -12,7 +12,7 @@ class EmpresaRegister(BaseModel):
     cnpj: Optional[str] = None
     admin_nome: str = Field(..., min_length=2, max_length=100)
     admin_email: str = Field(..., min_length=5, max_length=200)
-    admin_senha: str = Field(..., min_length=6, max_length=100)
+    admin_senha: str = Field(..., min_length=8, max_length=100, pattern=r"^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*?&]{8,}$", description="Mínimo 8 caracteres com letras e números")
 
 
 class LoginRequest(BaseModel):
