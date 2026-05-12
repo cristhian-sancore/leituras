@@ -390,17 +390,17 @@ function renderClientesMobile(clientes, ocorrOptions) {
         }
 
         const div = document.createElement('div');
-        div.className = \`card-leitura-mobile \${cardClass}\`;
+        div.className = `card-leitura-mobile ${cardClass}`;
         div.onclick = () => abrirLeituraMobile(c.id);
         
-        div.innerHTML = \`
+        div.innerHTML = `
             <div class="cl-header">
-                <span class="cl-nome">\${sanitize(c.nome)}</span>
-                <span class="cl-status \${statusClass}">\${statusText}</span>
+                <span class="cl-nome">${sanitize(c.nome)}</span>
+                <span class="cl-status ${statusClass}">${statusText}</span>
             </div>
-            <div class="cl-detalhes">\${sanitize(enderecoRaw)}</div>
-            <div class="cl-detalhes"><strong>Mat:</strong> \${sanitize(c.matricula)} | <strong>Rota:</strong> \${sanitize(c.rota)}</div>
-        \`;
+            <div class="cl-detalhes">${sanitize(enderecoRaw)}</div>
+            <div class="cl-detalhes"><strong>Mat:</strong> ${sanitize(c.matricula)} | <strong>Rota:</strong> ${sanitize(c.rota)}</div>
+        `;
         container.appendChild(div);
     });
 }
@@ -426,7 +426,7 @@ function abrirLeituraMobile(clienteId) {
     if (window.ocorrencias) {
         window.ocorrencias.forEach(o => {
             if (o.codigo === '0000') return;
-            ocorrOptions += \`<option value="\${o.codigo}">\${o.codigo.padStart(4, '0')} - \${o.descricao}</option>\`;
+            ocorrOptions += `<option value="${o.codigo}">${o.codigo.padStart(4, '0')} - ${o.descricao}</option>`;
         });
     }
     sel.innerHTML = ocorrOptions;
