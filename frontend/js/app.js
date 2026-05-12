@@ -1,4 +1,4 @@
-﻿/**
+/**
  * SAEMI SaaS - App Principal (pós-login)
  * Gerencia tabs, leituras, importações
  */
@@ -575,10 +575,10 @@ async function loadUsuarios() {
                 <td>${date}</td>
                 <td style="display:flex;gap:6px;flex-wrap:wrap">
                     ${canEdit && !isSelf ? `
-                        <button class="btn btn-sm btn-outline" onclick="abrirEditarUsuario(${u.id}, '${sanitize(u.nome)}', '${sanitize(u.email)}')" title="Editar usuário">
+                        <button class="btn btn-sm btn-outline" onclick="abrirModalEditarUsuario(${u.id}, '${sanitize(u.nome)}', '${sanitize(u.email)}', '${u.role}')" title="Editar usuário">
                             ✏️ Editar
                         </button>
-                        <button class="btn btn-sm btn-outline" style="border-color:#f59e0b;color:#f59e0b" onclick="abrirResetSenha(${u.id}, '${sanitize(u.nome)}')" title="Redefinir senha">
+                        <button class="btn btn-sm btn-outline" style="border-color:#f59e0b;color:#f59e0b" onclick="abrirModalSenha(${u.id}, '${sanitize(u.nome)}')" title="Redefinir senha">
                             🔑 Senha
                         </button>
                     ` : ''}
@@ -596,49 +596,99 @@ async function loadUsuarios() {
     }
 }
 
-function abrirEditarUsuario(id, nomeAtual, emailAtual) {
-    const novoNome = prompt(`Novo nome (atual: ${nomeAtual}):`, nomeAtual);
-    if (novoNome === null) return; // cancelou
-    const novoEmail = prompt(`Novo email (atual: ${emailAtual}):`, emailAtual);
-    if (novoEmail === null) return;
+// ===== MODAIS DE USUÁRIO =====
 
-    if (!novoNome.trim() || !novoEmail.trim()) {
-        showToast('Nome e email não podem ser vazios', 'error');
-        return;
-    }
-
-    api.updateUsuario(id, { nome: novoNome.trim(), email: novoEmail.trim() })
-        .then(() => {
-            showToast(`Usuário atualizado!`);
-            loadUsuarios();
-        })
-        .catch(err => showToast(err.message, 'error'));
+function abrirModalNovoUsuario() {
+    document.getElementById('modal-usuario-titulo').textContent = 'Novo Usuário';
+    document.getElementById('modal-usuario-id').value = '';
+    document.getElementById('modal-usuario-btn').textContent = 'Criar Usuário';
+    document.getElementById('modal-user-nome').value = '';
+    document.getElementById('modal-user-email').value = '';
+    document.getElementById('modal-user-senha').value = '';
+    document.getElementById('modal-user-senha').required = true;
+    document.getElementById('modal-user-role').value = 'leiturista';
+    document.getElementById('modal-senha-hint').textContent = '';
+    document.getElementById('modal-usuario').style.display = 'flex';
+    document.getElementById('modal-user-nome').focus();
 }
 
-function abrirResetSenha(id, nome) {
-    const novaSenha = prompt(`Nova senha para ${nome} (mínimo 8 caracteres, com letras e números):`);
-    if (novaSenha === null) return; // cancelou
-    if (novaSenha.length < 8) {
-        showToast('A senha deve ter pelo menos 8 caracteres', 'error');
-        return;
-    }
-    if (!/[a-zA-Z]/.test(novaSenha) || !/[0-9]/.test(novaSenha)) {
-        showToast('A senha deve conter letras e números', 'error');
-        return;
-    }
-    const confirmacao = prompt('Confirme a nova senha:');
-    if (confirmacao === null) return;
-    if (novaSenha !== confirmacao) {
-        showToast('As senhas não conferem', 'error');
-        return;
-    }
+function abrirModalEditarUsuario(id, nome, email, role) {
+    document.getElementById('modal-usuario-titulo').textContent = '✏️ Editar Usuário';
+    document.getElementById('modal-usuario-id').value = id;
+    document.getElementById('modal-usuario-btn').textContent = 'Salvar Alterações';
+    document.getElementById('modal-user-nome').value = nome;
+    document.getElementById('modal-user-email').value = email;
+    document.getElementById('modal-user-senha').value = '';
+    document.getElementById('modal-user-senha').required = false;
+    document.getElementById('modal-user-role').value = role;
+    document.getElementById('modal-senha-hint').textContent = 'Deixe em branco para não alterar a senha.';
+    document.getElementById('modal-usuario').style.display = 'flex';
+    document.getElementById('modal-user-nome').focus();
+}
 
-    api._json(`/usuarios/${id}/reset-senha`, {
-        method: 'POST',
-        body: JSON.stringify({ nova_senha: novaSenha }),
-    })
-        .then(res => showToast(`🔑 ${res.detail}`))
-        .catch(err => showToast(err.message, 'error'));
+function fecharModalUsuario() {
+    document.getElementById('modal-usuario').style.display = 'none';
+}
+
+async function submitModalUsuario(e) {
+    e.preventDefault();
+    const id    = document.getElementById('modal-usuario-id').value;
+    const nome  = document.getElementById('modal-user-nome').value.trim();
+    const email = document.getElementById('modal-user-email').value.trim();
+    const senha = document.getElementById('modal-user-senha').value;
+    const role  = document.getElementById('modal-user-role').value;
+    const btn   = document.getElementById('modal-usuario-btn');
+
+    btn.disabled = true;
+    btn.textContent = '⏳ Salvando…';
+    try {
+        if (id) {
+            // Editar
+            const data = { nome, email, role };
+            if (senha) data.senha = senha;
+            await api.updateUsuario(id, data);
+            showToast(`✅ Usuário ${nome} atualizado!`);
+        } else {
+            // Criar
+            await api.createUsuario({ nome, email, senha, role });
+            showToast(`✅ Usuário ${nome} criado!`);
+        }
+        fecharModalUsuario();
+        loadUsuarios();
+    } catch (err) {
+        showToast(err.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = id ? 'Salvar Alterações' : 'Criar Usuário';
+    }
+}
+
+function abrirModalSenha(id, nome) {
+    document.getElementById('modal-senha-id').value = id;
+    document.getElementById('modal-senha-nome').textContent = nome;
+    document.getElementById('modal-nova-senha').value = '';
+    document.getElementById('modal-senha').style.display = 'flex';
+    document.getElementById('modal-nova-senha').focus();
+}
+
+function fecharModalSenha() {
+    document.getElementById('modal-senha').style.display = 'none';
+}
+
+async function submitModalSenha(e) {
+    e.preventDefault();
+    const id    = document.getElementById('modal-senha-id').value;
+    const senha = document.getElementById('modal-nova-senha').value;
+    try {
+        const res = await api._json(`/usuarios/${id}/reset-senha`, {
+            method: 'POST',
+            body: JSON.stringify({ nova_senha: senha }),
+        });
+        showToast(`🔑 ${res.detail}`);
+        fecharModalSenha();
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
 }
 
 async function toggleUsuario(id, ativoAtual) {
@@ -646,7 +696,7 @@ async function toggleUsuario(id, ativoAtual) {
     if (!confirm(`Deseja ${acao} este usuário?`)) return;
     try {
         if (ativoAtual) {
-            await api.deleteUsuario(id);  // desativa
+            await api.deleteUsuario(id);
         } else {
             await api.updateUsuario(id, { ativo: true });
         }
@@ -657,26 +707,11 @@ async function toggleUsuario(id, ativoAtual) {
     }
 }
 
-async function criarUsuario(e) {
-    e.preventDefault();
-    const data = {
-        nome: document.getElementById('new-user-nome').value,
-        email: document.getElementById('new-user-email').value,
-        senha: document.getElementById('new-user-senha').value,
-        role: document.getElementById('new-user-role').value,
-    };
+// Alias legado
+async function desativarUsuario(id) { await toggleUsuario(id, true); }
+async function criarUsuario(e) { await submitModalUsuario(e); }
+function abrirResetSenha(id, nome) { abrirModalSenha(id, nome); }
 
-    try {
-        await api.createUsuario(data);
-        showToast(`Usuário ${data.nome} criado!`);
-        document.getElementById('form-new-user').reset();
-        loadUsuarios();
-    } catch (err) {
-        showToast(err.message, 'error');
-    }
-}
-
-// ============================================
 // IMPRESSÃO ZEBRA LIS
 // ============================================
 function abrirImpressao(clienteId) {

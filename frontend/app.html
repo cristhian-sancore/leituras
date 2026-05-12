@@ -280,38 +280,12 @@
         </div>
 
         <!-- ===== USUÁRIOS ===== -->
-        <!-- ===== USUÁRIOS ===== -->
         <div id="tab-usuarios" class="tab-content hidden admin-only">
             <div class="page-header">
-                <h1 class="page-title">Gerenciar Usuários</h1>
-            </div>
-
-            <div class="card">
-                <div class="card-title" style="margin-bottom: 16px;">Novo Usuário</div>
-                <form id="form-new-user" onsubmit="criarUsuario(event)" style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 12px; align-items: end;">
-                    <div class="input-group" style="margin-bottom:0">
-                        <label for="new-user-nome">Nome</label>
-                        <input type="text" id="new-user-nome" required placeholder="Nome completo">
-                    </div>
-                    <div class="input-group" style="margin-bottom:0">
-                        <label for="new-user-email">Email</label>
-                        <input type="email" id="new-user-email" required placeholder="email@empresa.com">
-                    </div>
-                    <div class="input-group" style="margin-bottom:0">
-                        <label for="new-user-senha">Senha</label>
-                        <input type="password" id="new-user-senha" required minlength="6" placeholder="••••••">
-                    </div>
-                    <div style="display:flex;gap:8px;align-items:end">
-                        <div class="input-group" style="margin-bottom:0">
-                            <label for="new-user-role">Perfil</label>
-                            <select id="new-user-role">
-                                <option value="leiturista">Leiturista</option>
-                                <option value="supervisor">Supervisor</option>
-                            </select>
-                        </div>
-                        <button type="submit" class="btn btn-primary">Criar</button>
-                    </div>
-                </form>
+                <h1 class="page-title">👥 Gerenciar Usuários</h1>
+                <button class="btn btn-primary" onclick="abrirModalNovoUsuario()" id="btn-novo-usuario">
+                    ➕ Novo Usuário
+                </button>
             </div>
 
             <div class="card">
@@ -323,13 +297,72 @@
                             <th>Perfil</th>
                             <th>Status</th>
                             <th>Criado em</th>
-                            <th style="min-width:200px">Ações</th>
+                            <th style="min-width:160px">Ações</th>
                         </tr>
                     </thead>
                     <tbody id="usuarios-body">
                         <tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:30px">Carregando...</td></tr>
                     </tbody>
                 </table>
+            </div>
+        </div>
+
+        <!-- MODAL: Novo / Editar Usuário -->
+        <div id="modal-usuario" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;align-items:center;justify-content:center">
+            <div class="card" style="width:100%;max-width:480px;margin:16px;padding:28px 28px 24px">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+                    <div class="card-title" style="margin:0" id="modal-usuario-titulo">Novo Usuário</div>
+                    <button onclick="fecharModalUsuario()" style="background:none;border:none;cursor:pointer;font-size:1.4rem;color:var(--text-muted);line-height:1">✕</button>
+                </div>
+                <form id="form-usuario-modal" onsubmit="submitModalUsuario(event)">
+                    <input type="hidden" id="modal-usuario-id">
+                    <div class="input-group">
+                        <label for="modal-user-nome">Nome</label>
+                        <input type="text" id="modal-user-nome" required placeholder="Nome completo">
+                    </div>
+                    <div class="input-group">
+                        <label for="modal-user-email">Email</label>
+                        <input type="email" id="modal-user-email" required placeholder="email@empresa.com">
+                    </div>
+                    <div class="input-group" id="modal-senha-group">
+                        <label for="modal-user-senha">Senha</label>
+                        <input type="password" id="modal-user-senha" minlength="6" placeholder="••••••">
+                        <small id="modal-senha-hint" style="color:var(--text-muted);font-size:0.78rem"></small>
+                    </div>
+                    <div class="input-group">
+                        <label for="modal-user-role">Perfil</label>
+                        <select id="modal-user-role">
+                            <option value="leiturista">Leiturista</option>
+                            <option value="supervisor">Supervisor</option>
+                        </select>
+                    </div>
+                    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+                        <button type="button" class="btn btn-outline" onclick="fecharModalUsuario()">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" id="modal-usuario-btn">Criar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- MODAL: Trocar Senha -->
+        <div id="modal-senha" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;align-items:center;justify-content:center">
+            <div class="card" style="width:100%;max-width:400px;margin:16px;padding:28px">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+                    <div class="card-title" style="margin:0">🔑 Trocar Senha</div>
+                    <button onclick="fecharModalSenha()" style="background:none;border:none;cursor:pointer;font-size:1.4rem;color:var(--text-muted);line-height:1">✕</button>
+                </div>
+                <p style="color:var(--text-muted);font-size:0.88rem;margin-bottom:16px">Usuário: <strong id="modal-senha-nome"></strong></p>
+                <form id="form-senha-modal" onsubmit="submitModalSenha(event)">
+                    <input type="hidden" id="modal-senha-id">
+                    <div class="input-group">
+                        <label for="modal-nova-senha">Nova Senha</label>
+                        <input type="password" id="modal-nova-senha" required minlength="6" placeholder="Mínimo 6 caracteres">
+                    </div>
+                    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+                        <button type="button" class="btn btn-outline" onclick="fecharModalSenha()">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Salvar Senha</button>
+                    </div>
+                </form>
             </div>
         </div>
 
