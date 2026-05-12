@@ -1,4 +1,5 @@
 from typing import List, Optional
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func as sqlfunc
@@ -9,6 +10,109 @@ from app.auth.deps import get_current_user
 from app.services.calculadora import calcular_consumo, calcular_conta, validar_consumo
 
 router = APIRouter(prefix="/leituras", tags=["Leituras"])
+
+
+@router.put("/{cliente_id}")
+async def salvar_leitura(
+    cliente_id: int,
+    body: LeituraUpdate,
+    current_user: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Registra ou atualiza leitura. Leituristas e supervisores podem registrar."""
+    role = (current_user.role or "").lower()
+    if role not in ("leiturista", "supervisor", "admin", "superadmin"):
+        raise HTTPException(status_code=403, detail="Sem permissão para registrar leituras")
+
+    res = await db.execute(
+        select(Cliente).where(
+            Cliente.id == cliente_id,
+            Cliente.empresa_id == current_user.empresa_id,
+        )
+    )
+    cliente = res.scalar_one_or_none()
+    if not cliente:
+        raise HTTPException(status_code=404, detail="Cliente não encontrado")
+
+    imp_id = cliente.importacao_id
+
+    # Buscar dados da ocorrência
+    ocorr_data = {}
+    if body.ocorrencia_codigo and body.ocorrencia_codigo != "0000":
+        ocr = await db.execute(
+            select(Ocorrencia).where(
+                Ocorrencia.codigo == body.ocorrencia_codigo,
+                Ocorrencia.importacao_id == imp_id,
+                Ocorrencia.empresa_id == current_user.empresa_id,
+            )
+        )
+        o = ocr.scalar_one_or_none()
+        if o:
+            ocorr_data = {
+                'tipo_acao': o.tipo_acao,
+                'consumo_fixo': o.consumo_fixo,
+                'desconsidera_leitura': o.desconsidera_leitura,
+            }
+
+    empresa_cfg = await _get_empresa_config(db, current_user.empresa_id)
+    tarifas_dict = await _get_tarifas_dict(db, imp_id, current_user.empresa_id)
+
+    consumo = calcular_consumo(
+        anterior=cliente.leitura_anterior or 0,
+        atual=body.leitura_atual,
+        ocorrencia=ocorr_data,
+        consumo_medio=cliente.consumo_medio,
+    )
+    resultado = calcular_conta(
+        consumo=consumo,
+        categoria=cliente.categoria or "residencial",
+        tarifas=tarifas_dict,
+        empresa_cfg=empresa_cfg,
+        ocorrencia=ocorr_data,
+    )
+    alerta, mensagem = validar_consumo(consumo, cliente.consumo_medio)
+
+    # Upsert leitura
+    lr = await db.execute(
+        select(Leitura).where(
+            Leitura.cliente_id == cliente_id,
+            Leitura.importacao_id == imp_id,
+        )
+    )
+    leitura = lr.scalar_one_or_none()
+    if leitura:
+        leitura.leitura_atual     = body.leitura_atual
+        leitura.ocorrencia_codigo = body.ocorrencia_codigo
+        leitura.consumo           = consumo
+        leitura.valor_total       = resultado.get("valor_total", 0)
+        leitura.latitude          = body.latitude
+        leitura.longitude         = body.longitude
+        leitura.leiturista_id     = current_user.id
+        leitura.data_leitura      = datetime.utcnow()
+    else:
+        leitura = Leitura(
+            cliente_id=cliente_id,
+            importacao_id=imp_id,
+            empresa_id=current_user.empresa_id,
+            leitura_atual=body.leitura_atual,
+            ocorrencia_codigo=body.ocorrencia_codigo,
+            consumo=consumo,
+            valor_total=resultado.get("valor_total", 0),
+            latitude=body.latitude,
+            longitude=body.longitude,
+            leiturista_id=current_user.id,
+            data_leitura=datetime.utcnow(),
+        )
+        db.add(leitura)
+
+    await db.commit()
+    await db.refresh(leitura)
+    return {
+        "consumo": consumo,
+        "valor_total": float(leitura.valor_total or 0),
+        "alerta": alerta,
+        "mensagem": mensagem,
+    }
 
 
 async def _get_empresa_config(db: AsyncSession, empresa_id: int) -> dict:

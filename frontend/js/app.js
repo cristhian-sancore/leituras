@@ -255,9 +255,10 @@ function renderClientes(clientes) {
         return;
     }
 
-    // Options de ocorrência
-    let ocorrOptions = '<option value="">Normal</option>';
+    // Options de ocorrência — 0000 NORMAL como padrão
+    let ocorrOptions = '<option value="0000">0000 - NORMAL</option>';
     ocorrencias.forEach(o => {
+        if (o.codigo === '0000') return; // não duplicar o 0000
         ocorrOptions += `<option value="${o.codigo}">${o.codigo.padStart(4, '0')} - ${o.descricao}</option>`;
     });
 
@@ -341,11 +342,11 @@ async function salvarLeitura(clienteId) {
 
     if (!leituraInput) return;
 
-    const leituraAtual = leituraInput.value ? parseInt(leituraInput.value) : null;
-    const ocorrencia = ocorrSelect ? ocorrSelect.value : '';
+    const leituraAtual = leituraInput.value !== '' ? parseInt(leituraInput.value) : null;
+    const ocorrencia = ocorrSelect ? ocorrSelect.value : '0000';
     const temOcorrenciaEspecial = ocorrencia && ocorrencia !== '0000';
 
-    // Não salvar se: sem leitura E sem ocorrência especial (nada a salvar)
+    // Não salvar se: sem leitura E ocorrência é normal (nada útil a salvar)
     if (leituraAtual === null && !temOcorrenciaEspecial) return;
 
     // Capturar GPS se disponível
