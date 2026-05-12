@@ -25,8 +25,8 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql+asyncpg://saemi:${DB_PASSWORD:-saemi_secure_2026}@db:5432/saemi
-      JWT_SECRET: ${JWT_SECRET:-saemi-jwt-secret-key-prod-2026-xk9m2}
-      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      JWT_SECRET: ${JWT_SECRET:-SAEMI-SaaS-Producao-Super-Secret-Key-2026-v1-xk9m2}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
     volumes:
       - saemi_uploads_data:/app/uploads
     restart: unless-stopped
