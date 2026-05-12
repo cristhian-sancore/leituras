@@ -608,10 +608,14 @@ function abrirEditarUsuario(id, nomeAtual, emailAtual) {
 }
 
 function abrirResetSenha(id, nome) {
-    const novaSenha = prompt(`Nova senha para ${nome} (mínimo 6 caracteres):`);
+    const novaSenha = prompt(`Nova senha para ${nome} (mínimo 8 caracteres, com letras e números):`);
     if (novaSenha === null) return; // cancelou
-    if (novaSenha.length < 6) {
-        showToast('A senha deve ter pelo menos 6 caracteres', 'error');
+    if (novaSenha.length < 8) {
+        showToast('A senha deve ter pelo menos 8 caracteres', 'error');
+        return;
+    }
+    if (!/[a-zA-Z]/.test(novaSenha) || !/[0-9]/.test(novaSenha)) {
+        showToast('A senha deve conter letras e números', 'error');
         return;
     }
     const confirmacao = prompt('Confirme a nova senha:');

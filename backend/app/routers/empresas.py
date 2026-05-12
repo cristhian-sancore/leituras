@@ -51,14 +51,14 @@ async def get_empresa(
 @router.put("/", response_model=EmpresaOut)
 async def update_empresa(
     data: EmpresaUpdate,
-    current_user: Usuario = Depends(require_role("superadmin")),
+    current_user: Usuario = Depends(require_role("supervisor", "superadmin")),
     db: AsyncSession = Depends(get_db),
 ):
-    """Atualizar dados da empresa (superadmin only)."""
+    """Atualizar dados da empresa do usuário logado (supervisor) ou 404 para superadmin sem empresa."""
     result = await db.execute(select(Empresa).where(Empresa.id == current_user.empresa_id))
     empresa = result.scalar_one_or_none()
     if not empresa:
-        raise HTTPException(status_code=404, detail="Empresa nao encontrada")
+        raise HTTPException(status_code=404, detail="Empresa não encontrada. Superadmin deve usar /superadmin/empresas/{id}/config")
     if data.nome is not None:
         empresa.nome = data.nome
     if data.cnpj is not None:
@@ -89,7 +89,7 @@ async def update_empresa_config(
 @router.post("/logo")
 async def upload_logo(
     file: UploadFile = File(...),
-    current_user: Usuario = Depends(require_role("superadmin")),
+    current_user: Usuario = Depends(require_role("supervisor", "superadmin")),
     db: AsyncSession = Depends(get_db),
 ):
     """Upload de logo da empresa (PNG/JPG, max 2MB)."""
@@ -114,6 +114,8 @@ async def upload_logo(
     # Atualizar empresa
     result = await db.execute(select(Empresa).where(Empresa.id == current_user.empresa_id))
     empresa = result.scalar_one_or_none()
+    if not empresa:
+        raise HTTPException(status_code=404, detail="Empresa não encontrada. Superadmin deve usar /superadmin/empresas/{id}/config")
     empresa.logo_url = f"/uploads/logos/{filename}"
 
     return {"logo_url": empresa.logo_url, "detail": "Logo atualizada com sucesso!"}
@@ -122,7 +124,7 @@ async def upload_logo(
 @router.put("/logo-url")
 async def set_logo_url(
     logo_url: str,
-    current_user: Usuario = Depends(require_role("superadmin")),
+    current_user: Usuario = Depends(require_role("supervisor", "superadmin")),
     db: AsyncSession = Depends(get_db),
 ):
     """Definir logo da empresa por URL externa."""

@@ -61,6 +61,78 @@ async def _get_ocorrencias_dict(db: AsyncSession, imp_id: int, empresa_id: int) 
     } for o in ocorrs}
 
 
+
+@router.get("/{imp_id}/stats", response_model=StatsOut)
+async def get_stats(
+    imp_id: int,
+    current_user: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Estatísticas de uma importação."""
+    total_result = await db.execute(
+        select(sqlfunc.count(Cliente.id)).where(
+            Cliente.importacao_id == imp_id,
+            Cliente.empresa_id == current_user.empresa_id,
+        )
+    )
+    total_clientes = total_result.scalar() or 0
+
+    leit_result = await db.execute(
+        select(
+            sqlfunc.count(Leitura.id),
+            sqlfunc.coalesce(sqlfunc.sum(Leitura.consumo), 0),
+            sqlfunc.coalesce(sqlfunc.sum(Leitura.valor_total), 0),
+        ).where(
+            Leitura.importacao_id == imp_id,
+            Leitura.empresa_id == current_user.empresa_id,
+        )
+    )
+    row = leit_result.one()
+    realizadas = row[0] or 0
+    consumo_total = int(row[1] or 0)
+    valor_total = float(row[2] or 0)
+
+    return StatsOut(
+        total_clientes=total_clientes,
+        leituras_realizadas=realizadas,
+        leituras_pendentes=total_clientes - realizadas,
+        consumo_total=consumo_total,
+        valor_total=valor_total,
+    )
+
+
+@router.get("/{imp_id}/ocorrencias", response_model=List[OcorrenciaOut])
+async def get_ocorrencias(
+    imp_id: int,
+    current_user: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Listar ocorrências disponíveis para uma importação."""
+    result = await db.execute(
+        select(Ocorrencia).where(
+            Ocorrencia.importacao_id == imp_id,
+            Ocorrencia.empresa_id == current_user.empresa_id,
+        )
+    )
+    return [OcorrenciaOut.model_validate(o) for o in result.scalars().all()]
+
+
+@router.get("/{imp_id}/tarifas", response_model=List[TarifaOut])
+async def get_tarifas(
+    imp_id: int,
+    current_user: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Listar tarifas de uma importação."""
+    result = await db.execute(
+        select(Tarifa).where(
+            Tarifa.importacao_id == imp_id,
+            Tarifa.empresa_id == current_user.empresa_id,
+        )
+    )
+    return [TarifaOut.model_validate(t) for t in result.scalars().all()]
+
+
 @router.get("/{imp_id}", response_model=List[ClienteComLeitura])
 async def list_clientes_com_leituras(
     imp_id: int,
@@ -159,179 +231,3 @@ async def list_clientes_com_leituras(
         ))
 
     return items
-
-
-@router.put("/{cliente_id}")
-async def salvar_leitura(
-    cliente_id: int,
-    data: LeituraUpdate,
-    current_user: Usuario = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """Salvar/atualizar a leitura de um cliente com validação de consumo."""
-    # Buscar cliente
-    result = await db.execute(
-        select(Cliente).where(
-            Cliente.id == cliente_id,
-            Cliente.empresa_id == current_user.empresa_id,
-        )
-    )
-    cliente = result.scalar_one_or_none()
-    if not cliente:
-        raise HTTPException(status_code=404, detail="Cliente não encontrado")
-
-    # A3 — Leiturista só pode salvar leitura de cliente atribuído a ele
-    if current_user.role == "leiturista" and cliente.leiturista_atribuido_id is not None:
-        if cliente.leiturista_atribuido_id != current_user.id:
-            raise HTTPException(
-                status_code=403,
-                detail="Este cliente não está atribuído a você"
-            )
-
-    # Buscar config da empresa
-    config = await _get_empresa_config(db, current_user.empresa_id)
-
-    # Buscar tarifas e ocorrências
-    tarifas_dict = await _get_tarifas_dict(db, cliente.importacao_id, current_user.empresa_id)
-    ocorrencias_dict = await _get_ocorrencias_dict(db, cliente.importacao_id, current_user.empresa_id)
-
-    # Calcular consumo (com suporte a virada de hidrômetro)
-    ocorrencia = ocorrencias_dict.get(data.ocorrencia_codigo) if data.ocorrencia_codigo else None
-    consumo = calcular_consumo(
-        leitura_atual=data.leitura_atual or 0,
-        leitura_anterior=cliente.leitura_anterior,
-        ocorrencia=ocorrencia,
-        consumo_medio=cliente.consumo_medio,
-        consumo_minimo=config['consumo_minimo_m3'],
-    )
-
-    # Validar consumo (alertas)
-    alerta = validar_consumo(consumo, cliente.consumo_medio)
-
-    # Calcular valores (com % esgoto configurável)
-    tarifas_agua = tarifas_dict.get(f"{cliente.categoria}_agua", [])
-    tarifas_lixo = tarifas_dict.get(f"{cliente.categoria}_lixo", [])
-    valores = calcular_conta(
-        consumo, tarifas_agua, tarifas_lixo,
-        percentual_esgoto=config['percentual_esgoto'],
-        consumo_minimo=config['consumo_minimo_m3'],
-        tem_esgoto=bool(cliente.tem_esgoto),
-        tem_lixo=bool(cliente.tem_lixo),
-    )
-
-    # Upsert leitura
-    result = await db.execute(
-        select(Leitura).where(
-            Leitura.cliente_id == cliente_id,
-            Leitura.importacao_id == cliente.importacao_id,
-        )
-    )
-    leitura = result.scalar_one_or_none()
-
-    if leitura:
-        leitura.leitura_atual = data.leitura_atual
-        leitura.ocorrencia_codigo = data.ocorrencia_codigo
-        leitura.consumo = consumo
-        leitura.valor_agua = valores['valor_agua']
-        leitura.valor_esgoto = valores['valor_esgoto']
-        leitura.valor_lixo = valores['valor_lixo']
-        leitura.valor_total = valores['valor_total']
-        leitura.leiturista_id = current_user.id
-        if data.latitude is not None:
-            leitura.latitude = data.latitude
-        if data.longitude is not None:
-            leitura.longitude = data.longitude
-    else:
-        leitura = Leitura(
-            cliente_id=cliente_id,
-            importacao_id=cliente.importacao_id,
-            empresa_id=current_user.empresa_id,
-            leiturista_id=current_user.id,
-            leitura_atual=data.leitura_atual,
-            ocorrencia_codigo=data.ocorrencia_codigo,
-            consumo=consumo,
-            valor_agua=valores['valor_agua'],
-            valor_esgoto=valores['valor_esgoto'],
-            valor_lixo=valores['valor_lixo'],
-            valor_total=valores['valor_total'],
-            latitude=data.latitude,
-            longitude=data.longitude,
-        )
-        db.add(leitura)
-
-    return {
-        "consumo": consumo,
-        **valores,
-        **alerta,
-    }
-
-
-@router.get("/{imp_id}/stats", response_model=StatsOut)
-async def get_stats(
-    imp_id: int,
-    current_user: Usuario = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """Estatísticas de uma importação."""
-    total_result = await db.execute(
-        select(sqlfunc.count(Cliente.id)).where(
-            Cliente.importacao_id == imp_id,
-            Cliente.empresa_id == current_user.empresa_id,
-        )
-    )
-    total_clientes = total_result.scalar() or 0
-
-    leit_result = await db.execute(
-        select(
-            sqlfunc.count(Leitura.id),
-            sqlfunc.coalesce(sqlfunc.sum(Leitura.consumo), 0),
-            sqlfunc.coalesce(sqlfunc.sum(Leitura.valor_total), 0),
-        ).where(
-            Leitura.importacao_id == imp_id,
-            Leitura.empresa_id == current_user.empresa_id,
-        )
-    )
-    row = leit_result.one()
-    realizadas = row[0] or 0
-    consumo_total = int(row[1] or 0)
-    valor_total = float(row[2] or 0)
-
-    return StatsOut(
-        total_clientes=total_clientes,
-        leituras_realizadas=realizadas,
-        leituras_pendentes=total_clientes - realizadas,
-        consumo_total=consumo_total,
-        valor_total=valor_total,
-    )
-
-
-@router.get("/{imp_id}/ocorrencias", response_model=List[OcorrenciaOut])
-async def get_ocorrencias(
-    imp_id: int,
-    current_user: Usuario = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """Listar ocorrências disponíveis para uma importação."""
-    result = await db.execute(
-        select(Ocorrencia).where(
-            Ocorrencia.importacao_id == imp_id,
-            Ocorrencia.empresa_id == current_user.empresa_id,
-        )
-    )
-    return [OcorrenciaOut.model_validate(o) for o in result.scalars().all()]
-
-
-@router.get("/{imp_id}/tarifas", response_model=List[TarifaOut])
-async def get_tarifas(
-    imp_id: int,
-    current_user: Usuario = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """Listar tarifas de uma importação."""
-    result = await db.execute(
-        select(Tarifa).where(
-            Tarifa.importacao_id == imp_id,
-            Tarifa.empresa_id == current_user.empresa_id,
-        )
-    )
-    return [TarifaOut.model_validate(t) for t in result.scalars().all()]

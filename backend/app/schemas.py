@@ -104,8 +104,9 @@ class UsuarioOut(BaseModel):
 class UsuarioUpdate(BaseModel):
     nome: Optional[str] = None
     email: Optional[str] = None
-    role: Optional[str] = None
     ativo: Optional[bool] = None
+    # Nota: campo 'role' intencionalmente ausente — alteração de role
+    # deve ser feita pelo superadmin via /superadmin/usuarios/{id}
 
 
 # ============================================

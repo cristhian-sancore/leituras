@@ -18,7 +18,15 @@ async def get_resumo(
     """Resumo geral do dashboard."""
     empresa_id = current_user.empresa_id
 
-    # Total importações
+    # Guard: superadmin não tem empresa_id — dashboard normal não se aplica
+    if empresa_id is None:
+        return DashboardResumo(
+            total_importacoes=0,
+            importacao_ativa=None,
+            total_usuarios=0,
+            stats=None,
+        )
+
     total_imp = await db.execute(
         select(sqlfunc.count(Importacao.id)).where(Importacao.empresa_id == empresa_id)
     )

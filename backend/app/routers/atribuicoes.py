@@ -7,9 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func as sqlfunc, update, distinct, or_
 from pydantic import BaseModel
-from ..database import get_db
-from ..models import Cliente, Leitura, Usuario, Importacao
-from ..auth.deps import get_current_user, require_role
+from app.database import get_db
 from app.models import Cliente, Leitura, Usuario, Importacao
 from app.auth.deps import get_current_user, require_role
 
