@@ -1,4 +1,4 @@
-from typing import List, Optional
+﻿from typing import List, Optional
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -35,6 +35,7 @@ async def salvar_leitura(
         raise HTTPException(status_code=404, detail="Cliente não encontrado")
 
     imp_id = cliente.importacao_id
+    cat = (cliente.categoria or "residencial").lower()
 
     # Buscar dados da ocorrência
     ocorr_data = {}
@@ -57,20 +58,35 @@ async def salvar_leitura(
     empresa_cfg = await _get_empresa_config(db, current_user.empresa_id)
     tarifas_dict = await _get_tarifas_dict(db, imp_id, current_user.empresa_id)
 
+    # Extrair tarifas por categoria (usar a categoria do cliente)
+    tarifas_agua = tarifas_dict.get(f"{cat}_agua") or tarifas_dict.get("residencial_agua") or []
+    tarifas_lixo = tarifas_dict.get(f"{cat}_lixo") or tarifas_dict.get("residencial_lixo") or []
+
+    consumo_minimo = empresa_cfg.get('consumo_minimo_m3', 10)
+    perc_esgoto    = empresa_cfg.get('percentual_esgoto', 70.0)
+
+    # Calcular consumo — assinatura: (leitura_atual, leitura_anterior, ocorrencia, consumo_medio, consumo_minimo)
     consumo = calcular_consumo(
-        anterior=cliente.leitura_anterior or 0,
-        atual=body.leitura_atual,
+        leitura_atual=body.leitura_atual if body.leitura_atual is not None else 0,
+        leitura_anterior=cliente.leitura_anterior or 0,
         ocorrencia=ocorr_data,
-        consumo_medio=cliente.consumo_medio,
+        consumo_medio=cliente.consumo_medio or 0,
+        consumo_minimo=consumo_minimo,
     )
+
+    # Calcular conta — assinatura: (consumo, tarifas_agua, tarifas_lixo, percentual_esgoto, consumo_minimo, ...)
     resultado = calcular_conta(
         consumo=consumo,
-        categoria=cliente.categoria or "residencial",
-        tarifas=tarifas_dict,
-        empresa_cfg=empresa_cfg,
-        ocorrencia=ocorr_data,
+        tarifas_agua=tarifas_agua,
+        tarifas_lixo=tarifas_lixo,
+        percentual_esgoto=perc_esgoto,
+        consumo_minimo=consumo_minimo,
     )
-    alerta, mensagem = validar_consumo(consumo, cliente.consumo_medio)
+
+    # validar_consumo retorna dict (não tuple)
+    validacao = validar_consumo(consumo, cliente.consumo_medio or 0)
+    alerta   = validacao.get('alerta')
+    mensagem = validacao.get('mensagem')
 
     # Upsert leitura
     lr = await db.execute(
@@ -113,6 +129,7 @@ async def salvar_leitura(
         "alerta": alerta,
         "mensagem": mensagem,
     }
+
 
 
 async def _get_empresa_config(db: AsyncSession, empresa_id: int) -> dict:
