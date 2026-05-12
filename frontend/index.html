@@ -180,6 +180,7 @@
     // ── PASSO 2: Se já logado, redirecionar ──
     if (api.isLoggedIn()) {
         const user = api.getUser();
+        if (user && user.role === 'superadmin') {
             window.location.href = '/superadmin';
         } else {
             window.location.href = '/app';
