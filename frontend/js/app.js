@@ -727,9 +727,9 @@ async function loadDistribuicao() {
 
     try {
         const [usuarios, rotas, progresso] = await Promise.all([
-            api.fetch('/usuarios/').catch(() => []),
-            api.fetch(`/atribuicoes/${currentImportacao.id}/rotas`),
-            api.fetch(`/atribuicoes/${currentImportacao.id}/leituristas`).catch(() => []),
+            api._json('/usuarios/').catch(() => []),
+            api._json(`/atribuicoes/${currentImportacao.id}/rotas`),
+            api._json(`/atribuicoes/${currentImportacao.id}/leituristas`).catch(() => []),
         ]);
         _leituristas = (usuarios || []).filter(u => u.role === 'leiturista' && u.ativo);
         renderLeitureistaCards(progresso, _leituristas);
@@ -811,7 +811,7 @@ async function salvarAtribuicoes() {
     const btn = document.getElementById('btn-salvar-atrib');
     btn.disabled = true; btn.textContent = 'Salvando...';
     try {
-        const res = await api.fetch(`/atribuicoes/${currentImportacao.id}/atribuir`, {
+        const res = await api._json(`/atribuicoes/${currentImportacao.id}/atribuir`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ atribuicoes }),
@@ -829,8 +829,8 @@ async function limparAtribuicoes() {
     if (!currentImportacao) return;
     if (!confirm('Remover todas as atribuicoes? Todos voltarao a ver todos os clientes.')) return;
     try {
-        const res = await api.fetch(`/atribuicoes/${currentImportacao.id}/limpar`, { method: 'DELETE' });
-        showToast(`Atribuicoes removidas (${res.clientes_atualizados} clientes)`);
+        const res = await api._json(`/atribuicoes/${currentImportacao.id}/limpar`, { method: 'DELETE' });
+        showToast(`Atribuições removidas (${res.clientes_atualizados} clientes)`);
         await loadDistribuicao();
     } catch (err) {
         showToast('Erro ao limpar: ' + err.message, 'error');
