@@ -86,9 +86,9 @@ async def login(data: LoginRequest, request: Request, db: AsyncSession = Depends
     # Atualizar último login
     usuario.ultimo_login = datetime.now(timezone.utc)
 
-    # Audit
+    # Audit (superadmin tem empresa_id=None — registrar mesmo assim)
     db.add(AuditLog(
-        empresa_id=usuario.empresa_id,
+        empresa_id=usuario.empresa_id,  # None ok — coluna agora nullable
         usuario_id=usuario.id,
         acao="login",
         ip_address=client_ip,

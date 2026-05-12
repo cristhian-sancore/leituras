@@ -190,7 +190,7 @@ class AuditLog(Base):
     __tablename__ = "audit_log"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    empresa_id = Column(BigInteger, ForeignKey("empresas.id"), nullable=False)
+    empresa_id = Column(BigInteger, ForeignKey("empresas.id"), nullable=True)  # null = superadmin
     usuario_id = Column(BigInteger, ForeignKey("usuarios.id"), nullable=True)
     acao = Column(Text, nullable=False)
     detalhes = Column(JSONB, nullable=True)
