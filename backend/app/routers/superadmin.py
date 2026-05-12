@@ -128,8 +128,8 @@ async def setup_first_run(
     # Validações
     if len(data.nome.strip()) < 2:
         raise HTTPException(status_code=422, detail="Nome deve ter pelo menos 2 caracteres")
-    if len(data.senha) < 6:
-        raise HTTPException(status_code=422, detail="Senha deve ter pelo menos 6 caracteres")
+    if len(data.senha) < 8 or not any(c.isalpha() for c in data.senha) or not any(c.isdigit() for c in data.senha):
+        raise HTTPException(status_code=422, detail="Senha deve ter no mínimo 8 caracteres, com letras e números")
     if "@" not in data.email or "." not in data.email:
         raise HTTPException(status_code=422, detail="Email inválido")
 

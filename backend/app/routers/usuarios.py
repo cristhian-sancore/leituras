@@ -129,8 +129,8 @@ async def reset_senha_leiturista(
     if current_user.role == "supervisor" and usuario.role != "leiturista":
         raise HTTPException(status_code=403, detail="Supervisor so pode resetar senha de leituristas")
 
-    if len(data.nova_senha) < 6:
-        raise HTTPException(status_code=400, detail="Senha deve ter pelo menos 6 caracteres")
+    if len(data.nova_senha) < 8 or not any(c.isalpha() for c in data.nova_senha) or not any(c.isdigit() for c in data.nova_senha):
+        raise HTTPException(status_code=400, detail="A nova senha deve ter no mínimo 8 caracteres, contendo letras e números.")
 
     usuario.senha_hash = hash_password(data.nova_senha)
     return {"detail": f"Senha de {usuario.nome} redefinida com sucesso"}

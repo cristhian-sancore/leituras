@@ -257,6 +257,14 @@ async function loadStats() {
   } catch(e){toast(e.message,true);}
 }
 
+// ---------- SANITIZE ----------
+function sanitize(str) {
+  if (str == null) return '';
+  return String(str).replace(/[&<>"']/g, m => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  })[m]);
+}
+
 // ---------- EMPRESAS ----------
 async function loadEmpresas() {
   try {
@@ -266,8 +274,8 @@ async function loadEmpresas() {
     tbody.innerHTML = list.map(e=>`
       <tr>
         <td><code>${e.id}</code></td>
-        <td><strong>${e.nome}</strong><br><span style="font-size:0.75rem;color:var(--sa-muted)">${e.slug}</span></td>
-        <td style="color:var(--sa-muted)">${e.cnpj||'-'}</td>
+        <td><strong>${sanitize(e.nome)}</strong><br><span style="font-size:0.75rem;color:var(--sa-muted)">${sanitize(e.slug)}</span></td>
+        <td style="color:var(--sa-muted)">${sanitize(e.cnpj)||'-'}</td>
         <td><span class="badge badge-${e.plano}">${e.plano}</span></td>
         <td style="text-align:center">${e.total_usuarios}</td>
         <td style="text-align:center">${e.total_leituras}</td>
@@ -362,8 +370,8 @@ async function verUsuarios(id) {
         <thead><tr><th>Nome</th><th>Email</th><th>Role</th><th>Status</th><th>Último Login</th><th>Ações</th></tr></thead>
         <tbody>${users.map(u=>`
           <tr>
-            <td>${u.nome}</td>
-            <td style="color:var(--sa-muted)">${u.email}</td>
+            <td>${sanitize(u.nome)}</td>
+            <td style="color:var(--sa-muted)">${sanitize(u.email)}</td>
             <td><span class="badge badge-basico">${u.role}</span></td>
             <td><span class="${u.ativo?'dot-on':'dot-off'}"></span>${u.ativo?'Ativo':'Inativo'}</td>
             <td style="color:var(--sa-muted)">${u.ultimo_login?new Date(u.ultimo_login).toLocaleString('pt-BR'):'-'}</td>

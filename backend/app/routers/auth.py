@@ -18,8 +18,8 @@ router = APIRouter(prefix="/auth", tags=["Autenticação"])
 # RATE LIMITING (em memória - simples e eficaz)
 # ============================================
 _login_attempts = defaultdict(list)  # ip -> [timestamps]
-RATE_LIMIT_WINDOW = 300   # 5 minutos
-RATE_LIMIT_MAX = 10       # máximo 10 tentativas por janela
+RATE_LIMIT_WINDOW = 900   # 15 minutos (Aumentado para segurança)
+RATE_LIMIT_MAX = 5        # máximo 5 tentativas por janela (Reduzido para segurança)
 
 
 def _check_rate_limit(ip: str):

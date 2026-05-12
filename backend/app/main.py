@@ -50,7 +50,10 @@ app = FastAPI(
 )
 
 # CORS
-origins = settings.CORS_ORIGINS.split(",") if settings.CORS_ORIGINS != "*" else ["*"]
+origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
+if not origins:
+    origins = [] # Se vazio, não permite cross-origin explícito
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,

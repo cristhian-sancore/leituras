@@ -65,7 +65,7 @@ class EmpresaConfigUpdate(BaseModel):
 class UsuarioCreate(BaseModel):
     nome: str = Field(..., min_length=2, max_length=100)
     email: str = Field(..., min_length=5, max_length=200)
-    senha: str = Field(..., min_length=6, max_length=100)
+    senha: str = Field(..., min_length=8, max_length=100, pattern=r"^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*?&]{8,}$", description="A senha deve ter no mínimo 8 caracteres, contendo pelo menos uma letra e um número.")
     role: str = Field(default="leiturista", pattern="^(supervisor|leiturista)$")
 
 
