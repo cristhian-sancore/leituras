@@ -28,46 +28,6 @@ async function handleLogin(e) {
     }
 }
 
-async function handleRegister(e) {
-    e.preventDefault();
-    const btn = document.getElementById('register-btn');
-    const errEl = document.getElementById('register-error');
-
-    btn.disabled = true;
-    btn.textContent = 'Cadastrando...';
-    errEl.classList.add('hidden');
-
-    const data = {
-        nome: document.getElementById('reg-empresa').value,
-        cnpj: document.getElementById('reg-cnpj').value || null,
-        admin_nome: document.getElementById('reg-nome').value,
-        admin_email: document.getElementById('reg-email').value,
-        admin_senha: document.getElementById('reg-senha').value,
-    };
-
-    // Validar senha
-    const senhaConf = document.getElementById('reg-senha-conf').value;
-    if (data.admin_senha !== senhaConf) {
-        errEl.textContent = 'As senhas não coincidem';
-        errEl.classList.remove('hidden');
-        btn.disabled = false;
-        btn.textContent = 'Cadastrar Empresa';
-        return;
-    }
-
-    try {
-        const resp = await api.register(data);
-        api.setTokens(resp.access_token, resp.refresh_token);
-        api.setUser(resp.user);
-        window.location.href = '/app.html';
-    } catch (err) {
-        errEl.textContent = err.message;
-        errEl.classList.remove('hidden');
-    } finally {
-        btn.disabled = false;
-        btn.textContent = 'Cadastrar Empresa';
-    }
-}
 
 function logout() {
     api.clearTokens();

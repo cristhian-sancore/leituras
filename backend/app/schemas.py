@@ -66,7 +66,7 @@ class UsuarioCreate(BaseModel):
     nome: str = Field(..., min_length=2, max_length=100)
     email: str = Field(..., min_length=5, max_length=200)
     senha: str = Field(..., min_length=6, max_length=100)
-    role: str = Field(default="leiturista", pattern="^(admin|supervisor|leiturista)$")
+    role: str = Field(default="leiturista", pattern="^(supervisor|leiturista)$")
 
 
 class UsuarioOut(BaseModel):

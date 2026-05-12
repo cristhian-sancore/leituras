@@ -190,7 +190,7 @@ async def criar_empresa(
         empresa_id=empresa.id, nome=data.admin_nome,
         email=data.admin_email.lower(),
         senha_hash=hash_password(data.admin_senha),
-        role="admin",
+        role="supervisor",  # Corrigido: admin -> supervisor
     )
     db.add(admin)
     return {"detail": f"Empresa '{data.nome}' criada com sucesso!", "empresa_id": empresa.id}

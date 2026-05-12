@@ -21,7 +21,12 @@ async def upload_rem(
     if not file.filename:
         raise HTTPException(status_code=400, detail="Arquivo não fornecido")
 
-    content = await file.read()
+    # Limitar tamanho: 10MB máximo
+    MAX_SIZE = 10 * 1024 * 1024  # 10MB
+    content = await file.read(MAX_SIZE + 1)
+    if len(content) > MAX_SIZE:
+        raise HTTPException(status_code=413, detail="Arquivo muito grande. Máximo 10MB.")
+
     try:
         text = content.decode('latin-1')  # Arquivos .REM usam encoding latin-1
     except Exception:

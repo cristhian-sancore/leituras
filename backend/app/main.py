@@ -37,9 +37,9 @@ app = FastAPI(
     version=settings.APP_VERSION,
     description="Sistema de Leitura de Agua como Servico (SaaS)",
     lifespan=lifespan,
-    docs_url="/api/docs",
-    redoc_url="/api/redoc",
-    openapi_url="/api/openapi.json",
+    docs_url=None,        # Desativado em produção
+    redoc_url=None,       # Desativado em produção
+    openapi_url=None,     # Desativado em produção
 )
 
 # CORS
@@ -63,34 +63,6 @@ app.include_router(dashboard.router, prefix="/api/v1")
 app.include_router(superadmin.router, prefix="/api/v1")
 
 
-@app.get("/api/v1/debug/register-test")
-async def debug_register_test():
-    """Debug: testa se o register funciona."""
-    import traceback
-    from app.database import get_db
-    from app.models import Empresa, Usuario
-    from app.auth.password import hash_password
-    from sqlalchemy import select
-    try:
-        async for db in get_db():
-            empresa = Empresa(nome="Test Debug", slug="test-debug-" + str(int(__import__('time').time())))
-            db.add(empresa)
-            await db.flush()
-            usuario = Usuario(
-                empresa_id=empresa.id,
-                nome="Debug User",
-                email=f"debug-{int(__import__('time').time())}@test.com",
-                senha_hash=hash_password("123456"),
-                role="admin",
-            )
-            db.add(usuario)
-            await db.flush()
-            await db.rollback()
-            return {"status": "ok", "empresa_id": empresa.id, "user_id": usuario.id}
-    except Exception as e:
-        return {"status": "error", "error": str(e), "trace": traceback.format_exc()}
-
-
-
+@app.get("/health")
 async def health():
     return {"status": "ok", "app": settings.APP_NAME, "version": settings.APP_VERSION}

@@ -201,7 +201,7 @@ tr:hover td{background:rgba(255,255,255,0.02)}
 <script src="/js/utils.js"></script>
 <script>
 const BASE = '/api/v1';
-let token = localStorage.getItem('saemi_access_token');
+let token = localStorage.getItem('saemi_token'); // ← corrigido: era 'saemi_access_token'
 
 async function apiFetch(path, opts={}) {
   const r = await fetch(BASE + path, {

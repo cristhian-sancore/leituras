@@ -76,11 +76,12 @@ async def login(data: LoginRequest, request: Request, db: AsyncSession = Depends
     if not usuario.ativo:
         raise HTTPException(status_code=403, detail="Usuário desativado")
 
-    # Verificar se empresa está ativa
-    result_emp = await db.execute(select(Empresa).where(Empresa.id == usuario.empresa_id))
-    empresa = result_emp.scalar_one_or_none()
-    if not empresa or not empresa.ativa:
-        raise HTTPException(status_code=403, detail="Empresa desativada")
+    # Verificar se empresa está ativa (superadmin não tem empresa própria)
+    if usuario.role != "superadmin":
+        result_emp = await db.execute(select(Empresa).where(Empresa.id == usuario.empresa_id))
+        empresa = result_emp.scalar_one_or_none()
+        if not empresa or not empresa.ativa:
+            raise HTTPException(status_code=403, detail="Empresa desativada")
 
     # Atualizar último login
     usuario.ultimo_login = datetime.now(timezone.utc)
@@ -117,6 +118,13 @@ async def refresh_token(data: RefreshRequest, db: AsyncSession = Depends(get_db)
 
     if not usuario or not usuario.ativo:
         raise HTTPException(status_code=401, detail="Usuário não encontrado")
+
+    # Verificar se empresa ainda está ativa (exceto superadmin)
+    if usuario.role != "superadmin":
+        result_emp = await db.execute(select(Empresa).where(Empresa.id == usuario.empresa_id))
+        empresa = result_emp.scalar_one_or_none()
+        if not empresa or not empresa.ativa:
+            raise HTTPException(status_code=403, detail="Empresa desativada")
 
     token_data = {"sub": str(usuario.id), "empresa_id": usuario.empresa_id, "role": usuario.role}
     access = create_access_token(token_data)
