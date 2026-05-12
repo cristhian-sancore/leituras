@@ -790,7 +790,9 @@ async function _carregarAtribuicoes(impId) {
             api._json(`/atribuicoes/${impId}/leituristas`).catch(e => { console.warn('leituristas erro:', e.message); return []; }),
         ]);
         console.log('[SAEMI] usuarios:', usuarios?.length, '| rotas:', rotas?.length, '| progresso:', progresso?.length);
-        _leituristas = (usuarios || []).filter(u => u.role === 'leiturista' && u.ativo);
+        // Normalizar role para case-insensitive (leiturista, Leiturista, etc.)
+        _leituristas = (usuarios || []).filter(u => (u.role || '').toLowerCase() === 'leiturista' && u.ativo);
+
         renderLeitureistaCards(progresso || [], _leituristas);
         renderRotasTable(rotas || [], _leituristas);
         // Popula select do painel "atribuir todos"
@@ -883,10 +885,12 @@ function renderRotasTable(rotas, leituristas) {
     }).join('');
     rotas.forEach(r => {
         if (r.leiturista_id) {
-            const sel = tbody.querySelector(`select[data-rota="${r.rota}"]`);
+            // Usa o valor ORIGINAL da rota (não sanitizado) para encontrar o select
+            const sel = tbody.querySelector(`select[data-rota="${sanitize(r.rota)}"]`);
             if (sel) sel.value = String(r.leiturista_id);
         }
     });
+
 }
 
 /** Painel rápido para atribuir TODAS as rotas ao mesmo leiturista */

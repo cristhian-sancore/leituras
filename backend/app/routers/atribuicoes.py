@@ -196,6 +196,7 @@ async def salvar_atribuicoes(
         result = await db.execute(stmt)
         total_atualizados += result.rowcount
 
+    await db.commit()
     return {
         "detail": "Atribuições salvas com sucesso",
         "clientes_atualizados": total_atualizados

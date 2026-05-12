@@ -158,4 +158,5 @@ async def update_status(
         raise HTTPException(status_code=404, detail="Importação não encontrada")
 
     imp.status = status
+    await db.commit()
     return {"detail": f"Status atualizado para {status}"}
