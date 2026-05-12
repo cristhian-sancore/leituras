@@ -240,9 +240,10 @@
             <div class="page-header">
                 <div>
                     <h1 class="page-title">🗺️ Distribuição de Leituras</h1>
-                    <p class="page-subtitle">Atribua rotas específicas para cada leiturista</p>
+                    <p class="page-subtitle">Importe um arquivo .REM e atribua rotas para cada leiturista</p>
                 </div>
-                <div style="display:flex;gap:10px;flex-wrap:wrap">
+                <!-- Botões só visíveis quando há importação carregada -->
+                <div id="distrib-actions" style="display:none;gap:10px;flex-wrap:wrap">
                     <button class="btn btn-outline" onclick="limparAtribuicoes()" id="btn-limpar-atrib">
                         🗑️ Limpar Tudo
                     </button>
@@ -252,28 +253,69 @@
                 </div>
             </div>
 
-            <!-- Aviso sem importação ativa -->
-            <div id="distrib-sem-imp" class="card" style="text-align:center;padding:40px;color:var(--text-muted)">
-                <div style="font-size:3rem;margin-bottom:12px">📂</div>
-                <div>Importe um arquivo .REM primeiro para distribuir as rotas.</div>
+            <!-- Área de Upload -->
+            <div id="distrib-upload-zone" class="card"
+                 style="text-align:center;padding:48px 24px;cursor:pointer;border:2px dashed var(--border);transition:border-color .2s;"
+                 onclick="document.getElementById('file-rem-distrib').click()"
+                 ondragover="event.preventDefault();this.style.borderColor='var(--primary)'"
+                 ondragleave="this.style.borderColor='var(--border)'"
+                 ondrop="event.preventDefault();this.style.borderColor='var(--border)';handleDropDistribuicao(event)">
+                <input type="file" id="file-rem-distrib" accept=".REM,.rem" style="display:none"
+                       onchange="handleUploadDistribuicao(this.files[0])">
+                <div style="font-size:3.5rem;margin-bottom:16px">📂</div>
+                <p style="font-size:1.1rem;font-weight:600;margin-bottom:8px">Arraste ou clique para importar</p>
+                <p style="color:var(--text-muted);font-size:0.88rem">Selecione o arquivo <strong>.REM</strong> que deseja distribuir entre os leituristas</p>
+                <div id="distrib-loading" style="display:none;margin-top:20px">
+                    <span style="color:var(--primary);font-weight:600">⏳ Importando arquivo…</span>
+                </div>
             </div>
 
-            <!-- Progresso e atribuição -->
+            <!-- Info do arquivo importado -->
+            <div id="distrib-imp-info" style="display:none;margin-bottom:16px">
+                <div class="card" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:16px 20px">
+                    <div style="display:flex;align-items:center;gap:14px">
+                        <span style="font-size:2rem">📄</span>
+                        <div>
+                            <div style="font-weight:700;font-size:1rem" id="distrib-imp-nome">—</div>
+                            <div style="color:var(--text-muted);font-size:0.82rem" id="distrib-imp-detalhe">—</div>
+                        </div>
+                    </div>
+                    <button class="btn btn-outline btn-sm" onclick="resetDistribuicao()">🔄 Trocar arquivo</button>
+                </div>
+            </div>
+
+            <!-- Conteúdo de atribuição (aparece após upload) -->
             <div id="distrib-content" class="hidden">
 
                 <!-- Cards de progresso por leiturista -->
                 <div class="card" style="margin-bottom:20px">
-                    <div class="card-title" style="margin-bottom:16px">👥 Progresso dos Leituristas</div>
+                    <div class="card-title" style="margin-bottom:16px">👥 Leituristas Disponíveis</div>
                     <div id="leituristas-progresso" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px">
                     </div>
                 </div>
 
                 <!-- Tabela de atribuição de rotas -->
                 <div class="card">
-                    <div class="card-title" style="margin-bottom:8px">🗺️ Atribuição por Rota</div>
-                    <p style="color:var(--text-muted);font-size:0.82rem;margin-bottom:16px">
-                        Selecione qual leiturista fará cada rota. Sem seleção = todos veem.
-                    </p>
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+                        <div>
+                            <div class="card-title" style="margin-bottom:4px">🗺️ Atribuição por Rota</div>
+                            <p style="color:var(--text-muted);font-size:0.82rem;margin:0">
+                                Defina qual leiturista fará cada rota. Sem seleção = todos veem.
+                            </p>
+                        </div>
+                        <button class="btn btn-outline btn-sm" onclick="atribuirTodosParaUm()">
+                            ⚡ Atribuir tudo a um leiturista
+                        </button>
+                    </div>
+
+                    <!-- Seletor rápido "Atribuir todos para" -->
+                    <div id="atrib-todos-panel" style="display:none;background:var(--bg-secondary);border-radius:var(--radius-sm);padding:14px;margin-bottom:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                        <label style="font-size:0.88rem;font-weight:600">Leiturista:</label>
+                        <select id="atrib-todos-select" style="flex:1;min-width:180px"></select>
+                        <button class="btn btn-primary btn-sm" onclick="aplicarTodosParaUm()">Aplicar</button>
+                        <button class="btn btn-outline btn-sm" onclick="document.getElementById('atrib-todos-panel').style.display='none'">✕</button>
+                    </div>
+
                     <div style="overflow-x:auto">
                         <table>
                             <thead>
@@ -286,7 +328,7 @@
                                 </tr>
                             </thead>
                             <tbody id="rotas-tbody">
-                                <tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:30px">Selecione uma importação</td></tr>
+                                <tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:30px">Carregando rotas…</td></tr>
                             </tbody>
                         </table>
                     </div>
