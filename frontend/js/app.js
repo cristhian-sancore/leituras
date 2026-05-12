@@ -29,23 +29,31 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const user = api.getUser();
     if (user) {
-        if (user.role === 'superadmin') {
+        // Normalizar role para lowercase (evita inconsistência entre 'Supervisor' e 'supervisor')
+        const role = (user.role || '').toLowerCase();
+
+        if (role === 'superadmin') {
             window.location.href = '/superadmin.html';
             return;
         }
 
         document.getElementById('user-name').textContent = user.nome;
-        document.getElementById('user-role').textContent = user.role;
+        document.getElementById('user-role').textContent = role;
         document.getElementById('user-avatar').textContent = getInitials(user.nome);
 
         // Badge no mobile-header
         const mb = document.getElementById('mobile-user-badge');
         if (mb) mb.textContent = getInitials(user.nome);
 
-        // Esconder items de admin para leituristas
-        if (!['supervisor', 'admin', 'superadmin'].includes(user.role)) {
-            document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
-        }
+        // Controle de visibilidade: supervisor/admin VÊ itens admin-only; leiturista NÃO
+        const isAdmin = ['supervisor', 'admin', 'superadmin'].includes(role);
+        document.querySelectorAll('.admin-only').forEach(el => {
+            if (isAdmin) {
+                el.classList.remove('hidden'); // garante visível para admin/supervisor
+            } else {
+                el.classList.add('hidden');    // esconde para leiturista
+            }
+        });
     }
 
     showTab('tab-dashboard');
