@@ -936,3 +936,128 @@ tbody tr:hover { background: var(--primary-50); }
 .rota-mini-bar{flex:1;height:6px;background:rgba(255,255,255,.06);border-radius:100px;overflow:hidden}
 .rota-mini-fill{height:100%;border-radius:100px;background:linear-gradient(90deg,var(--primary),var(--accent))}
 .rota-mini-fill.completo{background:#22c55e}
+
+/* ============================================
+   MOBILE LEITURA VIEW
+   ============================================ */
+.hidden-desktop { display: none; }
+
+@media (max-width: 768px) {
+    .hidden-mobile { display: none !important; }
+    .hidden-desktop { display: block; }
+    
+    .card-leitura-mobile {
+        background: white;
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-md);
+        padding: 16px;
+        margin-bottom: 12px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .card-leitura-mobile.pendente {
+        border-left: 4px solid var(--primary);
+    }
+    
+    .card-leitura-mobile.salva {
+        border-left: 4px solid var(--accent);
+        opacity: 0.8;
+    }
+    
+    .card-leitura-mobile.alerta {
+        border-left: 4px solid #f59e0b;
+    }
+
+    .cl-header { display: flex; justify-content: space-between; align-items: center; }
+    .cl-nome { font-weight: 700; font-size: 1.1rem; color: var(--text-dark); }
+    .cl-status { font-size: 0.8rem; font-weight: 600; padding: 4px 8px; border-radius: 20px; }
+    .cl-status.st-pendente { background: var(--primary-100); color: var(--primary-dark); }
+    .cl-status.st-salva { background: #d1fae5; color: #065f46; }
+    
+    .cl-detalhes { font-size: 0.9rem; color: var(--text-light); }
+    
+    .modal-leitura-mobile {
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: #f8fafc;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        transform: translateY(100%);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .modal-leitura-mobile.open {
+        transform: translateY(0);
+    }
+    
+    .mlm-header {
+        background: var(--primary);
+        color: white;
+        padding: 16px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    .mlm-header h2 { font-size: 1.2rem; margin: 0; font-weight: 600; }
+    .mlm-close { background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; }
+    
+    .mlm-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+    }
+    
+    .mlm-card {
+        background: white;
+        border-radius: var(--radius-md);
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .mlm-info-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin-bottom: 20px;
+    }
+    .mlm-info-item { display: flex; flex-direction: column; gap: 4px; }
+    .mlm-info-label { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
+    .mlm-info-value { font-size: 1rem; color: var(--text-dark); font-weight: 500; }
+    
+    .mlm-input-group {
+        margin-bottom: 20px;
+    }
+    .mlm-input-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: var(--text-dark);
+    }
+    .mlm-input {
+        width: 100%;
+        padding: 16px;
+        font-size: 1.2rem;
+        border: 2px solid var(--border);
+        border-radius: var(--radius-md);
+        background: var(--bg-color);
+    }
+    .mlm-input:focus {
+        border-color: var(--primary);
+        outline: none;
+    }
+    
+    .mlm-footer {
+        padding: 20px;
+        background: white;
+        box-shadow: 0 -4px 6px -1px rgba(0,0,0,0.05);
+        display: flex;
+        gap: 12px;
+    }
+    .mlm-footer .btn { flex: 1; padding: 16px; font-size: 1.1rem; }
+}

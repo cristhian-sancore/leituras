@@ -56,8 +56,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    showTab('tab-dashboard');
-    loadDashboard();
+    if (role === 'leiturista' && window.innerWidth <= 768) {
+        showTab('tab-leitura');
+    } else {
+        showTab('tab-dashboard');
+    }
 });
 
 // ============================================
@@ -276,8 +279,12 @@ function renderClientes(clientes) {
     const tbody = document.getElementById('lista-clientes');
     tbody.innerHTML = '';
 
+    const isMobile = window.innerWidth <= 768;
+    const mobileContainer = document.getElementById('lista-clientes-mobile');
+
     if (!clientes.length) {
         tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--text-muted);padding:40px">Nenhum cliente encontrado</td></tr>';
+        if (mobileContainer) mobileContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 40px">Nenhum cliente encontrado</div>';
         return;
     }
 
@@ -348,6 +355,155 @@ function renderClientes(clientes) {
             if (sel) sel.value = c.ocorrencia_codigo;
         }
     });
+
+    if (isMobile) {
+        renderClientesMobile(clientes, ocorrOptions);
+    }
+}
+
+// ============================================
+// MOBILE LEITURA LOGIC
+// ============================================
+let _currentMobileCliente = null;
+
+function renderClientesMobile(clientes, ocorrOptions) {
+    const container = document.getElementById('lista-clientes-mobile');
+    if (!container) return;
+    container.innerHTML = '';
+    
+    // Guardar clientes globalmente para busca de "próximo"
+    window._mobileClientesList = clientes;
+
+    clientes.forEach(c => {
+        const enderecoRaw = (c.rua || '') + (c.numero ? ', ' + c.numero : '');
+        const lida = c.leitura_atual !== null || (c.ocorrencia_codigo && c.ocorrencia_codigo !== '0000');
+        let statusClass = 'st-pendente';
+        let statusText = 'Pendente';
+        let cardClass = 'pendente';
+        
+        if (lida) {
+            if (c.alerta) {
+                statusClass = 'st-salva'; statusText = 'Salva (Alerta)'; cardClass = 'alerta';
+            } else {
+                statusClass = 'st-salva'; statusText = 'Salva'; cardClass = 'salva';
+            }
+        }
+
+        const div = document.createElement('div');
+        div.className = \`card-leitura-mobile \${cardClass}\`;
+        div.onclick = () => abrirLeituraMobile(c.id);
+        
+        div.innerHTML = \`
+            <div class="cl-header">
+                <span class="cl-nome">\${sanitize(c.nome)}</span>
+                <span class="cl-status \${statusClass}">\${statusText}</span>
+            </div>
+            <div class="cl-detalhes">\${sanitize(enderecoRaw)}</div>
+            <div class="cl-detalhes"><strong>Mat:</strong> \${sanitize(c.matricula)} | <strong>Rota:</strong> \${sanitize(c.rota)}</div>
+        \`;
+        container.appendChild(div);
+    });
+}
+
+function abrirLeituraMobile(clienteId) {
+    const cliente = window._mobileClientesList.find(c => c.id === clienteId);
+    if (!cliente) return;
+    
+    _currentMobileCliente = cliente;
+    
+    document.getElementById('mlm-nome').textContent = cliente.nome;
+    document.getElementById('mlm-endereco').textContent = (cliente.rua || '') + (cliente.numero ? ', ' + cliente.numero : '');
+    document.getElementById('mlm-matricula').textContent = cliente.matricula;
+    document.getElementById('mlm-rota').textContent = cliente.rota + ' / Seq: ' + (cliente.sequencia || '-');
+    document.getElementById('mlm-anterior').textContent = (cliente.leitura_anterior || 0) + ' m³';
+    document.getElementById('mlm-media').textContent = (cliente.consumo_medio || 0) + ' m³';
+    
+    document.getElementById('mlm-leitura-atual').value = cliente.leitura_atual !== null ? cliente.leitura_atual : '';
+    
+    // Popula select ocorrencia
+    const sel = document.getElementById('mlm-ocorrencia');
+    let ocorrOptions = '<option value="0000">0000 - NORMAL</option>';
+    if (window.ocorrencias) {
+        window.ocorrencias.forEach(o => {
+            if (o.codigo === '0000') return;
+            ocorrOptions += \`<option value="\${o.codigo}">\${o.codigo.padStart(4, '0')} - \${o.descricao}</option>\`;
+        });
+    }
+    sel.innerHTML = ocorrOptions;
+    sel.value = cliente.ocorrencia_codigo || '0000';
+    
+    document.getElementById('modal-leitura-mobile').classList.add('open');
+    setTimeout(() => document.getElementById('mlm-leitura-atual').focus(), 300);
+}
+
+function fecharLeituraMobile() {
+    document.getElementById('modal-leitura-mobile').classList.remove('open');
+    _currentMobileCliente = null;
+}
+
+async function salvarLeituraMobileAtual() {
+    if (!_currentMobileCliente) return;
+    const cliente = _currentMobileCliente;
+    
+    const inputLeitura = document.getElementById('mlm-leitura-atual');
+    const inputOcorr = document.getElementById('mlm-ocorrencia');
+    
+    const leituraAtual = inputLeitura.value ? parseInt(inputLeitura.value, 10) : null;
+    let ocorrenciaCod = inputOcorr.value || '0000';
+    
+    if (leituraAtual === null && ocorrenciaCod === '0000') {
+        showToast('Informe a leitura ou uma ocorrência', 'error');
+        return;
+    }
+    
+    showLoading();
+    try {
+        const data = await api.salvarLeitura(cliente.id, {
+            leitura_atual: leituraAtual,
+            ocorrencia_codigo: ocorrenciaCod,
+            latitude: window.currentPos?.lat || null,
+            longitude: window.currentPos?.lng || null
+        });
+        
+        showToast('Leitura salva com sucesso!');
+        hideLoading();
+        
+        // Atualiza a lista visualmente nos bastidores sem recarregar tudo
+        const cIdx = window._mobileClientesList.findIndex(c => c.id === cliente.id);
+        if (cIdx !== -1) {
+            window._mobileClientesList[cIdx].leitura_atual = leituraAtual;
+            window._mobileClientesList[cIdx].ocorrencia_codigo = ocorrenciaCod;
+            // Refaz a renderizacao mobile para mostrar 'Salva'
+            renderClientesMobile(window._mobileClientesList, '');
+        }
+        
+        // Ir para o próximo pendente (começando a partir do cliente salvo)
+        let proximoPendente = null;
+        for (let i = cIdx + 1; i < window._mobileClientesList.length; i++) {
+            const c = window._mobileClientesList[i];
+            const lida = c.leitura_atual !== null || (c.ocorrencia_codigo && c.ocorrencia_codigo !== '0000');
+            if (!lida) {
+                proximoPendente = c;
+                break;
+            }
+        }
+        
+        if (proximoPendente) {
+            // Abre o proximo com um pequeno delay para a transição
+            fecharLeituraMobile();
+            setTimeout(() => abrirLeituraMobile(proximoPendente.id), 150);
+        } else {
+            fecharLeituraMobile();
+            showToast('Todas as leituras desta rota parecem estar concluídas!');
+        }
+        
+        // Dispara atualizacao de stats no background
+        updateStats();
+        
+    } catch (err) {
+        hideLoading();
+        showToast(err.message, 'error');
+    }
 }
 
 function onLeituraChange(clienteId, value) {

@@ -176,7 +176,7 @@
                         placeholder="Buscar por Matrícula, Nome, Endereço, Rota ou Setor..."
                         oninput="onSearch(this.value)">
                 </div>
-                <div style="overflow-x: auto;">
+                <div style="overflow-x: auto;" class="hidden-mobile">
                     <table class="table-mobile-stack">
                         <thead>
                             <tr>
@@ -197,6 +197,11 @@
                             <tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 40px">Selecione ou importe uma planilha .REM</td></tr>
                         </tbody>
                     </table>
+                </div>
+                
+                <!-- CONTAINER MOBILE -->
+                <div id="lista-clientes-mobile" class="hidden-desktop">
+                    <div style="text-align: center; color: var(--text-muted); padding: 40px">Selecione ou importe uma planilha .REM</div>
                 </div>
             </div>
         </div>
@@ -366,8 +371,55 @@
             </div>
         </div>
 
-    </div>
+        <!-- ===== MODAL LEITURA MOBILE ===== -->
+        <div id="modal-leitura-mobile" class="modal-leitura-mobile">
+            <div class="mlm-header">
+                <h2>Registrar Leitura</h2>
+                <button class="mlm-close" onclick="fecharLeituraMobile()">&times;</button>
+            </div>
+            <div class="mlm-content">
+                <div class="mlm-card">
+                    <div style="font-weight:700;font-size:1.2rem;margin-bottom:4px" id="mlm-nome"></div>
+                    <div style="color:var(--text-light);margin-bottom:16px" id="mlm-endereco"></div>
+                    <div class="mlm-info-grid">
+                        <div class="mlm-info-item">
+                            <span class="mlm-info-label">Matrícula</span>
+                            <span class="mlm-info-value" id="mlm-matricula"></span>
+                        </div>
+                        <div class="mlm-info-item">
+                            <span class="mlm-info-label">Rota/Seq</span>
+                            <span class="mlm-info-value" id="mlm-rota"></span>
+                        </div>
+                        <div class="mlm-info-item">
+                            <span class="mlm-info-label">Anterior</span>
+                            <span class="mlm-info-value" id="mlm-anterior"></span>
+                        </div>
+                        <div class="mlm-info-item">
+                            <span class="mlm-info-label">Média</span>
+                            <span class="mlm-info-value" id="mlm-media"></span>
+                        </div>
+                    </div>
+                </div>
 
+                <div class="mlm-input-group">
+                    <label>Leitura Atual</label>
+                    <input type="number" id="mlm-leitura-atual" class="mlm-input" placeholder="Ex: 120">
+                </div>
+
+                <div class="mlm-input-group">
+                    <label>Ocorrência</label>
+                    <select id="mlm-ocorrencia" class="mlm-input" style="height:auto">
+                        <!-- Preenchido via JS -->
+                    </select>
+                </div>
+            </div>
+            <div class="mlm-footer">
+                <button class="btn btn-outline" onclick="fecharLeituraMobile()">Cancelar</button>
+                <button class="btn btn-primary" onclick="salvarLeituraMobileAtual()">Salvar Leitura</button>
+            </div>
+        </div>
+
+    </div>
     <script src="/js/api.js?v=2"></script>
     <script src="/js/utils.js?v=2"></script>
     <script src="/js/auth.js?v=2"></script>
