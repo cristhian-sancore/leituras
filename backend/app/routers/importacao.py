@@ -2,11 +2,14 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
-from app.database import get_db
-from app.models import Importacao, Tarifa, Ocorrencia, Cliente, Usuario, AuditLog
-from app.schemas import ImportacaoOut
-from app.auth.deps import get_current_user, require_role
-from app.services.parser_rem import parse_rem
+from ..database import get_db
+from ..models import Importacao, Tarifa, Ocorrencia, Cliente, Usuario, AuditLog
+from ..schemas import ImportacaoOut
+from ..auth.deps import get_current_user, require_role
+from ..services.parser_rem import parse_rem
+
+
+
 
 router = APIRouter(prefix="/importacao", tags=["Importação"])
 

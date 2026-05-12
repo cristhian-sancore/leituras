@@ -783,6 +783,9 @@ async function _carregarAtribuicoes(impId) {
         renderRotasTable(rotas || [], _leituristas);
         // Popula select do painel "atribuir todos"
         const sel = document.getElementById('atrib-todos-select');
+if (sel) {
+    sel.innerHTML = '<option value=""></option>' + _leituristas.map(u => `<option value="${u.id}">${sanitize(u.nome)}</option>`).join('');
+}
         sel.innerHTML = '<option value="">-- Selecione --</option>' +
             _leituristas.map(u => `<option value="${u.id}">${sanitize(u.nome)}</option>`).join('');
     } catch (err) {
