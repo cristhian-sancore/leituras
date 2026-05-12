@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.database import get_db
 from app.models import Empresa, Usuario
-from app.schemas import EmpresaOut, EmpresaUpdate
+from app.schemas import EmpresaOut, EmpresaUpdate, EmpresaConfigUpdate
 from app.auth.deps import get_current_user, require_role
 from app.config import get_settings
 from pydantic import BaseModel
@@ -51,10 +51,10 @@ async def get_empresa(
 @router.put("/", response_model=EmpresaOut)
 async def update_empresa(
     data: EmpresaUpdate,
-    current_user: Usuario = Depends(require_role("admin")),
+    current_user: Usuario = Depends(require_role("superadmin")),
     db: AsyncSession = Depends(get_db),
 ):
-    """Atualizar dados da empresa (admin only)."""
+    """Atualizar dados da empresa (superadmin only)."""
     result = await db.execute(select(Empresa).where(Empresa.id == current_user.empresa_id))
     empresa = result.scalar_one_or_none()
     if not empresa:
@@ -66,10 +66,30 @@ async def update_empresa(
     return EmpresaOut.model_validate(empresa)
 
 
+@router.put("/config", response_model=EmpresaOut)
+async def update_empresa_config(
+    data: EmpresaConfigUpdate,
+    current_user: Usuario = Depends(require_role("supervisor", "superadmin")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Atualizar configuracoes da empresa (supervisor)."""
+    result = await db.execute(select(Empresa).where(Empresa.id == current_user.empresa_id))
+    empresa = result.scalar_one_or_none()
+    if not empresa:
+        raise HTTPException(status_code=404, detail="Empresa nao encontrada")
+    
+    if data.percentual_esgoto is not None:
+        empresa.percentual_esgoto = data.percentual_esgoto
+    if data.consumo_minimo_m3 is not None:
+        empresa.consumo_minimo_m3 = data.consumo_minimo_m3
+        
+    return EmpresaOut.model_validate(empresa)
+
+
 @router.post("/logo")
 async def upload_logo(
     file: UploadFile = File(...),
-    current_user: Usuario = Depends(require_role("admin")),
+    current_user: Usuario = Depends(require_role("superadmin")),
     db: AsyncSession = Depends(get_db),
 ):
     """Upload de logo da empresa (PNG/JPG, max 2MB)."""
@@ -102,7 +122,7 @@ async def upload_logo(
 @router.put("/logo-url")
 async def set_logo_url(
     logo_url: str,
-    current_user: Usuario = Depends(require_role("admin")),
+    current_user: Usuario = Depends(require_role("superadmin")),
     db: AsyncSession = Depends(get_db),
 ):
     """Definir logo da empresa por URL externa."""

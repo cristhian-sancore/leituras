@@ -359,7 +359,7 @@ async function verUsuarios(id) {
     if(!users.length){document.getElementById('modal-users-list').innerHTML='<p style="color:var(--sa-muted)">Nenhum usuário</p>';return;}
     document.getElementById('modal-users-list').innerHTML = `
       <table>
-        <thead><tr><th>Nome</th><th>Email</th><th>Role</th><th>Status</th><th>Último Login</th></tr></thead>
+        <thead><tr><th>Nome</th><th>Email</th><th>Role</th><th>Status</th><th>Último Login</th><th>Ações</th></tr></thead>
         <tbody>${users.map(u=>`
           <tr>
             <td>${u.nome}</td>
@@ -367,12 +367,31 @@ async function verUsuarios(id) {
             <td><span class="badge badge-basico">${u.role}</span></td>
             <td><span class="${u.ativo?'dot-on':'dot-off'}"></span>${u.ativo?'Ativo':'Inativo'}</td>
             <td style="color:var(--sa-muted)">${u.ultimo_login?new Date(u.ultimo_login).toLocaleString('pt-BR'):'-'}</td>
+            <td><button class="btn btn-sm btn-outline" onclick="resetarSenhaUsuario(${u.id})">🔑 Resetar</button></td>
           </tr>`).join('')}
         </tbody>
       </table>`;
   } catch(e){document.getElementById('modal-users-list').innerHTML=`<p style="color:#f87171">${e.message}</p>`;}
 }
 function closeModal2(){document.getElementById('modal-users').classList.remove('open');}
+
+async function resetarSenhaUsuario(userId) {
+  const novaSenha = prompt('Digite a nova senha (min 6 caracteres):');
+  if(!novaSenha || novaSenha.length < 6) {
+    if(novaSenha !== null) alert('Senha inválida. Deve ter no mínimo 6 caracteres.');
+    return;
+  }
+  if(!confirm(`Confirma a alteração da senha?`)) return;
+  try {
+    const r = await apiFetch(`/superadmin/usuarios/${userId}/reset-senha`, {
+      method: 'POST',
+      body: JSON.stringify({nova_senha: novaSenha})
+    });
+    toast(r.detail);
+  } catch(e) {
+    toast(e.message, true);
+  }
+}
 
 // ---------- AUDIT ----------
 async function loadAudit() {

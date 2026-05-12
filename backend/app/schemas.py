@@ -53,6 +53,10 @@ class EmpresaUpdate(BaseModel):
     nome: Optional[str] = None
     cnpj: Optional[str] = None
 
+class EmpresaConfigUpdate(BaseModel):
+    percentual_esgoto: Optional[float] = None
+    consumo_minimo_m3: Optional[int] = None
+
 
 # ============================================
 # USUARIO

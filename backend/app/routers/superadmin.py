@@ -261,3 +261,63 @@ async def get_audit_global(
         select(AuditLog).order_by(AuditLog.created_at.desc()).limit(limit)
     )
     return [AuditLogOut.model_validate(a) for a in result.scalars().all()]
+
+
+# ─── RESET DE SENHA ─────────────────────────────────────────────────────────
+
+class ResetSenhaAdmin(BaseModel):
+    nova_senha: str
+
+
+@router.post("/usuarios/{user_id}/reset-senha")
+async def superadmin_reset_senha(
+    user_id: int,
+    data: ResetSenhaAdmin,
+    current_user: Usuario = Depends(require_role("superadmin")),
+    db: AsyncSession = Depends(get_db),
+):
+    """SuperAdmin reseta senha de qualquer usuario da plataforma."""
+    result = await db.execute(select(Usuario).where(Usuario.id == user_id))
+    usuario = result.scalar_one_or_none()
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario nao encontrado")
+    if len(data.nova_senha) < 6:
+        raise HTTPException(status_code=400, detail="Senha deve ter pelo menos 6 caracteres")
+    usuario.senha_hash = hash_password(data.nova_senha)
+    return {"detail": f"Senha de {usuario.nome} ({usuario.email}) redefinida com sucesso"}
+
+
+@router.get("/usuarios", response_model=List[UsuarioSuperOut])
+async def listar_todos_usuarios(
+    empresa_id: Optional[int] = None,
+    role: Optional[str] = None,
+    current_user: Usuario = Depends(require_role("superadmin")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Listar todos os usuarios da plataforma com filtros opcionais."""
+    query = select(Usuario).order_by(Usuario.empresa_id, Usuario.nome)
+    if empresa_id:
+        query = query.where(Usuario.empresa_id == empresa_id)
+    if role:
+        query = query.where(Usuario.role == role)
+    result = await db.execute(query)
+    return [UsuarioSuperOut.model_validate(u) for u in result.scalars().all()]
+
+
+@router.put("/usuarios/{user_id}/toggle")
+async def toggle_usuario(
+    user_id: int,
+    current_user: Usuario = Depends(require_role("superadmin")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Ativar ou desativar qualquer usuario da plataforma."""
+    result = await db.execute(select(Usuario).where(Usuario.id == user_id))
+    usuario = result.scalar_one_or_none()
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario nao encontrado")
+    if usuario.role == "superadmin":
+        raise HTTPException(status_code=403, detail="Nao e possivel desativar o superadmin")
+    usuario.ativo = not usuario.ativo
+    status_str = "ativado" if usuario.ativo else "desativado"
+    return {"detail": f"Usuario {usuario.nome} {status_str}", "ativo": usuario.ativo}
+

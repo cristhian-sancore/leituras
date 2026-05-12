@@ -15,12 +15,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const user = api.getUser();
     if (user) {
+        if (user.role === 'superadmin') {
+            window.location.href = '/superadmin.html';
+            return;
+        }
+
         document.getElementById('user-name').textContent = user.nome;
         document.getElementById('user-role').textContent = user.role;
         document.getElementById('user-avatar').textContent = getInitials(user.nome);
 
-        // Esconder items de admin se não for admin
-        if (user.role !== 'admin') {
+        // Esconder items de admin se não for supervisor
+        if (user.role !== 'supervisor') {
             document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
         }
     }

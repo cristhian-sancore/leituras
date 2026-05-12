@@ -50,73 +50,14 @@ def slugify(text: str) -> str:
     return text.strip('-')
 
 
-@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
-async def register(data: EmpresaRegister, db: AsyncSession = Depends(get_db)):
-    """Cadastrar nova empresa com o primeiro usuário admin."""
-
-    # Verificar se email já existe
-    existing = await db.execute(select(Usuario).where(Usuario.email == data.admin_email.lower()))
-    if existing.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="Email já cadastrado")
-
-    # Verificar CNPJ duplicado
-    if data.cnpj:
-        existing_cnpj = await db.execute(select(Empresa).where(Empresa.cnpj == data.cnpj))
-        if existing_cnpj.scalar_one_or_none():
-            raise HTTPException(status_code=400, detail="CNPJ já cadastrado")
-
-    # Verificar limite de leituristas (plano)
-    # (novas empresas começam com plano básico, sem limite no registro)
-
-    # Gerar slug único
-    base_slug = slugify(data.nome)
-    slug = base_slug
-    counter = 1
-    while True:
-        existing_slug = await db.execute(select(Empresa).where(Empresa.slug == slug))
-        if not existing_slug.scalar_one_or_none():
-            break
-        slug = f"{base_slug}-{counter}"
-        counter += 1
-
-    # Criar empresa
-    empresa = Empresa(
-        nome=data.nome,
-        cnpj=data.cnpj,
-        slug=slug,
+@router.post("/register", status_code=403)
+async def register_blocked():
+    """Registro publico desativado. Empresas sao criadas pelo SuperAdmin."""
+    raise HTTPException(
+        status_code=403,
+        detail="Cadastro publico desativado. Contate o administrador do sistema SAEMI."
     )
-    db.add(empresa)
-    await db.flush()
 
-    # Criar admin
-    usuario = Usuario(
-        empresa_id=empresa.id,
-        nome=data.admin_nome,
-        email=data.admin_email.lower(),
-        senha_hash=hash_password(data.admin_senha),
-        role="admin",
-    )
-    db.add(usuario)
-    await db.flush()
-
-    # Audit
-    db.add(AuditLog(
-        empresa_id=empresa.id,
-        usuario_id=usuario.id,
-        acao="register",
-        detalhes={"empresa": data.nome},
-    ))
-
-    # Gerar tokens
-    token_data = {"sub": str(usuario.id), "empresa_id": empresa.id, "role": "admin"}
-    access = create_access_token(token_data)
-    refresh = create_refresh_token(token_data)
-
-    return TokenResponse(
-        access_token=access,
-        refresh_token=refresh,
-        user=UsuarioOut.model_validate(usuario),
-    )
 
 
 @router.post("/login", response_model=TokenResponse)
