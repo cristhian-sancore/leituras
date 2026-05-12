@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from app.config import get_settings
 from app.database import engine, Base
-from app.routers import auth, empresas, usuarios, importacao, leituras, exportacao, dashboard, superadmin
+from app.routers import auth, empresas, usuarios, importacao, leituras, exportacao, dashboard, superadmin, atribuicoes
 
 settings = get_settings()
 
@@ -14,6 +14,9 @@ async def run_migrations(conn):
     migrations = [
         "ALTER TABLE empresas ADD COLUMN IF NOT EXISTS percentual_esgoto NUMERIC(5,2) NOT NULL DEFAULT 70.00",
         "ALTER TABLE empresas ADD COLUMN IF NOT EXISTS consumo_minimo_m3 INTEGER NOT NULL DEFAULT 10",
+        # Atribuicao de leiturista por cliente
+        "ALTER TABLE clientes ADD COLUMN IF NOT EXISTS leiturista_atribuido_id BIGINT REFERENCES usuarios(id) ON DELETE SET NULL",
+        "CREATE INDEX IF NOT EXISTS ix_cliente_leiturista ON clientes(leiturista_atribuido_id)",
     ]
     for sql in migrations:
         try:
@@ -61,6 +64,7 @@ app.include_router(leituras.router, prefix="/api/v1")
 app.include_router(exportacao.router, prefix="/api/v1")
 app.include_router(dashboard.router, prefix="/api/v1")
 app.include_router(superadmin.router, prefix="/api/v1")
+app.include_router(atribuicoes.router, prefix="/api/v1")
 
 
 @app.get("/health")

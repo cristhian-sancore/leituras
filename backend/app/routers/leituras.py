@@ -87,6 +87,26 @@ async def list_clientes_com_leituras(
         Cliente.empresa_id == current_user.empresa_id,
     )
 
+    # DISTRIBUIÇÃO: leiturista só vê os clientes atribuídos a ele
+    # Se supervisor/admin → vê tudo. Se leiturista → filtrar pelos seus.
+    # Mas só filtra se houver alguma atribuição nessa importação (evita travar importações antigas)
+    if current_user.role == "leiturista":
+        # Verificar se existe alguma atribuição nesta importação
+        atrib_check = await db.execute(
+            select(sqlfunc.count(Cliente.id)).where(
+                Cliente.importacao_id == imp_id,
+                Cliente.empresa_id == current_user.empresa_id,
+                Cliente.leiturista_atribuido_id.isnot(None),
+            )
+        )
+        total_atribuidos = atrib_check.scalar() or 0
+        if total_atribuidos > 0:
+            # Importação já tem distribuição → leiturista vê só os seus
+            query = query.where(
+                Cliente.leiturista_atribuido_id == current_user.id
+            )
+        # Se total_atribuidos == 0 → sem distribuição → vê tudo (compatibilidade)
+
     if busca:
         term = f"%{busca}%"
         query = query.where(
@@ -99,7 +119,7 @@ async def list_clientes_com_leituras(
         )
 
     offset = (page - 1) * limit
-    query = query.order_by(Cliente.id).offset(offset).limit(limit)
+    query = query.order_by(Cliente.rota, Cliente.sequencia, Cliente.id).offset(offset).limit(limit)
     result = await db.execute(query)
     clientes = result.scalars().all()
 

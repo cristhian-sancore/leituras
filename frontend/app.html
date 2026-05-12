@@ -43,6 +43,9 @@
         </div>
 
         <div class="nav-section admin-only">ADMINISTRAÇÃO</div>
+        <div class="nav-item admin-only" data-tab="tab-distribuicao" onclick="showTab('tab-distribuicao', this)">
+            <span class="icon">🗺️</span> Distribuição
+        </div>
         <div class="nav-item admin-only" data-tab="tab-usuarios" onclick="showTab('tab-usuarios', this)">
             <span class="icon">👥</span> Usuários
         </div>
@@ -229,6 +232,65 @@
                         <tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:30px">Carregando...</td></tr>
                     </tbody>
                 </table>
+            </div>
+        </div>
+
+        <!-- ===== DISTRIBUIÇÃO DE ROTAS ===== -->
+        <div id="tab-distribuicao" class="tab-content hidden admin-only">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">🗺️ Distribuição de Leituras</h1>
+                    <p class="page-subtitle">Atribua rotas específicas para cada leiturista</p>
+                </div>
+                <div style="display:flex;gap:10px;flex-wrap:wrap">
+                    <button class="btn btn-outline" onclick="limparAtribuicoes()" id="btn-limpar-atrib">
+                        🗑️ Limpar Tudo
+                    </button>
+                    <button class="btn btn-primary" onclick="salvarAtribuicoes()" id="btn-salvar-atrib">
+                        💾 Salvar Distribuição
+                    </button>
+                </div>
+            </div>
+
+            <!-- Aviso sem importação ativa -->
+            <div id="distrib-sem-imp" class="card" style="text-align:center;padding:40px;color:var(--text-muted)">
+                <div style="font-size:3rem;margin-bottom:12px">📂</div>
+                <div>Importe um arquivo .REM primeiro para distribuir as rotas.</div>
+            </div>
+
+            <!-- Progresso e atribuição -->
+            <div id="distrib-content" class="hidden">
+
+                <!-- Cards de progresso por leiturista -->
+                <div class="card" style="margin-bottom:20px">
+                    <div class="card-title" style="margin-bottom:16px">👥 Progresso dos Leituristas</div>
+                    <div id="leituristas-progresso" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px">
+                    </div>
+                </div>
+
+                <!-- Tabela de atribuição de rotas -->
+                <div class="card">
+                    <div class="card-title" style="margin-bottom:8px">🗺️ Atribuição por Rota</div>
+                    <p style="color:var(--text-muted);font-size:0.82rem;margin-bottom:16px">
+                        Selecione qual leiturista fará cada rota. Sem seleção = todos veem.
+                    </p>
+                    <div style="overflow-x:auto">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Rota</th>
+                                    <th>Clientes</th>
+                                    <th>Feito</th>
+                                    <th>Progresso</th>
+                                    <th>Leiturista Atribuído</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rotas-tbody">
+                                <tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:30px">Selecione uma importação</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
 

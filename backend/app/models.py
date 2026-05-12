@@ -129,16 +129,20 @@ class Cliente(Base):
     mes_ano_ref = Column(Text, nullable=True)
     data_leit_anterior = Column(Text, nullable=True)
     ocorr_anterior = Column(Text, nullable=True)
+    # Atribuição: qual leiturista vai fazer a leitura deste cliente
+    leiturista_atribuido_id = Column(BigInteger, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
 
     __table_args__ = (
         Index("ix_cliente_importacao", "importacao_id"),
         Index("ix_cliente_empresa", "empresa_id"),
         Index("ix_cliente_matricula", "matricula"),
         Index("ix_cliente_rota", "rota"),
+        Index("ix_cliente_leiturista", "leiturista_atribuido_id"),
     )
 
     importacao = relationship("Importacao", back_populates="clientes")
     leitura = relationship("Leitura", back_populates="cliente", uselist=False)
+    leiturista_atribuido = relationship("Usuario", foreign_keys=[leiturista_atribuido_id])
 
 
 class Leitura(Base):

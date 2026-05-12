@@ -109,6 +109,7 @@ function showTab(tabId, navEl) {
         case 'tab-precos': loadPrecos(); break;
         case 'tab-historico': loadHistorico(); break;
         case 'tab-usuarios': loadUsuarios(); break;
+        case 'tab-distribuicao': loadDistribuicao(); break;
     }
 }
 
@@ -612,5 +613,131 @@ async function desativarUsuario(id) {
         loadUsuarios();
     } catch (err) {
         showToast(err.message, 'error');
+    }
+}
+
+// ============================================
+// DISTRIBUICAO DE LEITURAS POR LEITURISTA
+// ============================================
+
+let _leituristas = [];
+
+async function loadDistribuicao() {
+    if (!currentImportacao) {
+        document.getElementById('distrib-sem-imp').classList.remove('hidden');
+        document.getElementById('distrib-content').classList.add('hidden');
+        return;
+    }
+    document.getElementById('distrib-sem-imp').classList.add('hidden');
+    document.getElementById('distrib-content').classList.remove('hidden');
+    try {
+        const [usuarios, rotas, progresso] = await Promise.all([
+            api.fetch('/usuarios/').catch(() => []),
+            api.fetch(`/atribuicoes/${currentImportacao.id}/rotas`),
+            api.fetch(`/atribuicoes/${currentImportacao.id}/leituristas`).catch(() => []),
+        ]);
+        _leituristas = (usuarios || []).filter(u => u.role === 'leiturista' && u.ativo);
+        renderLeitureistaCards(progresso, _leituristas);
+        renderRotasTable(rotas, _leituristas);
+    } catch (err) {
+        showToast('Erro ao carregar distribuicao: ' + err.message, 'error');
+    }
+}
+
+function renderLeitureistaCards(progresso, leituristas) {
+    const container = document.getElementById('leituristas-progresso');
+    const idsComAtrib = new Set(progresso.map(p => p.leiturista_id));
+    const semAtrib = leituristas.filter(u => !idsComAtrib.has(u.id));
+    let html = '';
+    progresso.forEach(p => {
+        const perc = p.percentual;
+        const completo = perc >= 100;
+        const rotasStr = p.rotas.length ? p.rotas.join(', ') : 'nenhuma';
+        html += `<div class="leiturista-card">
+            <div class="leiturista-card-nome" title="${sanitize(p.nome)}">${sanitize(p.nome)}</div>
+            <div class="leiturista-card-email">${sanitize(p.email)}</div>
+            <div class="leiturista-card-rotas">Rotas: ${sanitize(rotasStr)}</div>
+            <div class="progress-bar-wrap"><div class="progress-bar-fill ${completo ? 'completo' : ''}" style="width:${perc}%"></div></div>
+            <div class="progress-label"><span>${p.leituras_feitas}/${p.total_clientes} leituras</span><span style="font-weight:600;color:${completo ? '#22c55e' : 'var(--primary)'}">${perc}%</span></div>
+        </div>`;
+    });
+    semAtrib.forEach(u => {
+        html += `<div class="leiturista-card" style="opacity:0.6">
+            <div class="leiturista-card-nome">${sanitize(u.nome)}</div>
+            <div class="leiturista-card-email">${sanitize(u.email)}</div>
+            <div class="leiturista-card-rotas" style="color:var(--text-muted)">Sem rotas atribuidas</div>
+            <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:0%"></div></div>
+            <div class="progress-label"><span>0 leituras</span><span>0%</span></div>
+        </div>`;
+    });
+    if (!html) html = '<p style="color:var(--text-muted);grid-column:1/-1">Nenhum leiturista cadastrado.</p>';
+    container.innerHTML = html;
+}
+
+function renderRotasTable(rotas, leituristas) {
+    const tbody = document.getElementById('rotas-tbody');
+    if (!rotas || !rotas.length) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:30px">Nenhuma rota encontrada.</td></tr>';
+        return;
+    }
+    const opts = leituristas.map(u => `<option value="${u.id}">${sanitize(u.nome)}</option>`).join('');
+    tbody.innerHTML = rotas.map(r => {
+        const perc = r.percentual;
+        const completo = perc >= 100;
+        return `<tr>
+            <td><strong>${sanitize(r.rota)}</strong></td>
+            <td>${r.total_clientes}</td>
+            <td>${r.leituras_feitas}</td>
+            <td><div style="display:flex;align-items:center;gap:8px">
+                <div class="rota-mini-bar"><div class="rota-mini-fill ${completo ? 'completo' : ''}" style="width:${perc}%"></div></div>
+                <span style="font-size:.75rem;color:${completo ? '#22c55e' : 'var(--text-muted)'};min-width:36px">${perc}%</span>
+            </div></td>
+            <td><select class="rota-select" data-rota="${sanitize(r.rota)}">
+                <option value="">-- Sem atribuicao --</option>${opts}
+            </select></td>
+        </tr>`;
+    }).join('');
+    rotas.forEach(r => {
+        if (r.leiturista_id) {
+            const sel = tbody.querySelector(`select[data-rota="${r.rota}"]`);
+            if (sel) sel.value = String(r.leiturista_id);
+        }
+    });
+}
+
+async function salvarAtribuicoes() {
+    if (!currentImportacao) return showToast('Nenhuma importacao ativa', 'error');
+    const selects = document.querySelectorAll('#rotas-tbody .rota-select');
+    const atribuicoes = [];
+    selects.forEach(sel => atribuicoes.push({
+        rota: sel.getAttribute('data-rota'),
+        leiturista_id: sel.value ? parseInt(sel.value) : null,
+    }));
+    const btn = document.getElementById('btn-salvar-atrib');
+    btn.disabled = true; btn.textContent = 'Salvando...';
+    try {
+        const res = await api.fetch(`/atribuicoes/${currentImportacao.id}/atribuir`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ atribuicoes }),
+        });
+        showToast(`${res.clientes_atualizados} clientes distribuidos!`);
+        await loadDistribuicao();
+    } catch (err) {
+        showToast('Erro ao salvar: ' + err.message, 'error');
+    } finally {
+        btn.disabled = false; btn.textContent = 'Salvar Distribuicao';
+    }
+}
+
+async function limparAtribuicoes() {
+    if (!currentImportacao) return;
+    if (!confirm('Remover todas as atribuicoes? Todos voltarao a ver todos os clientes.')) return;
+    try {
+        const res = await api.fetch(`/atribuicoes/${currentImportacao.id}/limpar`, { method: 'DELETE' });
+        showToast(`Atribuicoes removidas (${res.clientes_atualizados} clientes)`);
+        await loadDistribuicao();
+    } catch (err) {
+        showToast('Erro ao limpar: ' + err.message, 'error');
     }
 }

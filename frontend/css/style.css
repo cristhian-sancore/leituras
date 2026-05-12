@@ -920,3 +920,19 @@ tbody tr:hover { background: var(--primary-50); }
     /* Page title menor */
     .page-title { font-size: 1.1rem; }
 }
+
+/* === DISTRIBUICAO === */
+.leiturista-card{background:var(--card-bg);border:1px solid var(--border-color);border-radius:var(--radius);padding:16px;transition:border-color 0.2s}
+.leiturista-card:hover{border-color:var(--primary)}
+.leiturista-card-nome{font-weight:700;font-size:.9rem;color:var(--text-primary);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.leiturista-card-email{font-size:.75rem;color:var(--text-muted);margin-bottom:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.leiturista-card-rotas{font-size:.75rem;color:var(--text-secondary);margin-bottom:8px;min-height:18px}
+.progress-bar-wrap{background:rgba(255,255,255,.06);border-radius:100px;height:8px;overflow:hidden;margin-bottom:6px}
+.progress-bar-fill{height:100%;border-radius:100px;background:linear-gradient(90deg,var(--primary),var(--accent));transition:width .6s ease}
+.progress-bar-fill.completo{background:linear-gradient(90deg,#22c55e,#16a34a)}
+.progress-label{font-size:.73rem;color:var(--text-muted);display:flex;justify-content:space-between}
+.rota-select{background:rgba(255,255,255,.06);border:1px solid var(--border-color);color:var(--text-primary);border-radius:var(--radius-sm);padding:6px 10px;font-size:.82rem;width:100%;min-width:160px;cursor:pointer;transition:border-color .2s}
+.rota-select:hover,.rota-select:focus{border-color:var(--primary);outline:none}
+.rota-mini-bar{flex:1;height:6px;background:rgba(255,255,255,.06);border-radius:100px;overflow:hidden}
+.rota-mini-fill{height:100%;border-radius:100px;background:linear-gradient(90deg,var(--primary),var(--accent))}
+.rota-mini-fill.completo{background:#22c55e}

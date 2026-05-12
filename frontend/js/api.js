@@ -190,6 +190,14 @@ class ApiClient {
     async getProgressoRota(impId) {
         return this._json(`/dashboard/por-rota?imp_id=${impId}`);
     }
+
+    // ======== GENÉRICO — usado pelos módulos de distribuição ========
+    /**
+     * Alias de _json para chamadas dinâmicas (GET por padrão, ou com options)
+     */
+    async fetch(url, options = {}) {
+        return this._json(url, options);
+    }
 }
 
 // Instância global
