@@ -538,21 +538,100 @@ async function loadUsuarios() {
         const tbody = document.getElementById('usuarios-body');
         tbody.innerHTML = '';
 
+        if (!usuarios.length) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:30px">Nenhum usuário cadastrado</td></tr>';
+            return;
+        }
+
+        const currentUser = api.getUser();
+
         usuarios.forEach(u => {
             const date = new Date(u.created_at).toLocaleDateString('pt-BR');
+            const isSelf = currentUser && u.id === currentUser.id;
+            const canEdit = u.role === 'leiturista' || u.role === 'supervisor';
             const tr = document.createElement('tr');
+            tr.id = `user-row-${u.id}`;
             tr.innerHTML = `
-                <td style="font-weight:600">${u.nome}</td>
-                <td>${u.email}</td>
-                <td><span class="badge badge-${u.role}">${u.role}</span></td>
-                <td>${u.ativo ? '✅ Ativo' : '❌ Inativo'}</td>
+                <td style="font-weight:600">${sanitize(u.nome)}</td>
+                <td>${sanitize(u.email)}</td>
+                <td><span class="badge badge-${u.role}">${u.role.toUpperCase()}</span></td>
+                <td>${u.ativo ? '<span style="color:#22c55e">&#10003; Ativo</span>' : '<span style="color:#ef4444">&#10007; Inativo</span>'}</td>
                 <td>${date}</td>
-                <td>
-                    ${u.role !== 'admin' ? `<button class="btn btn-sm btn-danger" onclick="desativarUsuario(${u.id})">Desativar</button>` : ''}
+                <td style="display:flex;gap:6px;flex-wrap:wrap">
+                    ${canEdit && !isSelf ? `
+                        <button class="btn btn-sm btn-outline" onclick="abrirEditarUsuario(${u.id}, '${sanitize(u.nome)}', '${sanitize(u.email)}')" title="Editar usuário">
+                            ✏️ Editar
+                        </button>
+                        <button class="btn btn-sm btn-outline" style="border-color:#f59e0b;color:#f59e0b" onclick="abrirResetSenha(${u.id}, '${sanitize(u.nome)}')" title="Redefinir senha">
+                            🔑 Senha
+                        </button>
+                    ` : ''}
+                    ${!isSelf ? `
+                        <button class="btn btn-sm ${u.ativo ? 'btn-danger' : 'btn-outline'}" onclick="toggleUsuario(${u.id}, ${u.ativo})">
+                            ${u.ativo ? 'Desativar' : 'Ativar'}
+                        </button>
+                    ` : '<span style="color:var(--text-muted);font-size:.75rem">(você)</span>'}
                 </td>
             `;
             tbody.appendChild(tr);
         });
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+}
+
+function abrirEditarUsuario(id, nomeAtual, emailAtual) {
+    const novoNome = prompt(`Novo nome (atual: ${nomeAtual}):`, nomeAtual);
+    if (novoNome === null) return; // cancelou
+    const novoEmail = prompt(`Novo email (atual: ${emailAtual}):`, emailAtual);
+    if (novoEmail === null) return;
+
+    if (!novoNome.trim() || !novoEmail.trim()) {
+        showToast('Nome e email não podem ser vazios', 'error');
+        return;
+    }
+
+    api.updateUsuario(id, { nome: novoNome.trim(), email: novoEmail.trim() })
+        .then(() => {
+            showToast(`Usuário atualizado!`);
+            loadUsuarios();
+        })
+        .catch(err => showToast(err.message, 'error'));
+}
+
+function abrirResetSenha(id, nome) {
+    const novaSenha = prompt(`Nova senha para ${nome} (mínimo 6 caracteres):`);
+    if (novaSenha === null) return; // cancelou
+    if (novaSenha.length < 6) {
+        showToast('A senha deve ter pelo menos 6 caracteres', 'error');
+        return;
+    }
+    const confirmacao = prompt('Confirme a nova senha:');
+    if (confirmacao === null) return;
+    if (novaSenha !== confirmacao) {
+        showToast('As senhas não conferem', 'error');
+        return;
+    }
+
+    api.fetch(`/usuarios/${id}/reset-senha`, {
+        method: 'POST',
+        body: JSON.stringify({ nova_senha: novaSenha }),
+    })
+        .then(res => showToast(`🔑 ${res.detail}`))
+        .catch(err => showToast(err.message, 'error'));
+}
+
+async function toggleUsuario(id, ativoAtual) {
+    const acao = ativoAtual ? 'desativar' : 'reativar';
+    if (!confirm(`Deseja ${acao} este usuário?`)) return;
+    try {
+        if (ativoAtual) {
+            await api.deleteUsuario(id);  // desativa
+        } else {
+            await api.updateUsuario(id, { ativo: true });
+        }
+        showToast(`Usuário ${ativoAtual ? 'desativado' : 'reativado'}!`);
+        loadUsuarios();
     } catch (err) {
         showToast(err.message, 'error');
     }
@@ -623,13 +702,29 @@ async function desativarUsuario(id) {
 let _leituristas = [];
 
 async function loadDistribuicao() {
+    // Se currentImportacao não está definido, tenta carregar a importação ativa
+    // (igual ao loadLeituras — evita o bug de mostrar "Importe .REM" com arquivo já importado)
     if (!currentImportacao) {
-        document.getElementById('distrib-sem-imp').classList.remove('hidden');
-        document.getElementById('distrib-content').classList.add('hidden');
-        return;
+        try {
+            const imps = await api.listImportacoes();
+            const ativa = imps.find(i => i.status === 'ativo');
+            if (ativa) {
+                currentImportacao = ativa;
+            } else {
+                document.getElementById('distrib-sem-imp').classList.remove('hidden');
+                document.getElementById('distrib-content').classList.add('hidden');
+                return;
+            }
+        } catch {
+            document.getElementById('distrib-sem-imp').classList.remove('hidden');
+            document.getElementById('distrib-content').classList.add('hidden');
+            return;
+        }
     }
+
     document.getElementById('distrib-sem-imp').classList.add('hidden');
     document.getElementById('distrib-content').classList.remove('hidden');
+
     try {
         const [usuarios, rotas, progresso] = await Promise.all([
             api.fetch('/usuarios/').catch(() => []),

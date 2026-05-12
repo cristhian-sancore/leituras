@@ -121,6 +121,13 @@ class ApiClient {
         });
     }
 
+    async updateUsuario(id, data) {
+        return this._json(`/usuarios/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+        });
+    }
+
     async deleteUsuario(id) {
         return this._json(`/usuarios/${id}`, { method: 'DELETE' });
     }
