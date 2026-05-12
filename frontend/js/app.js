@@ -188,8 +188,16 @@ async function handleUpload() {
         currentImportacao = imp;
         showToast(`Arquivo importado! ${imp.total_clientes} clientes carregados.`);
         input.value = '';
+        // Atualiza dashboard em segundo plano
         loadDashboard();
-        showTab('tab-leitura');
+        // Verifica se o usuário é supervisor → vai pra Distribuição
+        const user = api.getUser();
+        if (user && user.role === 'supervisor') {
+            showTab('tab-distribuicao');
+            await loadDistribuicao();
+        } else {
+            showTab('tab-leitura');
+        }
     } catch (err) {
         showToast(err.message, 'error');
     } finally {
@@ -613,7 +621,7 @@ function abrirResetSenha(id, nome) {
         return;
     }
 
-    api.fetch(`/usuarios/${id}/reset-senha`, {
+    api._json(`/usuarios/${id}/reset-senha`, {
         method: 'POST',
         body: JSON.stringify({ nova_senha: novaSenha }),
     })
