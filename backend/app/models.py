@@ -30,7 +30,7 @@ class Usuario(Base):
     __tablename__ = "usuarios"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    empresa_id = Column(BigInteger, ForeignKey("empresas.id", ondelete="CASCADE"), nullable=False)
+    empresa_id = Column(BigInteger, ForeignKey("empresas.id", ondelete="CASCADE"), nullable=True)  # null = superadmin
     nome = Column(Text, nullable=False)
     email = Column(Text, unique=True, nullable=False)
     senha_hash = Column(Text, nullable=False)

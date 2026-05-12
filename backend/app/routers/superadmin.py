@@ -89,23 +89,61 @@ def slugify(text: str) -> str:
     return text
 
 
+class SetupRequest(BaseModel):
+    master_key: str
+    email: str = "superadmin@saemi.com"
+    senha: str = "saemi@2024"
+    nome: str = "Super Admin"
+
+
 @router.post("/setup")
 async def initial_setup(
-    master_key: str = Query(..., description="Chave master (JWT_SECRET)"),
+    data: SetupRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    """Transforma o primeiro usuario em SuperAdmin. Requer JWT_SECRET."""
-    if master_key != settings.JWT_SECRET:
+    """
+    Cria ou promove o SuperAdmin master.
+    - Se o banco estiver vazio: CRIA um novo superadmin com email/senha fornecidos.
+    - Se já existir usuário mas sem superadmin: PROMOVE o primeiro usuário.
+    - Se já existir superadmin: retorna erro.
+    Requer JWT_SECRET como master_key.
+    """
+    if data.master_key != settings.JWT_SECRET:
         raise HTTPException(status_code=403, detail="Chave master invalida")
+
+    # Verificar se já existe superadmin
     existing = await db.execute(select(Usuario).where(Usuario.role == "superadmin"))
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Setup ja foi realizado")
+
+    # Verificar se há algum usuário
     result = await db.execute(select(Usuario).order_by(Usuario.created_at.asc()).limit(1))
     user = result.scalar_one_or_none()
-    if not user:
-        raise HTTPException(status_code=404, detail="Nenhum usuario encontrado")
-    user.role = "superadmin"
-    return {"detail": f"Usuario {user.email} agora eh SuperAdmin Master!"}
+
+    if user:
+        # Promover o primeiro usuário existente
+        user.role = "superadmin"
+        user.ativo = True
+        return {"detail": f"Usuario {user.email} agora eh SuperAdmin Master!"}
+    else:
+        # Banco vazio: criar superadmin do zero
+        # Verificar email duplicado (por segurança)
+        dup = await db.execute(select(Usuario).where(Usuario.email == data.email.lower()))
+        if dup.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="Email ja cadastrado")
+
+        novo = Usuario(
+            empresa_id=None,   # superadmin não tem empresa
+            nome=data.nome,
+            email=data.email.lower(),
+            senha_hash=hash_password(data.senha),
+            role="superadmin",
+            ativo=True,
+        )
+        db.add(novo)
+        await db.flush()
+        return {"detail": f"SuperAdmin '{data.email}' criado com sucesso!"}
+
 
 
 @router.get("/stats", response_model=GlobalStats)

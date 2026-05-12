@@ -17,6 +17,8 @@ async def run_migrations(conn):
         # Atribuicao de leiturista por cliente
         "ALTER TABLE clientes ADD COLUMN IF NOT EXISTS leiturista_atribuido_id BIGINT REFERENCES usuarios(id) ON DELETE SET NULL",
         "CREATE INDEX IF NOT EXISTS ix_cliente_leiturista ON clientes(leiturista_atribuido_id)",
+        # Superadmin nao tem empresa: tornar empresa_id nullable
+        "ALTER TABLE usuarios ALTER COLUMN empresa_id DROP NOT NULL",
     ]
     for sql in migrations:
         try:
