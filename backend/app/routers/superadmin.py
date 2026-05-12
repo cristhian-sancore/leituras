@@ -97,10 +97,6 @@ class SetupRequest(BaseModel):
 
 
 class FirstRunRequest(BaseModel):
-    # Dados da empresa
-    empresa_nome: str
-    empresa_cnpj: Optional[str] = None
-    # Dados do administrador (supervisor da empresa)
     nome: str
     email: str
     senha: str
@@ -108,13 +104,10 @@ class FirstRunRequest(BaseModel):
 
 @router.get("/setup-status")
 async def setup_status(db: AsyncSession = Depends(get_db)):
-    """
-    Endpoint PÚBLICO — verifica se o sistema precisa de configuração inicial.
-    Retorna needs_setup=true se não houver nenhuma empresa cadastrada.
-    """
-    existing = await db.execute(select(Empresa).limit(1))
-    empresa = existing.scalar_one_or_none()
-    return {"needs_setup": empresa is None}
+    """Endpoint PÚBLICO — verifica se há superadmin. Se não houver, redireciona para setup."""
+    existing = await db.execute(select(Usuario).where(Usuario.role == "superadmin"))
+    superadmin = existing.scalar_one_or_none()
+    return {"needs_setup": superadmin is None}
 
 
 @router.post("/setup-first-run")
@@ -123,75 +116,41 @@ async def setup_first_run(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Endpoint PÚBLICO — cria a primeira empresa + supervisor na inicialização.
-    Estilo Chatwoot: só funciona enquanto não houver nenhuma empresa cadastrada.
+    Endpoint PÚBLICO (one-time) — cria o SuperAdmin da plataforma.
+    Só funciona enquanto não houver superadmin cadastrado.
+    O superadmin depois cria as empresas pelo painel /superadmin.html.
     """
     # Segurança: só executa uma vez
-    existing = await db.execute(select(Empresa).limit(1))
+    existing = await db.execute(select(Usuario).where(Usuario.role == "superadmin"))
     if existing.scalar_one_or_none():
-        raise HTTPException(
-            status_code=400,
-            detail="Sistema já configurado. Use o painel de login."
-        )
+        raise HTTPException(status_code=400, detail="Sistema já configurado. Use o painel de login.")
 
     # Validações
-    if len(data.empresa_nome.strip()) < 2:
-        raise HTTPException(status_code=422, detail="Nome da empresa deve ter pelo menos 2 caracteres")
     if len(data.nome.strip()) < 2:
-        raise HTTPException(status_code=422, detail="Seu nome deve ter pelo menos 2 caracteres")
+        raise HTTPException(status_code=422, detail="Nome deve ter pelo menos 2 caracteres")
     if len(data.senha) < 6:
         raise HTTPException(status_code=422, detail="Senha deve ter pelo menos 6 caracteres")
     if "@" not in data.email or "." not in data.email:
         raise HTTPException(status_code=422, detail="Email inválido")
 
-    # Verificar email duplicado
     dup = await db.execute(select(Usuario).where(Usuario.email == data.email.lower().strip()))
     if dup.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Este email já está em uso")
 
-    # Gerar slug único para a empresa
-    from app.routers.superadmin import slugify
-    base_slug = slugify(data.empresa_nome)
-    slug = base_slug
-    count = 1
-    while True:
-        existing_slug = await db.execute(select(Empresa).where(Empresa.slug == slug))
-        if not existing_slug.scalar_one_or_none():
-            break
-        slug = f"{base_slug}-{count}"
-        count += 1
-
-    # Criar empresa
-    nova_empresa = Empresa(
-        nome=data.empresa_nome.strip(),
-        cnpj=data.empresa_cnpj,
-        slug=slug,
-        ativa=True,
-        plano="basico",
-        max_leituristas=5,
-        percentual_esgoto=70.00,
-        consumo_minimo_m3=10,
-    )
-    db.add(nova_empresa)
-    await db.flush()  # gera o ID
-
-    # Criar supervisor (admin da empresa)
-    novo_usuario = Usuario(
-        empresa_id=nova_empresa.id,
+    novo = Usuario(
+        empresa_id=None,           # superadmin não pertence a uma empresa
         nome=data.nome.strip(),
         email=data.email.lower().strip(),
         senha_hash=hash_password(data.senha),
-        role="supervisor",
+        role="superadmin",
         ativo=True,
     )
-    db.add(novo_usuario)
+    db.add(novo)
     await db.flush()
-
     return {
-        "detail": f"Empresa '{nova_empresa.nome}' e administrador '{novo_usuario.email}' criados com sucesso!",
-        "empresa": nova_empresa.nome,
-        "email": novo_usuario.email,
-        "role": "supervisor"
+        "detail": f"SuperAdmin '{novo.email}' criado com sucesso!",
+        "email": novo.email,
+        "role": "superadmin"
     }
 
 

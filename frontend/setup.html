@@ -10,14 +10,11 @@
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
     --primary: #3b82f6; --primary-dark: #2563eb; --accent: #06b6d4;
-    --success: #22c55e; --danger: #ef4444; --warning: #f59e0b;
-    --bg: #0f172a; --card: #1e293b; --border: rgba(255,255,255,0.08);
-    --text: #f1f5f9; --muted: #64748b; --radius: 14px;
+    --success: #22c55e; --bg: #0f172a; --card: #1e293b;
+    --border: rgba(255,255,255,0.08); --text: #f1f5f9; --muted: #64748b;
   }
   body {
-    font-family: 'Inter', sans-serif;
-    background: var(--bg);
-    min-height: 100vh;
+    font-family: 'Inter', sans-serif; background: var(--bg); min-height: 100vh;
     display: flex; align-items: center; justify-content: center;
     padding: 24px; color: var(--text); position: relative; overflow: hidden;
   }
@@ -28,13 +25,13 @@
       radial-gradient(ellipse 60% 50% at 80% 90%, rgba(6,182,212,0.1) 0%, transparent 60%);
     pointer-events: none;
   }
-  .wrap { width: 100%; max-width: 500px; position: relative; z-index: 1; }
+  .wrap { width: 100%; max-width: 460px; position: relative; z-index: 1; }
 
   .badge {
     display: inline-flex; align-items: center; gap: 6px;
     background: rgba(59,130,246,0.15); border: 1px solid rgba(59,130,246,0.3);
-    color: #93c5fd; font-size: 0.72rem; font-weight: 600; letter-spacing: .05em;
-    text-transform: uppercase; padding: 5px 12px; border-radius: 100px; margin-bottom: 20px;
+    color: #93c5fd; font-size: .72rem; font-weight: 600; letter-spacing: .05em;
+    text-transform: uppercase; padding: 5px 14px; border-radius: 100px; margin-bottom: 18px;
   }
   .badge::before { content: '●'; color: #3b82f6; animation: pulse 2s infinite; }
   @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.4} }
@@ -44,7 +41,7 @@
     border-radius: 20px; padding: 36px 40px;
     box-shadow: 0 32px 80px rgba(0,0,0,.5);
   }
-  .logo { display:flex; align-items:center; gap:12px; margin-bottom:24px; }
+  .logo { display:flex; align-items:center; gap:12px; margin-bottom:22px; }
   .logo-icon {
     width:48px; height:48px;
     background: linear-gradient(135deg,var(--primary),var(--accent));
@@ -54,24 +51,22 @@
   .logo-text { font-size:1.5rem; font-weight:800; letter-spacing:-.02em; }
   .logo-text span { color:var(--accent); }
 
-  /* Steps */
-  .steps { display:flex; gap:0; margin-bottom:28px; }
+  .steps { display:flex; gap:0; margin-bottom:24px; }
   .step { flex:1; height:3px; background:rgba(255,255,255,.08); border-radius:100px; margin:0 3px; transition:background .4s; }
-  .step.active { background:var(--primary); }
-  .step.done { background:var(--success); }
+  .step.active { background:var(--primary); } .step.done { background:var(--success); }
 
-  h1 { font-size:1.3rem; font-weight:700; margin-bottom:6px; letter-spacing:-.01em; }
-  .subtitle { color:var(--muted); font-size:.85rem; margin-bottom:24px; line-height:1.6; }
+  h1 { font-size:1.3rem; font-weight:700; margin-bottom:6px; }
+  .subtitle { color:var(--muted); font-size:.85rem; margin-bottom:20px; line-height:1.6; }
 
-  /* Seção */
-  .section-label {
-    font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em;
-    color:var(--accent); margin-bottom:14px; margin-top:20px;
-    display:flex; align-items:center; gap:8px;
+  /* Info box */
+  .info-box {
+    background: rgba(6,182,212,0.07); border: 1px solid rgba(6,182,212,0.25);
+    border-radius: 10px; padding: 12px 14px; font-size: .8rem;
+    color: #67e8f9; margin-bottom: 22px; line-height: 1.7;
   }
-  .section-label::after { content:''; flex:1; height:1px; background:rgba(6,182,212,.2); }
+  .info-box strong { color: #22d3ee; display: block; margin-bottom: 4px; }
 
-  .field { margin-bottom:16px; }
+  .field { margin-bottom: 15px; }
   label { display:block; font-size:.78rem; font-weight:600; color:#94a3b8; margin-bottom:5px; }
   input {
     width:100%; background:rgba(255,255,255,.04); border:1px solid var(--border);
@@ -82,22 +77,18 @@
   .field-error { font-size:.73rem; color:#fca5a5; margin-top:4px; display:none; }
   .field-error.show { display:block; }
 
-  /* Força da senha */
-  .strength-bar { height:4px; border-radius:100px; background:rgba(255,255,255,.06); margin-top:8px; overflow:hidden; }
+  .strength-bar { height:4px; border-radius:100px; background:rgba(255,255,255,.06); margin-top:7px; overflow:hidden; }
   .strength-fill { height:100%; border-radius:100px; transition:width .3s,background .3s; width:0%; }
-  .strength-label { font-size:.7rem; color:var(--muted); margin-top:4px; }
+  .strength-label { font-size:.7rem; color:var(--muted); margin-top:3px; }
 
-  /* Alert */
-  .alert { padding:12px 16px; border-radius:10px; font-size:.84rem; margin-bottom:16px; display:none; }
+  .alert { padding:12px 14px; border-radius:10px; font-size:.84rem; margin-bottom:16px; display:none; }
   .alert.show { display:block; }
   .alert.error { background:rgba(239,68,68,.1); border:1px solid rgba(239,68,68,.3); color:#fca5a5; }
-  .alert.success { background:rgba(34,197,94,.1); border:1px solid rgba(34,197,94,.3); color:#86efac; }
 
-  /* Button */
   .btn {
     width:100%; background:linear-gradient(135deg,var(--primary),var(--primary-dark));
     color:#fff; border:none; border-radius:10px; padding:14px;
-    font-size:.97rem; font-weight:600; font-family:inherit; cursor:pointer; margin-top:4px;
+    font-size:.97rem; font-weight:600; font-family:inherit; cursor:pointer; margin-top:6px;
     transition:opacity .2s,transform .1s; box-shadow:0 4px 15px rgba(59,130,246,.3);
     display:flex; align-items:center; justify-content:center; gap:8px;
   }
@@ -105,7 +96,6 @@
   .spinner { width:18px; height:18px; border:2px solid rgba(255,255,255,.3); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; display:none; }
   @keyframes spin { to { transform:rotate(360deg); } }
 
-  /* Sucesso */
   .success-screen { text-align:center; display:none; }
   .success-icon {
     width:72px; height:72px; background:rgba(34,197,94,.15); border-radius:50%;
@@ -115,15 +105,25 @@
   }
   @keyframes pop { from{transform:scale(0)} to{transform:scale(1)} }
   .success-screen h2 { font-size:1.3rem; margin-bottom:8px; }
-  .success-screen p { color:var(--muted); font-size:.86rem; margin-bottom:24px; line-height:1.6; }
+  .success-screen p { color:var(--muted); font-size:.86rem; margin-bottom:24px; line-height:1.7; }
   .btn-goto {
     display:inline-flex; align-items:center; gap:8px;
     background:linear-gradient(135deg,var(--success),#16a34a);
     color:#fff; border:none; border-radius:10px; padding:13px 28px;
     font-size:.95rem; font-weight:600; font-family:inherit; cursor:pointer;
-    transition:opacity .2s; box-shadow:0 4px 15px rgba(34,197,94,.25); text-decoration:none;
+    text-decoration:none; transition:opacity .2s; box-shadow:0 4px 15px rgba(34,197,94,.25);
   }
   .btn-goto:hover { opacity:.9; }
+
+  /* Próximos passos */
+  .next-steps { text-align:left; margin-top:20px; }
+  .next-steps p { font-size:.78rem; color:var(--muted); margin-bottom:10px; }
+  .next-steps ul { list-style:none; display:flex; flex-direction:column; gap:6px; }
+  .next-steps li {
+    font-size:.8rem; color:#94a3b8;
+    background:rgba(255,255,255,.04); border:1px solid var(--border);
+    border-radius:8px; padding:8px 12px; display:flex; align-items:center; gap:8px;
+  }
 </style>
 </head>
 <body>
@@ -144,70 +144,65 @@
 
     <div class="alert" id="alert-msg"></div>
 
-    <!-- Formulário -->
     <div id="form-area">
-      <h1>Configurar o Sistema</h1>
-      <p class="subtitle">Bem-vindo ao SAEMI! Crie sua empresa e conta de acesso para começar.</p>
+      <h1>Criar Administrador Geral</h1>
+      <p class="subtitle">Esta tela aparece apenas uma vez. Crie a conta do administrador que controla toda a plataforma.</p>
+
+      <div class="info-box">
+        <strong>👑 O que é o Administrador Geral?</strong>
+        Ele gerencia <em>todas as empresas</em> cadastradas no SAEMI:<br>
+        → Cadastra e ativa/desativa empresas<br>
+        → Cada empresa tem seu próprio Supervisor e Leituristas
+      </div>
 
       <form id="setup-form" onsubmit="handleSetup(event)" novalidate>
-
-        <!-- Empresa -->
-        <div class="section-label">🏢 Dados da Empresa</div>
-
-        <div class="field">
-          <label for="empresa-nome">Nome da Empresa *</label>
-          <input type="text" id="empresa-nome" placeholder="Ex: Prefeitura de Xavantina" required autocomplete="organization">
-          <div class="field-error" id="err-empresa">Nome da empresa obrigatório</div>
-        </div>
-
-        <div class="field">
-          <label for="empresa-cnpj">CNPJ <span style="color:var(--muted);font-weight:400">(opcional)</span></label>
-          <input type="text" id="empresa-cnpj" placeholder="00.000.000/0001-00" maxlength="18">
-        </div>
-
-        <!-- Admin -->
-        <div class="section-label">👤 Administrador da Empresa</div>
-
         <div class="field">
           <label for="sa-nome">Seu Nome Completo *</label>
           <input type="text" id="sa-nome" placeholder="Ex: João Silva" required autocomplete="name">
-          <div class="field-error" id="err-nome">Informe seu nome</div>
+          <div class="field-error" id="err-nome">Informe seu nome completo</div>
         </div>
 
         <div class="field">
           <label for="sa-email">Email de Acesso *</label>
           <input type="email" id="sa-email" placeholder="admin@empresa.com" required autocomplete="email">
-          <div class="field-error" id="err-email">Email inválido</div>
+          <div class="field-error" id="err-email">Informe um email válido</div>
         </div>
 
         <div class="field">
           <label for="sa-senha">Senha *</label>
-          <input type="password" id="sa-senha" placeholder="Mínimo 6 caracteres" required autocomplete="new-password" oninput="checkSenha(this.value)">
-          <div class="strength-bar"><div class="strength-fill" id="strength-fill"></div></div>
-          <div class="strength-label" id="strength-label">Digite uma senha</div>
+          <input type="password" id="sa-senha" placeholder="Mínimo 6 caracteres" required oninput="checkSenha(this.value)">
+          <div class="strength-bar"><div class="strength-fill" id="sfl"></div></div>
+          <div class="strength-label" id="slb">Digite uma senha</div>
           <div class="field-error" id="err-senha">Senha deve ter pelo menos 6 caracteres</div>
         </div>
 
         <div class="field">
           <label for="sa-confirma">Confirmar Senha *</label>
-          <input type="password" id="sa-confirma" placeholder="Repita a senha" required autocomplete="new-password">
+          <input type="password" id="sa-confirma" placeholder="Repita a senha">
           <div class="field-error" id="err-confirma">As senhas não conferem</div>
         </div>
 
         <button type="submit" class="btn" id="btn-criar">
-          <div class="spinner" id="btn-spinner"></div>
-          <span id="btn-label">🚀 Criar Empresa e Conta</span>
+          <div class="spinner" id="spinner"></div>
+          <span id="btn-label">🚀 Criar Administrador</span>
         </button>
-
       </form>
     </div>
 
-    <!-- Sucesso -->
+    <!-- Tela de sucesso -->
     <div class="success-screen" id="success-screen">
       <div class="success-icon">✅</div>
-      <h2>Sistema Configurado!</h2>
-      <p id="success-msg">Empresa e conta criadas com sucesso.<br>Redirecionando para o login...</p>
-      <a href="/" class="btn-goto">🔐 Ir para o Login</a>
+      <h2>Pronto! Sistema configurado.</h2>
+      <p id="success-msg">Redirecionando para o painel de administração...</p>
+      <a href="/superadmin.html" class="btn-goto">👑 Ir para o Painel Admin</a>
+      <div class="next-steps">
+        <p>📋 Próximos passos no painel:</p>
+        <ul>
+          <li>🏢 Cadastrar a(s) empresa(s)</li>
+          <li>👤 Criar supervisor para cada empresa</li>
+          <li>🗺️ Importar arquivo .REM e distribuir rotas</li>
+        </ul>
+      </div>
     </div>
 
   </div>
@@ -216,7 +211,7 @@
 <script>
 const API = '/api/v1';
 
-// Verificar se já foi configurado
+// Verificar se já foi configurado → redirecionar para login
 (async () => {
   try {
     const r = await fetch(`${API}/superadmin/setup-status`);
@@ -232,11 +227,10 @@ function step(n) {
   }
 }
 
-function alert_(msg, type = 'error') {
+function showAlert(msg) {
   const el = document.getElementById('alert-msg');
-  el.textContent = msg;
-  el.className = `alert show ${type}`;
-  if (type === 'error') setTimeout(() => el.classList.remove('show'), 6000);
+  el.textContent = msg; el.className = 'alert show error';
+  setTimeout(() => el.classList.remove('show'), 6000);
 }
 
 function showErr(id, show) {
@@ -245,23 +239,22 @@ function showErr(id, show) {
 }
 
 function checkSenha(val) {
-  const fill = document.getElementById('strength-fill');
-  const lbl = document.getElementById('strength-label');
+  const fill = document.getElementById('sfl');
+  const lbl = document.getElementById('slb');
   let s = 0;
   if (val.length >= 6) s++;
   if (val.length >= 10) s++;
   if (/[A-Z]/.test(val)) s++;
   if (/[0-9]/.test(val)) s++;
   if (/[^a-zA-Z0-9]/.test(val)) s++;
-  const lvls = [
+  const l = [
     {p:'0%',c:'#ef4444',t:'Digite uma senha'},
     {p:'20%',c:'#ef4444',t:'Muito fraca'},
     {p:'40%',c:'#f59e0b',t:'Fraca'},
     {p:'60%',c:'#eab308',t:'Razoável'},
     {p:'80%',c:'#22c55e',t:'Forte'},
     {p:'100%',c:'#16a34a',t:'🔒 Muito forte'},
-  ];
-  const l = lvls[Math.min(s, 5)];
+  ][Math.min(s, 5)];
   fill.style.width = val.length ? l.p : '0%';
   fill.style.background = l.c;
   lbl.textContent = val.length ? l.t : 'Digite uma senha';
@@ -270,15 +263,12 @@ function checkSenha(val) {
 
 async function handleSetup(e) {
   e.preventDefault();
-  const empresaNome = document.getElementById('empresa-nome').value.trim();
-  const empresaCnpj = document.getElementById('empresa-cnpj').value.trim() || null;
-  const nome    = document.getElementById('sa-nome').value.trim();
-  const email   = document.getElementById('sa-email').value.trim();
-  const senha   = document.getElementById('sa-senha').value;
+  const nome     = document.getElementById('sa-nome').value.trim();
+  const email    = document.getElementById('sa-email').value.trim();
+  const senha    = document.getElementById('sa-senha').value;
   const confirma = document.getElementById('sa-confirma').value;
 
   let ok = true;
-  showErr('err-empresa', empresaNome.length < 2); if (empresaNome.length < 2) ok = false;
   showErr('err-nome', nome.length < 2); if (nome.length < 2) ok = false;
   const emailOk = email && email.includes('@') && email.includes('.');
   showErr('err-email', !emailOk); if (!emailOk) ok = false;
@@ -289,34 +279,32 @@ async function handleSetup(e) {
   step(2);
   const btn = document.getElementById('btn-criar');
   btn.disabled = true;
-  document.getElementById('btn-spinner').style.display = 'block';
+  document.getElementById('spinner').style.display = 'block';
   document.getElementById('btn-label').textContent = 'Criando...';
 
   try {
     const res = await fetch(`${API}/superadmin/setup-first-run`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ empresa_nome: empresaNome, empresa_cnpj: empresaCnpj, nome, email, senha }),
+      body: JSON.stringify({ nome, email, senha }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || 'Erro desconhecido');
 
     step(3);
     document.getElementById('form-area').style.display = 'none';
-    const ss = document.getElementById('success-screen');
-    ss.style.display = 'block';
+    document.getElementById('success-screen').style.display = 'block';
     document.getElementById('success-msg').innerHTML =
-      `Empresa <strong>${empresaNome}</strong> criada!<br>
-       Login: <strong>${email}</strong><br>
-       Redirecionando em 3 segundos...`;
-    setTimeout(() => window.location.href = '/', 3000);
+      `Conta <strong>${email}</strong> criada como Administrador Geral.<br>
+       Agora cadastre as empresas no painel.`;
 
+    setTimeout(() => window.location.href = '/superadmin.html', 3500);
   } catch (err) {
     step(1);
-    alert_('❌ ' + err.message);
+    showAlert('❌ ' + err.message);
     btn.disabled = false;
-    document.getElementById('btn-spinner').style.display = 'none';
-    document.getElementById('btn-label').textContent = '🚀 Criar Empresa e Conta';
+    document.getElementById('spinner').style.display = 'none';
+    document.getElementById('btn-label').textContent = '🚀 Criar Administrador';
   }
 }
 </script>
