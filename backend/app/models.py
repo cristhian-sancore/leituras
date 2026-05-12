@@ -131,6 +131,11 @@ class Cliente(Base):
     ocorr_anterior = Column(Text, nullable=True)
     # Atribuição: qual leiturista vai fazer a leitura deste cliente
     leiturista_atribuido_id = Column(BigInteger, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
+    # Flags de servico lidos do arquivo .REM por cliente
+    # tem_esgoto=False => instalacao "SO AGUA" (sem cobranca de esgoto)
+    # tem_lixo=False   => sem taxa de lixo (sem A12 de lixo para este cliente)
+    tem_esgoto = Column(Boolean, default=True, nullable=False, server_default='true')
+    tem_lixo   = Column(Boolean, default=True, nullable=False, server_default='true')
 
     __table_args__ = (
         Index("ix_cliente_importacao", "importacao_id"),

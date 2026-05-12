@@ -1,9 +1,10 @@
 """
 Parser do arquivo .REM (SAEMI/SIA)
 Registros:
-  A04 - Tabelas de tarifas por categoria/serviço
-  A05 - Ocorrências (tipos de ação na leitura)
+  A04 - Tabelas de tarifas por categoria/servico
+  A05 - Ocorrencias (tipos de acao na leitura)
   A11 - Clientes/consumidores com dados cadastrais
+  A12 - Taxas extras por cliente (ex: lixo separado)
 """
 
 MAP_CAT = {'01': 'residencial', '02': 'comercial', '03': 'industrial', '04': 'publica', '05': 'tarifa_social'}
@@ -12,11 +13,10 @@ MAP_CAT_A11 = {'1': 'residencial', '2': 'comercial', '3': 'industrial', '4': 'pu
 
 def parse_rem(content: str) -> dict:
     """
-    Parseia o conteúdo de um arquivo .REM e retorna dicionário com:
-    - tarifas: lista de dicts por categoria/serviço
+    Parseia o conteudo de um arquivo .REM e retorna dicionario com:
+    - tarifas: lista de dicts por categoria/servico
     - ocorrencias: lista de dicts
-    - clientes: lista de dicts
-    - linhas_originais: conteúdo bruto para referência
+    - clientes: lista de dicts (inclui tem_esgoto e tem_lixo)
     """
     lines = content.split('\n')
 
@@ -30,6 +30,20 @@ def parse_rem(content: str) -> dict:
     ult_lim = {}
     ocorrencias = []
     clientes = []
+
+    # -----------------------------------------------------------
+    # PRE-PROCESSAMENTO: coletar A12 (taxas extras) por matricula
+    # A12 indica cobrancas extras como TAXA DE LIXO por cliente.
+    # Formato: A12 + matricula[3:18] + ... + descricao[20:70]
+    # -----------------------------------------------------------
+    matriculas_com_lixo = set()
+    for line in lines:
+        clean = line.strip()
+        if clean.startswith('A12') and len(clean) > 25:
+            mat_a12 = clean[3:18].strip()
+            descricao_a12 = clean[20:70].upper()
+            if 'LIXO' in descricao_a12:
+                matriculas_com_lixo.add(mat_a12)
 
     for line in lines:
         clean = line.strip()
@@ -78,7 +92,7 @@ def parse_rem(content: str) -> dict:
                     ult_lim[key] = n_faixa * 10
 
         # ============================================
-        # A05 - Ocorrências
+        # A05 - Ocorrencias
         # ============================================
         if clean.startswith('A05'):
             codigo = clean[3:7].strip()
@@ -122,6 +136,21 @@ def parse_rem(content: str) -> dict:
                 data_vencimento = line[486:496] if len(line) > 496 else ''
                 mes_ano_ref = line[496:503] if len(line) > 503 else ''
                 data_leit_anterior = line[503:513] if len(line) > 513 else ''
+
+                # -------------------------------------------------------
+                # FLAGS DE SERVICO por cliente
+                # Posicoes 75-107 contem status + descricao do tipo servico:
+                #   "SO AGUA"        => apenas agua, SEM esgoto
+                #   "AGUA E ESGOTO"  => agua E esgoto
+                #   "ESGOTO"         => tem esgoto
+                # Se o texto contem "ESGOTO" => tem_esgoto = True.
+                # -------------------------------------------------------
+                descricao_servico = line[75:107].upper() if len(line) > 107 else ''
+                tem_esgoto = 'ESGOTO' in descricao_servico
+
+                # Lixo: indicado por A12 com 'LIXO' para esta matricula
+                tem_lixo = matricula in matriculas_com_lixo
+
             except (ValueError, IndexError):
                 continue
 
@@ -144,6 +173,8 @@ def parse_rem(content: str) -> dict:
                 'mes_ano_ref': mes_ano_ref,
                 'data_leit_anterior': data_leit_anterior,
                 'ocorr_anterior': ocorr_anterior,
+                'tem_esgoto': tem_esgoto,
+                'tem_lixo': tem_lixo,
             })
 
     # Converter tarifas_raw em lista plana

@@ -17,6 +17,9 @@ async def run_migrations(conn):
         # Atribuicao de leiturista por cliente
         "ALTER TABLE clientes ADD COLUMN IF NOT EXISTS leiturista_atribuido_id BIGINT REFERENCES usuarios(id) ON DELETE SET NULL",
         "CREATE INDEX IF NOT EXISTS ix_cliente_leiturista ON clientes(leiturista_atribuido_id)",
+        # Flags de servico por cliente: SO AGUA = sem esgoto; sem A12 lixo = sem lixo
+        "ALTER TABLE clientes ADD COLUMN IF NOT EXISTS tem_esgoto BOOLEAN NOT NULL DEFAULT true",
+        "ALTER TABLE clientes ADD COLUMN IF NOT EXISTS tem_lixo BOOLEAN NOT NULL DEFAULT true",
         # Superadmin nao tem empresa: tornar empresa_id nullable
         "ALTER TABLE usuarios ALTER COLUMN empresa_id DROP NOT NULL",
         # Audit log do superadmin: empresa_id pode ser null

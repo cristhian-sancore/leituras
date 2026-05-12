@@ -215,6 +215,8 @@ async def salvar_leitura(
         consumo, tarifas_agua, tarifas_lixo,
         percentual_esgoto=config['percentual_esgoto'],
         consumo_minimo=config['consumo_minimo_m3'],
+        tem_esgoto=bool(cliente.tem_esgoto),
+        tem_lixo=bool(cliente.tem_lixo),
     )
 
     # Upsert leitura
