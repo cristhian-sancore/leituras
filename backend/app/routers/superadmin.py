@@ -96,44 +96,102 @@ class SetupRequest(BaseModel):
     nome: str = "Super Admin"
 
 
+class FirstRunRequest(BaseModel):
+    nome: str
+    email: str
+    senha: str
+
+
+@router.get("/setup-status")
+async def setup_status(db: AsyncSession = Depends(get_db)):
+    """
+    Endpoint PÚBLICO — verifica se o sistema precisa de configuração inicial.
+    Retorna needs_setup=true se não houver superadmin cadastrado.
+    Usado pelo frontend para redirecionar para a tela de primeiro acesso.
+    """
+    existing = await db.execute(select(Usuario).where(Usuario.role == "superadmin"))
+    superadmin = existing.scalar_one_or_none()
+    return {"needs_setup": superadmin is None}
+
+
+@router.post("/setup-first-run")
+async def setup_first_run(
+    data: FirstRunRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Endpoint PÚBLICO — cria o SuperAdmin na primeira inicialização do sistema.
+    Só funciona se NÃO existir nenhum superadmin cadastrado (one-time use).
+    Após o primeiro uso, retorna 400 permanentemente.
+    """
+    # Verificar se já existe superadmin (segurança: só executa uma vez)
+    existing = await db.execute(select(Usuario).where(Usuario.role == "superadmin"))
+    if existing.scalar_one_or_none():
+        raise HTTPException(
+            status_code=400,
+            detail="Sistema já configurado. Use o painel de login."
+        )
+
+    # Validações básicas
+    if len(data.nome.strip()) < 2:
+        raise HTTPException(status_code=422, detail="Nome deve ter pelo menos 2 caracteres")
+    if len(data.senha) < 6:
+        raise HTTPException(status_code=422, detail="Senha deve ter pelo menos 6 caracteres")
+    if "@" not in data.email or "." not in data.email:
+        raise HTTPException(status_code=422, detail="Email inválido")
+
+    # Verificar email duplicado
+    dup = await db.execute(select(Usuario).where(Usuario.email == data.email.lower().strip()))
+    if dup.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="Este email já está em uso")
+
+    # Criar superadmin
+    novo = Usuario(
+        empresa_id=None,
+        nome=data.nome.strip(),
+        email=data.email.lower().strip(),
+        senha_hash=hash_password(data.senha),
+        role="superadmin",
+        ativo=True,
+    )
+    db.add(novo)
+    await db.flush()
+    return {
+        "detail": f"SuperAdmin '{novo.email}' criado com sucesso!",
+        "email": novo.email
+    }
+
+
 @router.post("/setup")
 async def initial_setup(
     data: SetupRequest,
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Cria ou promove o SuperAdmin master.
-    - Se o banco estiver vazio: CRIA um novo superadmin com email/senha fornecidos.
-    - Se já existir usuário mas sem superadmin: PROMOVE o primeiro usuário.
-    - Se já existir superadmin: retorna erro.
-    Requer JWT_SECRET como master_key.
+    Endpoint legado com master_key para setup manual via API.
+    Mantido para recuperação de emergência via curl/Postman.
     """
     if data.master_key != settings.JWT_SECRET:
         raise HTTPException(status_code=403, detail="Chave master invalida")
 
-    # Verificar se já existe superadmin
     existing = await db.execute(select(Usuario).where(Usuario.role == "superadmin"))
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Setup ja foi realizado")
 
-    # Verificar se há algum usuário
     result = await db.execute(select(Usuario).order_by(Usuario.created_at.asc()).limit(1))
     user = result.scalar_one_or_none()
 
     if user:
-        # Promover o primeiro usuário existente
         user.role = "superadmin"
         user.ativo = True
         return {"detail": f"Usuario {user.email} agora eh SuperAdmin Master!"}
     else:
-        # Banco vazio: criar superadmin do zero
-        # Verificar email duplicado (por segurança)
         dup = await db.execute(select(Usuario).where(Usuario.email == data.email.lower()))
         if dup.scalar_one_or_none():
             raise HTTPException(status_code=400, detail="Email ja cadastrado")
 
         novo = Usuario(
-            empresa_id=None,   # superadmin não tem empresa
+            empresa_id=None,
             nome=data.nome,
             email=data.email.lower(),
             senha_hash=hash_password(data.senha),
@@ -143,7 +201,6 @@ async def initial_setup(
         db.add(novo)
         await db.flush()
         return {"detail": f"SuperAdmin '{data.email}' criado com sucesso!"}
-
 
 
 @router.get("/stats", response_model=GlobalStats)

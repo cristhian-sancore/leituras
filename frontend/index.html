@@ -265,6 +265,23 @@ async function handleLogin(e) {
         btn.textContent = 'Entrar';
     }
 }
+
+// ── Verificar se o sistema precisa de configuração inicial ────────────────
+// Roda ao carregar a página ANTES de mostrar o login
+(async () => {
+    try {
+        const res = await fetch('/api/v1/superadmin/setup-status');
+        if (res.ok) {
+            const data = await res.json();
+            if (data.needs_setup) {
+                // Sistema sem superadmin → ir para a tela de primeiro acesso
+                window.location.replace('/setup.html');
+            }
+        }
+    } catch {
+        // API offline ou erro de rede — mantém na tela de login normalmente
+    }
+})();
 </script>
 </body>
 </html>

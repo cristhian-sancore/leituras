@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SAEMI — Configuração Inicial</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --primary: #3b82f6;
+    --primary-dark: #2563eb;
+    --accent: #06b6d4;
+    --success: #22c55e;
+    --danger: #ef4444;
+    --bg: #0f172a;
+    --card: #1e293b;
+    --border: rgba(255,255,255,0.08);
+    --text: #f1f5f9;
+    --muted: #64748b;
+    --radius: 14px;
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    color: var(--text);
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Fundo animado */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 10%, rgba(59,130,246,0.15) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 80% 90%, rgba(6,182,212,0.1) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  .setup-wrapper {
+    width: 100%;
+    max-width: 480px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Badge de primeiro acesso */
+  .first-run-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(59,130,246,0.15);
+    border: 1px solid rgba(59,130,246,0.3);
+    color: #93c5fd;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 5px 12px;
+    border-radius: 100px;
+    margin-bottom: 20px;
+  }
+  .first-run-badge::before { content: '●'; color: #3b82f6; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* Card principal */
+  .setup-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 40px;
+    box-shadow: 0 32px 80px rgba(0,0,0,0.5);
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+  .logo-icon {
+    width: 48px; height: 48px;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.5rem;
+    box-shadow: 0 8px 20px rgba(59,130,246,0.3);
+  }
+  .logo-text { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; }
+  .logo-text span { color: var(--accent); }
+
+  h1 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    letter-spacing: -0.01em;
+  }
+  .subtitle {
+    color: var(--muted);
+    font-size: 0.88rem;
+    margin-bottom: 32px;
+    line-height: 1.6;
+  }
+
+  /* Steps indicator */
+  .steps {
+    display: flex;
+    gap: 0;
+    margin-bottom: 32px;
+  }
+  .step {
+    flex: 1;
+    height: 3px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 100px;
+    margin: 0 3px;
+    transition: background 0.4s;
+  }
+  .step.active { background: var(--primary); }
+  .step.done { background: var(--success); }
+
+  /* Form */
+  .field { margin-bottom: 18px; }
+  label { display: block; font-size: 0.8rem; font-weight: 600; color: #94a3b8; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+  input {
+    width: 100%;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+  }
+  input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+  input.error { border-color: var(--danger); }
+
+  .field-hint { font-size: 0.75rem; color: var(--muted); margin-top: 5px; }
+  .field-error { font-size: 0.75rem; color: #fca5a5; margin-top: 5px; display: none; }
+  .field-error.show { display: block; }
+
+  /* Força da senha */
+  .senha-strength { margin-top: 8px; }
+  .strength-bar { height: 4px; border-radius: 100px; background: rgba(255,255,255,0.06); margin-bottom: 4px; overflow: hidden; }
+  .strength-fill { height: 100%; border-radius: 100px; transition: width 0.3s, background 0.3s; width: 0%; }
+  .strength-label { font-size: 0.72rem; color: var(--muted); }
+
+  /* Botão */
+  .btn-setup {
+    width: 100%;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 14px;
+    font-size: 1rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: opacity 0.2s, transform 0.1s;
+    box-shadow: 0 4px 15px rgba(59,130,246,0.3);
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn-setup:hover { opacity: 0.92; }
+  .btn-setup:active { transform: scale(0.99); }
+  .btn-setup:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Loading spinner */
+  .spinner {
+    width: 18px; height: 18px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: none;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Alerta global */
+  .alert {
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    margin-bottom: 20px;
+    display: none;
+  }
+  .alert.show { display: block; }
+  .alert.error { background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; }
+  .alert.success { background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.3); color: #86efac; }
+
+  /* Tela de sucesso */
+  .success-screen { text-align: center; display: none; }
+  .success-icon {
+    width: 72px; height: 72px;
+    background: rgba(34,197,94,0.15);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2rem;
+    margin: 0 auto 20px;
+    border: 2px solid rgba(34,197,94,0.3);
+    animation: pop 0.4s cubic-bezier(0.175,0.885,0.32,1.275);
+  }
+  @keyframes pop { from{transform:scale(0)} to{transform:scale(1)} }
+  .success-screen h2 { font-size: 1.3rem; margin-bottom: 8px; }
+  .success-screen p { color: var(--muted); font-size: 0.88rem; margin-bottom: 24px; line-height: 1.6; }
+  .btn-goto {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, var(--success), #16a34a);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 28px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    text-decoration: none;
+    transition: opacity 0.2s;
+    box-shadow: 0 4px 15px rgba(34,197,94,0.25);
+  }
+  .btn-goto:hover { opacity: 0.9; }
+
+  /* Info box */
+  .info-box {
+    background: rgba(6,182,212,0.06);
+    border: 1px solid rgba(6,182,212,0.2);
+    border-radius: 10px;
+    padding: 14px;
+    font-size: 0.8rem;
+    color: #67e8f9;
+    margin-bottom: 24px;
+    line-height: 1.6;
+  }
+  .info-box strong { color: #22d3ee; }
+</style>
+</head>
+<body>
+
+<div class="setup-wrapper">
+  <div class="first-run-badge">✦ Primeira Configuração</div>
+
+  <div class="setup-card">
+
+    <!-- Logo -->
+    <div class="logo">
+      <div class="logo-icon">💧</div>
+      <div class="logo-text">SAEMI <span>SaaS</span></div>
+    </div>
+
+    <!-- Steps -->
+    <div class="steps">
+      <div class="step active" id="step1"></div>
+      <div class="step" id="step2"></div>
+      <div class="step" id="step3"></div>
+    </div>
+
+    <!-- Alerta global -->
+    <div class="alert" id="alert-msg"></div>
+
+    <!-- Formulário de setup -->
+    <div id="setup-form-area">
+      <h1>Configurar o Sistema</h1>
+      <p class="subtitle">
+        Bem-vindo ao SAEMI! Esta tela aparece apenas uma vez.<br>
+        Crie a conta do administrador principal do sistema.
+      </p>
+
+      <div class="info-box">
+        <strong>ℹ️ O que é o Super Admin?</strong><br>
+        É o dono do sistema. Ele cadastra e gerencia todas as empresas que usam o SAEMI.
+        Guarde o email e senha com segurança.
+      </div>
+
+      <form id="setup-form" onsubmit="handleSetup(event)" novalidate>
+
+        <div class="field">
+          <label for="sa-nome">Seu Nome</label>
+          <input type="text" id="sa-nome" placeholder="Ex: João Silva" autocomplete="name" required>
+          <div class="field-error" id="err-nome">Informe seu nome completo</div>
+        </div>
+
+        <div class="field">
+          <label for="sa-email">Email de Acesso</label>
+          <input type="email" id="sa-email" placeholder="admin@suaempresa.com" autocomplete="email" required>
+          <div class="field-error" id="err-email">Informe um email válido</div>
+        </div>
+
+        <div class="field">
+          <label for="sa-senha">Senha</label>
+          <input type="password" id="sa-senha" placeholder="Mínimo 8 caracteres" autocomplete="new-password" required oninput="checkSenha(this.value)">
+          <div class="senha-strength">
+            <div class="strength-bar"><div class="strength-fill" id="strength-fill"></div></div>
+            <div class="strength-label" id="strength-label">Digite uma senha</div>
+          </div>
+          <div class="field-error" id="err-senha">Senha deve ter pelo menos 6 caracteres</div>
+        </div>
+
+        <div class="field">
+          <label for="sa-confirma">Confirmar Senha</label>
+          <input type="password" id="sa-confirma" placeholder="Repita a senha" autocomplete="new-password" required>
+          <div class="field-error" id="err-confirma">As senhas não conferem</div>
+        </div>
+
+        <button type="submit" class="btn-setup" id="btn-criar">
+          <div class="spinner" id="btn-spinner"></div>
+          <span id="btn-label">🚀 Criar Administrador</span>
+        </button>
+      </form>
+    </div>
+
+    <!-- Tela de sucesso -->
+    <div class="success-screen" id="success-screen">
+      <div class="success-icon">✅</div>
+      <h2>Sistema Configurado!</h2>
+      <p id="success-msg">
+        Seu administrador foi criado com sucesso.<br>
+        Você será redirecionado para o login em instantes.
+      </p>
+      <a href="/superadmin.html" class="btn-goto" id="btn-goto-login">
+        🔐 Ir para o Login
+      </a>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const API = '/api/v1';
+
+  // ── Verificar se setup já foi feito ──────────────────────────────────────
+  (async () => {
+    try {
+      const res = await fetch(`${API}/superadmin/setup-status`);
+      const data = await res.json();
+      if (!data.needs_setup) {
+        // Já configurado → redirecionar para login
+        window.location.href = '/';
+      }
+    } catch {
+      // API offline? manter na tela
+    }
+  })();
+
+  // ── Força da senha ────────────────────────────────────────────────────────
+  function checkSenha(val) {
+    const fill = document.getElementById('strength-fill');
+    const label = document.getElementById('strength-label');
+    let score = 0;
+    if (val.length >= 6) score++;
+    if (val.length >= 10) score++;
+    if (/[A-Z]/.test(val)) score++;
+    if (/[0-9]/.test(val)) score++;
+    if (/[^a-zA-Z0-9]/.test(val)) score++;
+
+    const levels = [
+      { pct: '0%',   color: '#ef4444', text: 'Digite uma senha' },
+      { pct: '20%',  color: '#ef4444', text: 'Muito fraca' },
+      { pct: '40%',  color: '#f59e0b', text: 'Fraca' },
+      { pct: '60%',  color: '#eab308', text: 'Razoável' },
+      { pct: '80%',  color: '#22c55e', text: 'Forte' },
+      { pct: '100%', color: '#16a34a', text: '🔒 Muito forte' },
+    ];
+    const lvl = levels[Math.min(score, 5)];
+    fill.style.width = val.length ? lvl.pct : '0%';
+    fill.style.background = lvl.color;
+    label.textContent = val.length ? lvl.text : 'Digite uma senha';
+    label.style.color = lvl.color;
+  }
+
+  // ── Steps ────────────────────────────────────────────────────────────────
+  function advanceStep(n) {
+    for (let i = 1; i <= 3; i++) {
+      const el = document.getElementById(`step${i}`);
+      if (i < n) el.className = 'step done';
+      else if (i === n) el.className = 'step active';
+      else el.className = 'step';
+    }
+  }
+
+  // ── Mostrar alerta ───────────────────────────────────────────────────────
+  function showAlert(msg, type = 'error') {
+    const el = document.getElementById('alert-msg');
+    el.textContent = msg;
+    el.className = `alert show ${type}`;
+    setTimeout(() => el.classList.remove('show'), 5000);
+  }
+
+  function showFieldError(id, show) {
+    const el = document.getElementById(id);
+    if (el) el.className = show ? 'field-error show' : 'field-error';
+  }
+
+  // ── Enviar formulário ────────────────────────────────────────────────────
+  async function handleSetup(e) {
+    e.preventDefault();
+
+    const nome     = document.getElementById('sa-nome').value.trim();
+    const email    = document.getElementById('sa-email').value.trim();
+    const senha    = document.getElementById('sa-senha').value;
+    const confirma = document.getElementById('sa-confirma').value;
+
+    // Validações frontend
+    let ok = true;
+    showFieldError('err-nome', !nome || nome.length < 2);
+    if (!nome || nome.length < 2) ok = false;
+
+    const emailOk = email && email.includes('@') && email.includes('.');
+    showFieldError('err-email', !emailOk);
+    if (!emailOk) ok = false;
+
+    showFieldError('err-senha', senha.length < 6);
+    if (senha.length < 6) ok = false;
+
+    showFieldError('err-confirma', senha !== confirma);
+    if (senha !== confirma) ok = false;
+
+    if (!ok) return;
+
+    // Loading
+    advanceStep(2);
+    document.getElementById('btn-criar').disabled = true;
+    document.getElementById('btn-spinner').style.display = 'block';
+    document.getElementById('btn-label').textContent = 'Criando...';
+
+    try {
+      const res = await fetch(`${API}/superadmin/setup-first-run`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nome, email, senha }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.detail || 'Erro ao criar administrador');
+      }
+
+      // Sucesso!
+      advanceStep(3);
+      document.getElementById('setup-form-area').style.display = 'none';
+      const ss = document.getElementById('success-screen');
+      ss.style.display = 'block';
+      document.getElementById('success-msg').innerHTML =
+        `Administrador <strong>${email}</strong> criado com sucesso.<br>
+         Você será redirecionado para o login.`;
+
+      // Redirecionar após 3 segundos
+      setTimeout(() => { window.location.href = '/superadmin.html'; }, 3000);
+
+    } catch (err) {
+      advanceStep(1);
+      showAlert('❌ ' + err.message);
+      document.getElementById('btn-criar').disabled = false;
+      document.getElementById('btn-spinner').style.display = 'none';
+      document.getElementById('btn-label').textContent = '🚀 Criar Administrador';
+    }
+  }
+</script>
+</body>
+</html>
