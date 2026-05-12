@@ -9,8 +9,20 @@
 </head>
 <body>
 
-    <!-- SIDEBAR -->
-    <div class="sidebar">
+<!-- OVERLAY (fecha sidebar ao clicar fora no mobile) -->
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+<!-- HEADER MOBILE -->
+<div class="mobile-header">
+    <button class="hamburger-btn" id="hamburger-btn" onclick="toggleSidebar()" aria-label="Menu">
+        <span></span><span></span><span></span>
+    </button>
+    <div class="mobile-header-brand">💧 SAEMI</div>
+    <div id="mobile-user-badge" style="color:#94a3b8;font-size:0.75rem;"></div>
+</div>
+
+<!-- SIDEBAR -->
+<div class="sidebar" id="sidebar">
         <div class="sidebar-brand">
             <h2>💧 SAEMI</h2>
             <span class="version">SaaS v1.0</span>
@@ -55,10 +67,10 @@
                 Sair
             </button>
         </div>
-    </div>
+</div><!-- /sidebar -->
 
-    <!-- MAIN CONTENT -->
-    <div class="main">
+<!-- MAIN CONTENT -->
+<div class="main">
 
         <!-- ===== DASHBOARD ===== -->
         <div id="tab-dashboard" class="tab-content">
@@ -162,7 +174,7 @@
                         oninput="onSearch(this.value)">
                 </div>
                 <div style="overflow-x: auto;">
-                    <table>
+                    <table class="table-mobile-stack">
                         <thead>
                             <tr>
                                 <th>Matrícula</th>

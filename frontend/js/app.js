@@ -24,6 +24,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('user-role').textContent = user.role;
         document.getElementById('user-avatar').textContent = getInitials(user.nome);
 
+        // Badge no mobile-header
+        const mb = document.getElementById('mobile-user-badge');
+        if (mb) mb.textContent = getInitials(user.nome);
+
         // Esconder items de admin se não for supervisor
         if (user.role !== 'supervisor') {
             document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
@@ -35,9 +39,37 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // ============================================
+// SIDEBAR MOBILE
+// ============================================
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    const btn = document.getElementById('hamburger-btn');
+    const isOpen = sidebar.classList.contains('open');
+    if (isOpen) {
+        closeSidebar();
+    } else {
+        sidebar.classList.add('open');
+        overlay.classList.add('open');
+        btn.classList.add('open');
+    }
+}
+
+function closeSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    const btn = document.getElementById('hamburger-btn');
+    sidebar.classList.remove('open');
+    overlay.classList.remove('open');
+    btn.classList.remove('open');
+}
+
+// ============================================
 // NAVIGATION
 // ============================================
 function showTab(tabId, navEl) {
+    // Fechar sidebar no mobile ao trocar de aba
+    closeSidebar();
     // Hide all tabs
     document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
     // Remove active from nav
@@ -207,32 +239,32 @@ function renderClientes(clientes) {
         const endereco = c.rua + (c.numero ? ', ' + c.numero : '');
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td><code>${c.matricula}</code></td>
-            <td>
+            <td data-label="Matrícula"><code>${c.matricula}</code></td>
+            <td data-label="Cliente">
                 <div style="font-weight:600;font-size:0.85rem">${c.nome}</div>
                 <span class="badge badge-${c.categoria}">${catLabels[c.categoria] || c.categoria}</span>
             </td>
-            <td class="endereco-cell">
+            <td data-label="Endereço" class="endereco-cell">
                 <div>${endereco}</div>
                 <div class="info-small">${c.bairro || ''}</div>
             </td>
-            <td><code>${(c.zona || '').trim()}</code></td>
-            <td><code>${(c.rota || '').trim()}</code></td>
-            <td style="font-weight:600;color:#475569">${c.leitura_anterior}</td>
-            <td>
+            <td data-label="Zona"><code>${(c.zona || '').trim()}</code></td>
+            <td data-label="Rota"><code>${(c.rota || '').trim()}</code></td>
+            <td data-label="Leit. Ant." style="font-weight:600;color:#475569">${c.leitura_anterior}</td>
+            <td data-label="Leit. Atual">
                 <input type="number" class="leitura-input" 
                     value="${c.leitura_atual !== null ? c.leitura_atual : ''}" 
                     oninput="onLeituraChange(${c.id}, this.value)"
                     placeholder="0" id="leit-${c.id}">
             </td>
-            <td>
+            <td data-label="Ocorrência">
                 <select class="ocorrencia-select" onchange="onOcorrenciaChange(${c.id}, this.value)" id="ocorr-${c.id}">
                     ${ocorrOptions}
                 </select>
             </td>
-            <td class="consumo-cell" id="cons-${c.id}">${c.consumo}</td>
-            <td class="total-cell" id="tot-${c.id}">${fmtMoeda(c.valor_total)}</td>
-            <td>
+            <td data-label="Consumo" class="consumo-cell" id="cons-${c.id}">${c.consumo}</td>
+            <td data-label="Total" class="total-cell" id="tot-${c.id}">${fmtMoeda(c.valor_total)}</td>
+            <td data-label="Imprimir">
                 <button class="btn btn-sm btn-outline" id="btn-print-${c.id}"
                     onclick="abrirImpressao(${c.id})"
                     title="Imprimir conta"

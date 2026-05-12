@@ -692,20 +692,231 @@ tbody tr:hover { background: var(--primary-50); }
 }
 
 /* ============================================
-   RESPONSIVE
+   MOBILE HAMBURGER BUTTON
    ============================================ */
-@media (max-width: 1024px) {
-    .sidebar { width: 220px; }
-    .main { margin-left: 220px; padding: 20px; }
+.mobile-header {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 200;
+    background: var(--sidebar-bg);
+    padding: 12px 16px;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.3);
 }
 
+.mobile-header-brand {
+    font-size: 1.1rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--primary-light), var(--accent-light));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.hamburger-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    transition: var(--transition);
+}
+
+.hamburger-btn span {
+    display: block;
+    width: 24px;
+    height: 2px;
+    background: white;
+    border-radius: 2px;
+    transition: var(--transition);
+}
+
+.hamburger-btn.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.hamburger-btn.open span:nth-child(2) { opacity: 0; }
+.hamburger-btn.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+/* Overlay escuro ao abrir sidebar */
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 99;
+    backdrop-filter: blur(2px);
+}
+
+.sidebar-overlay.open { display: block; }
+
+/* ============================================
+   RESPONSIVE — Tablet (≤1024px)
+   ============================================ */
+@media (max-width: 1024px) {
+    .sidebar { width: 240px; }
+    .main { margin-left: 240px; padding: 20px 18px; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ============================================
+   RESPONSIVE — Mobile (≤768px)
+   ============================================ */
 @media (max-width: 768px) {
+    /* Header fixo no mobile */
+    .mobile-header { display: flex; }
+
+    /* Sidebar vira drawer */
     .sidebar {
         transform: translateX(-100%);
-        width: 270px;
+        width: 280px;
+        z-index: 150;
+        top: 0;
+        padding-top: 24px;
     }
     .sidebar.open { transform: translateX(0); }
-    .main { margin-left: 0; padding: 16px; }
-    .stats-grid { grid-template-columns: repeat(2, 1fr); }
-    .page-header { flex-direction: column; gap: 12px; align-items: flex-start; }
+
+    /* Main sem margin-left, com espaço para o header */
+    .main {
+        margin-left: 0;
+        padding: 12px;
+        padding-top: 68px; /* altura do mobile-header */
+    }
+
+    /* Stats: 2 colunas no mobile */
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        margin-bottom: 16px;
+    }
+
+    .stat-card { padding: 14px 16px; }
+    .stat-value { font-size: 1.4rem; }
+    .stat-label { font-size: 0.65rem; }
+
+    /* Page header empilha */
+    .page-header {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+        margin-bottom: 16px;
+    }
+
+    .page-title { font-size: 1.3rem; }
+    .page-subtitle { font-size: 0.8rem; }
+
+    /* Cards mais compactos */
+    .card { padding: 14px; }
+    .card-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+
+    /* ── TABELA DE LEITURA PARA MOBILE ──
+       Cada linha vira um card vertical */
+    .table-mobile-stack thead { display: none; }
+
+    .table-mobile-stack tbody tr {
+        display: flex;
+        flex-direction: column;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        margin-bottom: 10px;
+        padding: 12px;
+        background: var(--card);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .table-mobile-stack tbody tr:hover { background: var(--primary-50); }
+
+    .table-mobile-stack tbody td {
+        display: flex;
+        align-items: center;
+        padding: 5px 0;
+        border-bottom: none;
+        font-size: 0.88rem;
+        gap: 8px;
+    }
+
+    /* Label simulado via data-label */
+    .table-mobile-stack tbody td::before {
+        content: attr(data-label);
+        font-size: 0.65rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-muted);
+        min-width: 80px;
+        flex-shrink: 0;
+    }
+
+    /* Input de leitura maior no mobile (touch-friendly) */
+    .leitura-input {
+        width: 110px !important;
+        font-size: 1.1rem !important;
+        padding: 10px !important;
+        height: 44px;
+    }
+
+    .ocorrencia-select {
+        width: 100% !important;
+        font-size: 0.85rem !important;
+        height: 40px;
+    }
+
+    /* Botões maiores para toque */
+    .btn { padding: 10px 16px; font-size: 0.88rem; min-height: 40px; }
+    .btn-sm { padding: 8px 12px; font-size: 0.8rem; min-height: 36px; }
+
+    /* Input touch-friendly */
+    input, select, textarea {
+        padding: 12px 14px;
+        font-size: 1rem;
+        min-height: 44px;
+    }
+
+    /* Busca/filtros empilham no mobile */
+    .filters-row {
+        flex-direction: column !important;
+        gap: 10px !important;
+    }
+
+    .filters-row > * { width: 100% !important; }
+
+    /* Auth card sem tanto padding no mobile */
+    .auth-card { padding: 28px 20px; }
+
+    /* Toast menor no mobile */
+    .toast { min-width: 0; width: calc(100vw - 32px); font-size: 0.82rem; }
+    .toast-container { left: 16px; right: 16px; top: 70px; }
+
+    /* Formulário de criar usuário empilha */
+    .form-row-mobile {
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+
+    /* Paginação menor */
+    .pagination { flex-wrap: wrap; gap: 6px; }
+    .pagination .btn { padding: 8px 12px; }
+
+    /* Upload sidebar esconde texto */
+    .sidebar-footer .input-group label { font-size: 0.65rem; }
+}
+
+/* ============================================
+   RESPONSIVE — Small Mobile (≤480px)
+   ============================================ */
+@media (max-width: 480px) {
+    .stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .stat-card { padding: 12px; }
+    .stat-value { font-size: 1.2rem; }
+
+    .main { padding: 8px; padding-top: 66px; }
+    .card { padding: 12px; border-radius: var(--radius); }
+
+    /* Tabela de preços: ocultar colunas menos importantes */
+    .col-opcional { display: none; }
+
+    /* Page title menor */
+    .page-title { font-size: 1.1rem; }
 }
