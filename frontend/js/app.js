@@ -8,6 +8,20 @@ let ocorrencias = [];
 let saveTimers = {};
 
 // ============================================
+// SEGURANÇA — Sanitização XSS
+// ============================================
+/**
+ * Escapa HTML para prevenir XSS Stored via dados do arquivo .REM
+ * Converte < > " ' & em entidades HTML seguras
+ */
+function sanitize(str) {
+    if (str == null) return '';
+    const d = document.createElement('div');
+    d.appendChild(document.createTextNode(String(str)));
+    return d.innerHTML;
+}
+
+// ============================================
 // INIT
 // ============================================
 document.addEventListener('DOMContentLoaded', async () => {
@@ -236,21 +250,30 @@ function renderClientes(clientes) {
     };
 
     clientes.forEach(c => {
-        const endereco = c.rua + (c.numero ? ', ' + c.numero : '');
+        const enderecoRaw = (c.rua || '') + (c.numero ? ', ' + c.numero : '');
+        // Sanitizar TODOS os dados do .REM para prevenir XSS Stored
+        const sMatricula = sanitize(c.matricula);
+        const sNome     = sanitize(c.nome);
+        const sEndereco = sanitize(enderecoRaw);
+        const sBairro   = sanitize(c.bairro);
+        const sZona     = sanitize((c.zona || '').trim());
+        const sRota     = sanitize((c.rota || '').trim());
+        const catLabel  = sanitize(catLabels[c.categoria] || c.categoria);
+
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td data-label="Matrícula"><code>${c.matricula}</code></td>
+            <td data-label="Matrícula"><code>${sMatricula}</code></td>
             <td data-label="Cliente">
-                <div style="font-weight:600;font-size:0.85rem">${c.nome}</div>
-                <span class="badge badge-${c.categoria}">${catLabels[c.categoria] || c.categoria}</span>
+                <div style="font-weight:600;font-size:0.85rem">${sNome}</div>
+                <span class="badge badge-${sanitize(c.categoria)}">${catLabel}</span>
             </td>
             <td data-label="Endereço" class="endereco-cell">
-                <div>${endereco}</div>
-                <div class="info-small">${c.bairro || ''}</div>
+                <div>${sEndereco}</div>
+                <div class="info-small">${sBairro}</div>
             </td>
-            <td data-label="Zona"><code>${(c.zona || '').trim()}</code></td>
-            <td data-label="Rota"><code>${(c.rota || '').trim()}</code></td>
-            <td data-label="Leit. Ant." style="font-weight:600;color:#475569">${c.leitura_anterior}</td>
+            <td data-label="Zona"><code>${sZona}</code></td>
+            <td data-label="Rota"><code>${sRota}</code></td>
+            <td data-label="Leit. Ant." style="font-weight:600;color:#475569">${sanitize(c.leitura_anterior)}</td>
             <td data-label="Leit. Atual">
                 <input type="number" class="leitura-input" 
                     value="${c.leitura_atual !== null ? c.leitura_atual : ''}" 
@@ -262,7 +285,7 @@ function renderClientes(clientes) {
                     ${ocorrOptions}
                 </select>
             </td>
-            <td data-label="Consumo" class="consumo-cell" id="cons-${c.id}">${c.consumo}</td>
+            <td data-label="Consumo" class="consumo-cell" id="cons-${c.id}">${sanitize(c.consumo)}</td>
             <td data-label="Total" class="total-cell" id="tot-${c.id}">${fmtMoeda(c.valor_total)}</td>
             <td data-label="Imprimir">
                 <button class="btn btn-sm btn-outline" id="btn-print-${c.id}"
