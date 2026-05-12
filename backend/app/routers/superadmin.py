@@ -41,6 +41,7 @@ class NovaEmpresaRequest(BaseModel):
     max_leituristas: int = 5
     percentual_esgoto: float = 70.0
     consumo_minimo_m3: int = 10
+    logo_url: Optional[str] = None
 
 
 class AtualizarEmpresaRequest(BaseModel):
@@ -48,6 +49,7 @@ class AtualizarEmpresaRequest(BaseModel):
     max_leituristas: Optional[int] = None
     percentual_esgoto: Optional[float] = None
     consumo_minimo_m3: Optional[int] = None
+    logo_url: Optional[str] = None
 
 
 class UsuarioSuperOut(BaseModel):
@@ -179,6 +181,7 @@ async def criar_empresa(
         plano=data.plano, max_leituristas=data.max_leituristas,
         percentual_esgoto=data.percentual_esgoto,
         consumo_minimo_m3=data.consumo_minimo_m3,
+        logo_url=data.logo_url,
     )
     db.add(empresa)
     await db.flush()
@@ -229,6 +232,8 @@ async def update_empresa_config(
         empresa.percentual_esgoto = data.percentual_esgoto
     if data.consumo_minimo_m3 is not None:
         empresa.consumo_minimo_m3 = data.consumo_minimo_m3
+    if data.logo_url is not None:
+        empresa.logo_url = data.logo_url
     return {"detail": "Empresa atualizada com sucesso"}
 
 

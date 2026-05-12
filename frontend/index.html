@@ -1,51 +1,254 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="SAEMI SaaS - Sistema de Leitura de Água como Serviço. Gerencie leituras de hidrômetros, tarifas e faturamento.">
-    <title>SAEMI - Login</title>
-    <link rel="stylesheet" href="/css/style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="SAEMI SaaS - Sistema de Leitura de Água">
+<title id="page-title">SAEMI - Login</title>
+<link rel="stylesheet" href="/css/style.css">
+<style>
+.auth-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+    padding: 20px;
+}
+.auth-card {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 20px;
+    padding: 40px;
+    width: 100%;
+    max-width: 420px;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+}
+.auth-logo {
+    text-align: center;
+    margin-bottom: 32px;
+}
+.auth-logo img {
+    max-width: 180px;
+    max-height: 80px;
+    object-fit: contain;
+    margin-bottom: 12px;
+    border-radius: 8px;
+}
+.auth-logo h1 {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: #38bdf8;
+    margin: 0;
+}
+.auth-logo p {
+    color: #64748b;
+    font-size: 0.85rem;
+    margin-top: 4px;
+}
+.auth-logo .powered {
+    font-size: 0.72rem;
+    color: #334155;
+    margin-top: 8px;
+}
+.input-group {
+    margin-bottom: 16px;
+}
+.input-group label {
+    display: block;
+    font-size: 0.8rem;
+    color: #94a3b8;
+    margin-bottom: 6px;
+    font-weight: 500;
+}
+.input-group input {
+    width: 100%;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: #e2e8f0;
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    outline: none;
+    transition: .2s;
+    box-sizing: border-box;
+}
+.input-group input:focus {
+    border-color: #38bdf8;
+    background: rgba(56,189,248,0.06);
+}
+.btn-login {
+    width: 100%;
+    padding: 13px;
+    background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+    color: #0a0f1e;
+    border: none;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: .2s;
+}
+.btn-login:hover { opacity: 0.9; transform: translateY(-1px); }
+.btn-login:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.login-error {
+    display: none;
+    color: #f87171;
+    font-size: 0.82rem;
+    margin-bottom: 14px;
+    padding: 10px 14px;
+    background: rgba(239,68,68,0.1);
+    border: 1px solid rgba(239,68,68,0.2);
+    border-radius: 8px;
+}
+.auth-footer {
+    text-align: center;
+    margin-top: 24px;
+    font-size: 0.82rem;
+    color: #475569;
+}
+.auth-footer a { color: #38bdf8; text-decoration: none; }
+.skeleton {
+    background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.05) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 8px;
+    height: 60px;
+    width: 140px;
+    margin: 0 auto 12px;
+}
+@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+</style>
 </head>
 <body>
-    <div class="auth-page">
-        <div class="auth-card">
-            <div class="auth-logo">
-                <h1>💧 SAEMI</h1>
-                <p>Sistema de Leitura de Água</p>
+<div class="auth-page">
+    <div class="auth-card">
+        <div class="auth-logo">
+            <!-- Logo dinâmica: preenchida via JS -->
+            <div id="logo-skeleton" class="skeleton"></div>
+            <img id="empresa-logo" src="" alt="" style="display:none" onerror="this.style.display='none'">
+            <h1 id="empresa-nome" style="display:none">💧 SAEMI</h1>
+            <p id="empresa-sub">Sistema de Leitura de Água</p>
+            <div class="powered" id="powered-by" style="display:none">Powered by SAEMI SaaS</div>
+        </div>
+
+        <form onsubmit="handleLogin(event)">
+            <div class="input-group">
+                <label for="login-email">Email</label>
+                <input type="email" id="login-email" placeholder="seu@email.com" required autocomplete="email">
+            </div>
+            <div class="input-group">
+                <label for="login-senha">Senha</label>
+                <input type="password" id="login-senha" placeholder="••••••" required minlength="6" autocomplete="current-password">
             </div>
 
-            <form onsubmit="handleLogin(event)">
-                <div class="input-group">
-                    <label for="login-email">Email</label>
-                    <input type="email" id="login-email" placeholder="seu@email.com" required>
-                </div>
-                <div class="input-group">
-                    <label for="login-senha">Senha</label>
-                    <input type="password" id="login-senha" placeholder="••••••" required minlength="6">
-                </div>
+            <div class="login-error" id="login-error"></div>
 
-                <div id="login-error" class="hidden" style="color: var(--danger); font-size: 0.85rem; margin-bottom: 16px; padding: 10px; background: #fef2f2; border-radius: var(--radius-sm);"></div>
+            <button type="submit" id="login-btn" class="btn-login">Entrar</button>
+        </form>
 
-                <button type="submit" id="login-btn" class="btn btn-primary btn-lg" style="width: 100%; justify-content: center;">
-                    Entrar
-                </button>
-            </form>
-
-            <div class="auth-footer">
-                Ainda não tem conta? <a href="/register.html">Cadastre sua empresa</a>
-            </div>
+        <div class="auth-footer" id="auth-footer">
+            Ainda não tem conta? <a href="/register.html">Cadastre sua empresa</a>
         </div>
     </div>
+</div>
 
-    <script src="/js/api.js"></script>
-    <script src="/js/utils.js"></script>
-    <script src="/js/auth.js"></script>
-    <script>
-        // Se já logado, redirecionar
-        if (api.isLoggedIn()) {
-            window.location.href = '/app.html';
+<script src="/js/api.js"></script>
+<script>
+// Redirecionar se já logado
+if (api.isLoggedIn()) {
+    window.location.href = '/app.html';
+}
+
+// ── Detectar empresa pelo slug na URL ──
+// Ex: /?empresa=dae-mirassol  ou  /?slug=dae-mirassol
+const params = new URLSearchParams(location.search);
+const slug = params.get('empresa') || params.get('slug') || detectSubdomain();
+
+function detectSubdomain() {
+    // Se hostname for dae-mirassol.leitura.com.br, extrai "dae-mirassol"
+    const host = location.hostname;
+    const parts = host.split('.');
+    // Se tiver 3+ partes e não for www, usa o primeiro segmento
+    if (parts.length >= 3 && parts[0] !== 'www' && parts[0] !== 'leitura') {
+        return parts[0];
+    }
+    return null;
+}
+
+async function carregarEmpresa(slug) {
+    const skeletonEl = document.getElementById('logo-skeleton');
+    const logoEl = document.getElementById('empresa-logo');
+    const nomeEl = document.getElementById('empresa-nome');
+    const poweredEl = document.getElementById('powered-by');
+
+    try {
+        const resp = await fetch(`/api/v1/empresa/public/${slug}`);
+        if (!resp.ok) throw new Error('Empresa não encontrada');
+        const emp = await resp.json();
+
+        // Atualizar título da página
+        document.getElementById('page-title').textContent = `${emp.nome} - Login`;
+
+        skeletonEl.style.display = 'none';
+
+        if (emp.logo_url) {
+            logoEl.src = emp.logo_url;
+            logoEl.alt = emp.nome;
+            logoEl.style.display = 'block';
+            poweredEl.style.display = 'block';
+        } else {
+            // Sem logo: mostrar nome em texto
+            nomeEl.textContent = `💧 ${emp.nome}`;
+            nomeEl.style.display = 'block';
+            poweredEl.style.display = 'block';
         }
-    </script>
+
+        // Esconder link de cadastro (empresa específica não deve exibir)
+        document.getElementById('auth-footer').style.display = 'none';
+
+    } catch (e) {
+        // Slug inválido ou sem empresa: modo padrão SAEMI
+        skeletonEl.style.display = 'none';
+        nomeEl.textContent = '💧 SAEMI';
+        nomeEl.style.display = 'block';
+    }
+}
+
+// Carregar empresa se tiver slug
+if (slug) {
+    carregarEmpresa(slug);
+} else {
+    // Modo padrão: logo SAEMI
+    document.getElementById('logo-skeleton').style.display = 'none';
+    document.getElementById('empresa-nome').textContent = '💧 SAEMI';
+    document.getElementById('empresa-nome').style.display = 'block';
+}
+
+// ── Login ──
+async function handleLogin(e) {
+    e.preventDefault();
+    const btn = document.getElementById('login-btn');
+    const errEl = document.getElementById('login-error');
+    errEl.style.display = 'none';
+    btn.disabled = true;
+    btn.textContent = 'Entrando...';
+
+    try {
+        await api.login(
+            document.getElementById('login-email').value,
+            document.getElementById('login-senha').value
+        );
+        window.location.href = '/app.html';
+    } catch (err) {
+        errEl.textContent = err.message || 'Email ou senha inválidos';
+        errEl.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Entrar';
+    }
+}
+</script>
 </body>
 </html>

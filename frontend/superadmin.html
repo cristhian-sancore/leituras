@@ -136,6 +136,7 @@ tr:hover td{background:rgba(255,255,255,0.02)}
             <div class="ig"><label>% Esgoto</label><input id="c-esgoto" type="number" value="70" min="0" max="100" step="0.5"></div>
             <div class="ig"><label>Consumo Mínimo (m³)</label><input id="c-minimo" type="number" value="10" min="1"></div>
           </div>
+          <div class="ig" style="margin-bottom:20px"><label>🖼️ URL da Logo (opcional)</label><input id="c-logo" placeholder="https://sua-empresa.com/logo.png"></div>
           <button type="submit" class="btn btn-primary">Criar Empresa</button>
         </form>
       </div>
@@ -167,9 +168,16 @@ tr:hover td{background:rgba(255,255,255,0.02)}
       </div>
       <div class="ig"><label>Max Leituristas</label><input id="edit-max" type="number" min="1"></div>
     </div>
-    <div class="form-grid" style="margin-bottom:20px">
+    <div class="form-grid" style="margin-bottom:12px">
       <div class="ig"><label>% Esgoto</label><input id="edit-esgoto" type="number" min="0" max="100" step="0.5"></div>
       <div class="ig"><label>Consumo Mínimo (m³)</label><input id="edit-minimo" type="number" min="1"></div>
+    </div>
+    <div class="ig" style="margin-bottom:20px">
+      <label>🖼️ URL da Logo</label>
+      <input id="edit-logo" placeholder="https://... ou deixe em branco para manter">
+      <div id="edit-logo-preview" style="margin-top:8px;display:none">
+        <img id="edit-logo-img" src="" style="max-height:50px;border-radius:6px;">
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
@@ -266,7 +274,7 @@ async function loadEmpresas() {
         <td style="text-align:center">${e.percentual_esgoto}%</td>
         <td><span class="${e.ativa?'dot-on':'dot-off'}"></span>${e.ativa?'Ativa':'Bloqueada'}</td>
         <td style="display:flex;gap:6px;flex-wrap:wrap">
-          <button class="btn btn-sm btn-outline" onclick="openEdit(${e.id},'${e.plano}',${e.max_leituristas},${e.percentual_esgoto},${e.consumo_minimo_m3})">⚙️</button>
+          <button class="btn btn-sm btn-outline" onclick="openEdit(${e.id},'${e.plano}',${e.max_leituristas},${e.percentual_esgoto},${e.consumo_minimo_m3},'${e.logo_url||''}')">⚙️</button>
           <button class="btn btn-sm btn-outline" onclick="verUsuarios(${e.id})">👥</button>
           <button class="btn btn-sm ${e.ativa?'btn-danger':'btn-success'}" onclick="toggleStatus(${e.id},${!e.ativa})">
             ${e.ativa?'Bloquear':'Ativar'}
@@ -301,6 +309,7 @@ async function criarEmpresa(e) {
       max_leituristas: parseInt(document.getElementById('c-max').value),
       percentual_esgoto: parseFloat(document.getElementById('c-esgoto').value),
       consumo_minimo_m3: parseInt(document.getElementById('c-minimo').value),
+      logo_url: document.getElementById('c-logo').value||null,
     })});
     toast('Empresa criada com sucesso!');
     document.getElementById('form-criar').reset();
@@ -310,12 +319,17 @@ async function criarEmpresa(e) {
 }
 
 // ---------- EDITAR CONFIG ----------
-function openEdit(id, plano, max, esgoto, minimo) {
+function openEdit(id, plano, max, esgoto, minimo, logo) {
   document.getElementById('edit-id').value = id;
   document.getElementById('edit-plano').value = plano;
   document.getElementById('edit-max').value = max;
   document.getElementById('edit-esgoto').value = esgoto;
   document.getElementById('edit-minimo').value = minimo;
+  document.getElementById('edit-logo').value = logo||'';
+  // Preview da logo
+  const prev = document.getElementById('edit-logo-preview');
+  const img = document.getElementById('edit-logo-img');
+  if(logo){img.src=logo;prev.style.display='block';}else{prev.style.display='none';}
   document.getElementById('modal-edit').classList.add('open');
 }
 function closeModal(){document.getElementById('modal-edit').classList.remove('open');}
@@ -328,6 +342,7 @@ async function salvarConfig() {
       max_leituristas: parseInt(document.getElementById('edit-max').value),
       percentual_esgoto: parseFloat(document.getElementById('edit-esgoto').value),
       consumo_minimo_m3: parseInt(document.getElementById('edit-minimo').value),
+      logo_url: document.getElementById('edit-logo').value||null,
     })});
     toast('Configurações salvas!');
     closeModal();
