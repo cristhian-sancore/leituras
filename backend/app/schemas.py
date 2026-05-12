@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
 from datetime import datetime
 
@@ -12,7 +12,16 @@ class EmpresaRegister(BaseModel):
     cnpj: Optional[str] = None
     admin_nome: str = Field(..., min_length=2, max_length=100)
     admin_email: str = Field(..., min_length=5, max_length=200)
-    admin_senha: str = Field(..., min_length=8, max_length=100, pattern=r"^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*?&]{8,}$", description="Mínimo 8 caracteres com letras e números")
+    admin_senha: str = Field(..., min_length=8, max_length=100, description="Mínimo 8 caracteres com letras e números")
+
+    @field_validator("admin_senha")
+    @classmethod
+    def validar_senha(cls, v: str) -> str:
+        if not any(c.isalpha() for c in v):
+            raise ValueError("Senha deve conter pelo menos uma letra")
+        if not any(c.isdigit() for c in v):
+            raise ValueError("Senha deve conter pelo menos um número")
+        return v
 
 
 class LoginRequest(BaseModel):
