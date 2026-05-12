@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SAEMI - Impressão LIS</title>
+<link rel="stylesheet" href="/css/style.css">
+<style>
+body{background:#0f172a;color:#e2e8f0;font-family:'Inter',sans-serif}
+.print-layout{display:grid;grid-template-columns:420px 1fr;gap:24px;padding:24px;min-height:100vh}
+.panel{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:20px}
+.panel-title{font-weight:700;font-size:1rem;margin-bottom:16px;color:#38bdf8}
+.ig{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+.ig label{font-size:0.75rem;color:#64748b}
+.ig input,.ig select{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#e2e8f0;padding:8px 12px;border-radius:8px;font-size:0.85rem}
+.btn{padding:10px 20px;border-radius:8px;border:none;cursor:pointer;font-weight:600;font-size:0.85rem;transition:.15s}
+.btn-print{background:#38bdf8;color:#0a0f1e;width:100%}
+.btn-print:hover{background:#0ea5e9}
+.btn-test{background:rgba(56,189,248,0.15);color:#38bdf8;border:1px solid rgba(56,189,248,0.3);width:100%;margin-top:8px}
+.btn-back{background:transparent;color:#64748b;border:1px solid rgba(255,255,255,0.1);margin-bottom:16px}
+.status-ok{color:#34d399;font-size:0.8rem}
+.status-err{color:#f87171;font-size:0.8rem}
+.status-loading{color:#fbbf24;font-size:0.8rem}
+
+/* ── PREVIEW 80mm ── */
+.receipt-wrap{display:flex;justify-content:center;padding:12px 0}
+.receipt{
+  background:white;color:#111;
+  width:302px; /* 80mm @ 96dpi */
+  padding:12px;font-family:'Courier New',monospace;
+  font-size:11px;line-height:1.4;
+  border-radius:4px;box-shadow:0 8px 32px rgba(0,0,0,0.5)
+}
+.rec-center{text-align:center}
+.rec-title{font-size:13px;font-weight:900;text-align:center;margin:4px 0}
+.rec-sep{border:none;border-top:1px dashed #333;margin:6px 0}
+.rec-row{display:flex;justify-content:space-between;margin:2px 0}
+.rec-row.bold{font-weight:900;font-size:12px}
+.rec-row.total{font-weight:900;font-size:14px;margin-top:4px}
+.rec-bar{text-align:center;margin:8px 0;letter-spacing:2px;font-size:20px;font-family:monospace}
+.printer-list{margin-top:8px;display:flex;flex-direction:column;gap:6px}
+.printer-item{padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);cursor:pointer;font-size:0.8rem;display:flex;justify-content:space-between}
+.printer-item:hover,.printer-item.selected{border-color:#38bdf8;background:rgba(56,189,248,0.08)}
+.printer-item .pname{font-weight:600;color:#e2e8f0}
+.printer-item .puid{color:#64748b;font-size:0.72rem}
+.toast{position:fixed;bottom:20px;right:20px;background:#1e293b;border:1px solid rgba(255,255,255,0.1);padding:12px 20px;border-radius:10px;font-size:0.85rem;display:none;z-index:999}
+.toast.show{display:block}.toast.err{color:#f87171;border-color:#f87171}
+.toast.ok{color:#34d399;border-color:#34d399}
+</style>
+</head>
+<body>
+
+<div class="print-layout">
+
+  <!-- PAINEL ESQUERDO: config -->
+  <div>
+    <button class="btn btn-back" onclick="history.back()">← Voltar</button>
+
+    <!-- Impressora -->
+    <div class="panel" style="margin-bottom:16px">
+      <div class="panel-title">🖨️ Impressora Zebra ZQ521e</div>
+      <div id="printer-status" class="status-loading">Buscando impressoras...</div>
+      <div class="printer-list" id="printer-list"></div>
+      <button class="btn btn-test" onclick="buscarImpressoras()">🔄 Atualizar Impressoras</button>
+      <button class="btn btn-test" onclick="imprimirTeste()" style="margin-top:4px">📄 Imprimir Teste</button>
+    </div>
+
+    <!-- Ações -->
+    <div class="panel">
+      <div class="panel-title">🖨️ Imprimir Conta</div>
+      <div id="client-info" style="font-size:0.85rem;color:#94a3b8;margin-bottom:16px">
+        Nenhum cliente selecionado.
+      </div>
+      <button class="btn btn-print" id="btn-imprimir" onclick="imprimirConta()" disabled>
+        🖨️ Imprimir Agora
+      </button>
+      <div style="margin-top:12px;font-size:0.75rem;color:#475569">
+        ⚠️ Instale o <strong>Zebra Browser Print</strong> no tablet/notebook para conectar via Bluetooth.
+        <br><br>
+        <a href="https://www.zebra.com/us/en/support-downloads/printer-software/browser-print.html" target="_blank" style="color:#38bdf8">Download Browser Print →</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAINEL DIREITO: preview -->
+  <div class="panel">
+    <div class="panel-title">👁️ Preview da Impressão (80mm)</div>
+    <div class="receipt-wrap">
+      <div class="receipt" id="receipt-preview">
+        <!-- preenchido por JS -->
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="/js/api.js"></script>
+<script src="/js/zebra-print.js"></script>
+<script>
+let selectedPrinter = null;
+let dadosImpressao = null;
+
+// ── Lê dados da URL (passados pelo app.js) ──
+function lerParams() {
+  const p = new URLSearchParams(location.search);
+  return {
+    empresa_nome: p.get('empresa') || 'SAEMI',
+    empresa_cnpj: p.get('cnpj') || '',
+    mes_ref: p.get('mes') || '',
+    data_leitura: p.get('data') || new Date().toLocaleDateString('pt-BR'),
+    vencimento: p.get('venc') || '',
+    matricula: p.get('mat') || '',
+    nome: p.get('nome') || '',
+    endereco: p.get('end') || '',
+    bairro: p.get('bairro') || '',
+    rota: p.get('rota') || '',
+    setor: p.get('setor') || '',
+    leit_anterior: p.get('ant') || '0',
+    leit_atual: p.get('atu') || '0',
+    consumo: p.get('cons') || '0',
+    ocorrencia: p.get('ocorr') || '',
+    valor_agua: parseFloat(p.get('agua') || '0'),
+    valor_esgoto: parseFloat(p.get('esgoto') || '0'),
+    valor_lixo: parseFloat(p.get('lixo') || '0'),
+    valor_total: parseFloat(p.get('total') || '0'),
+    categoria: p.get('cat') || '',
+    leiturista: p.get('leit') || '',
+  };
+}
+
+function fmtR(v) {
+  return 'R$ ' + parseFloat(v||0).toFixed(2).replace('.',',');
+}
+
+// ── Renderiza o preview visual ──
+function renderPreview(d) {
+  const el = document.getElementById('receipt-preview');
+  el.innerHTML = `
+    <div class="rec-center" style="font-weight:900;font-size:13px">${d.empresa_nome}</div>
+    ${d.empresa_cnpj ? `<div class="rec-center" style="font-size:10px">CNPJ: ${d.empresa_cnpj}</div>` : ''}
+    <div class="rec-title">CONTA DE ÁGUA</div>
+    <div class="rec-center" style="font-size:10px">Referência: ${d.mes_ref}</div>
+    <hr class="rec-sep">
+
+    <div class="rec-row"><span>Matrícula:</span><span><strong>${d.matricula}</strong></span></div>
+    <div style="font-size:10px;margin:2px 0"><strong>${d.nome}</strong></div>
+    <div style="font-size:10px;color:#555">${d.endereco}</div>
+    <div style="font-size:10px;color:#555">${d.bairro}</div>
+    <div class="rec-row" style="font-size:10px"><span>Rota: ${d.rota}</span><span>Setor: ${d.setor}</span></div>
+    <div style="font-size:10px;color:#555">Cat.: ${d.categoria}</div>
+    <hr class="rec-sep">
+
+    <div style="font-weight:700;text-align:center;margin:3px 0">LEITURAS</div>
+    <div class="rec-row"><span>Anterior:</span><span><strong>${d.leit_anterior}</strong></span></div>
+    <div class="rec-row"><span>Atual:</span><span><strong>${d.leit_atual}</strong></span></div>
+    <div class="rec-row bold"><span>Consumo:</span><span>${d.consumo} m³</span></div>
+    ${d.ocorrencia ? `<div class="rec-row" style="font-size:10px"><span>Ocorrência:</span><span>${d.ocorrencia}</span></div>` : ''}
+    <div style="font-size:10px;color:#555">Data: ${d.data_leitura}</div>
+    <hr class="rec-sep">
+
+    <div style="font-weight:700;text-align:center;margin:3px 0">VALORES</div>
+    <div class="rec-row"><span>Água:</span><span>${fmtR(d.valor_agua)}</span></div>
+    <div class="rec-row"><span>Esgoto:</span><span>${fmtR(d.valor_esgoto)}</span></div>
+    ${d.valor_lixo > 0 ? `<div class="rec-row"><span>Lixo:</span><span>${fmtR(d.valor_lixo)}</span></div>` : ''}
+    <hr class="rec-sep">
+    <div class="rec-row total"><span>TOTAL A PAGAR:</span><span>${fmtR(d.valor_total)}</span></div>
+    ${d.vencimento ? `<div class="rec-row" style="font-size:10px"><span>Vencimento:</span><span><strong>${d.vencimento}</strong></span></div>` : ''}
+    <hr class="rec-sep">
+
+    <div class="rec-bar">|||||||||||||||</div>
+    <div class="rec-center" style="font-size:10px;letter-spacing:1px">${d.matricula}</div>
+    <hr class="rec-sep">
+    <div class="rec-center" style="font-size:9px;color:#888">Leiturista: ${d.leiturista}</div>
+    <div class="rec-center" style="font-size:9px;color:#888">Sistema SAEMI - Leitura Digital</div>
+  `;
+
+  // Preencher info cliente no painel
+  document.getElementById('client-info').innerHTML =
+    `<strong>${d.nome}</strong><br>Mat. ${d.matricula} | Consumo: ${d.consumo} m³ | <strong>${fmtR(d.valor_total)}</strong>`;
+}
+
+// ── Buscar impressoras Zebra ──
+async function buscarImpressoras() {
+  const statusEl = document.getElementById('printer-status');
+  const listEl = document.getElementById('printer-list');
+  statusEl.className = 'status-loading';
+  statusEl.textContent = 'Buscando...';
+  listEl.innerHTML = '';
+  try {
+    const devs = await ZebraPrint.getDevices();
+    if (!devs.length) {
+      statusEl.className = 'status-err';
+      statusEl.textContent = '❌ Nenhuma impressora Zebra encontrada';
+      return;
+    }
+    statusEl.className = 'status-ok';
+    statusEl.textContent = `✅ ${devs.length} impressora(s) encontrada(s)`;
+    devs.forEach((d, i) => {
+      const item = document.createElement('div');
+      item.className = 'printer-item' + (i === 0 ? ' selected' : '');
+      item.innerHTML = `<div><div class="pname">🖨️ ${d.name || 'Zebra ZQ521e'}</div><div class="puid">${d.uid || d.connection || ''}</div></div><span style="color:#34d399">●</span>`;
+      item.onclick = () => {
+        document.querySelectorAll('.printer-item').forEach(x => x.classList.remove('selected'));
+        item.classList.add('selected');
+        selectedPrinter = d;
+        document.getElementById('btn-imprimir').disabled = false;
+      };
+      listEl.appendChild(item);
+      if (i === 0) {
+        selectedPrinter = d;
+        document.getElementById('btn-imprimir').disabled = false;
+      }
+    });
+  } catch (e) {
+    statusEl.className = 'status-err';
+    statusEl.textContent = '❌ ' + e.message;
+  }
+}
+
+// ── Imprimir conta ──
+async function imprimirConta() {
+  if (!selectedPrinter) { toast('Selecione uma impressora', true); return; }
+  if (!dadosImpressao) { toast('Nenhum dado de impressão', true); return; }
+  const btn = document.getElementById('btn-imprimir');
+  btn.textContent = '⏳ Enviando...';
+  btn.disabled = true;
+  try {
+    await ZebraPrint.imprimirConta(dadosImpressao, selectedPrinter);
+    toast('✅ Conta enviada para impressão!');
+  } catch (e) {
+    toast('❌ ' + e.message, true);
+  } finally {
+    btn.textContent = '🖨️ Imprimir Agora';
+    btn.disabled = false;
+  }
+}
+
+// ── Imprimir teste ──
+async function imprimirTeste() {
+  if (!selectedPrinter) { toast('Selecione uma impressora', true); return; }
+  const zpl = `^XA^PW560^LL0^FO10,20^A0N,24,24^FB540,1,,C^FDSAEMI - TESTE DE IMPRESSAO^FS^FO10,55^GB540,2,2^FS^FO10,65^A0N,20,20^FB540,1,,C^FDZebra ZQ521e OK!^FS^FO10,92^A0N,16,16^FB540,1,,C^FD${new Date().toLocaleString('pt-BR')}^FS^XZ`;
+  try {
+    await ZebraPrint.sendZPL(zpl, selectedPrinter);
+    toast('✅ Teste enviado!');
+  } catch (e) {
+    toast('❌ ' + e.message, true);
+  }
+}
+
+function toast(msg, err = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + (err ? 'err' : 'ok');
+  setTimeout(() => t.className = 'toast', 3000);
+}
+
+// ── INIT ──
+dadosImpressao = lerParams();
+renderPreview(dadosImpressao);
+buscarImpressoras();
+</script>
+</body>
+</html>

@@ -227,6 +227,14 @@ function renderClientes(clientes) {
             </td>
             <td class="consumo-cell" id="cons-${c.id}">${c.consumo}</td>
             <td class="total-cell" id="tot-${c.id}">${fmtMoeda(c.valor_total)}</td>
+            <td>
+                <button class="btn btn-sm btn-outline" id="btn-print-${c.id}"
+                    onclick="abrirImpressao(${c.id})"
+                    title="Imprimir conta"
+                    ${c.leitura_atual === null ? 'disabled style="opacity:0.4"' : ''}>
+                    🖨️
+                </button>
+            </td>
         `;
         tbody.appendChild(tr);
 
@@ -488,6 +496,34 @@ async function criarUsuario(e) {
     } catch (err) {
         showToast(err.message, 'error');
     }
+}
+
+// ============================================
+// IMPRESSÃO ZEBRA LIS
+// ============================================
+function abrirImpressao(clienteId) {
+    const user = api.getUser();
+    const imp = currentImportacao;
+    if (!imp) return;
+
+    // Coletar dados do DOM
+    const leitAtual = document.getElementById(`leit-${clienteId}`)?.value || '0';
+    const consumo = document.getElementById(`cons-${clienteId}`)?.textContent || '0';
+    const total = document.getElementById(`tot-${clienteId}`)?.textContent?.replace(/[^0-9,]/g,'').replace(',','.') || '0';
+    const ocorr = document.getElementById(`ocorr-${clienteId}`)?.value || '';
+
+    // Montar URL com parâmetros
+    const params = new URLSearchParams({
+        mat: clienteId,
+        mes: imp.mes_referencia || '',
+        data: new Date().toLocaleDateString('pt-BR'),
+        cons: consumo,
+        total: total,
+        ocorr: ocorr,
+        leit: user?.nome || '',
+    });
+
+    window.open(`/print-conta.html?${params}`, '_blank', 'width=900,height=700');
 }
 
 async function desativarUsuario(id) {
