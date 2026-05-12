@@ -44,7 +44,15 @@ async def gerar_ret(
         select(Leitura).where(
             Leitura.importacao_id == imp_id,
             Leitura.empresa_id == current_user.empresa_id,
-            Leitura.leitura_atual.isnot(None),
+            # Incluir: leituras com valor numérico OU com ocorrência especial (≠ 0000)
+            # Ocorrência especial = leiturista registrou impedimento sem poder ler o hidrômetro
+            (
+                Leitura.leitura_atual.isnot(None) |
+                (
+                    Leitura.ocorrencia_codigo.isnot(None) &
+                    (Leitura.ocorrencia_codigo != '0000')
+                )
+            ),
         )
     )
     leituras = result.scalars().all()

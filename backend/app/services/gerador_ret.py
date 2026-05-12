@@ -119,7 +119,14 @@ def gerar_arquivo_ret(
     for item in clientes_leituras:
         cliente = item['cliente']
         leitura = item['leitura']
-        if leitura.get('leitura_atual') is not None:
+        ocorrencia = leitura.get('ocorrencia_codigo', '') or '0000'
+        tem_leitura = leitura.get('leitura_atual') is not None
+        tem_ocorrencia_especial = ocorrencia and ocorrencia != '0000'
+
+        # Incluir no .RET se:
+        # 1. Tem leitura numérica digitada, OU
+        # 2. Tem ocorrência especial registrada (impedimento, hidrômetro com problema, etc.)
+        if tem_leitura or tem_ocorrencia_especial:
             line = gerar_linha_d01(cliente, leitura, data_coleta, hora_coleta)
             lines.append(line)
 

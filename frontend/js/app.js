@@ -291,7 +291,7 @@ function renderClientes(clientes) {
                 <button class="btn btn-sm btn-outline" id="btn-print-${c.id}"
                     onclick="abrirImpressao(${c.id})"
                     title="Imprimir conta"
-                    ${c.leitura_atual === null ? 'disabled style="opacity:0.4"' : ''}>
+                    ${(c.leitura_atual === null && (!c.ocorrencia_codigo || c.ocorrencia_codigo === '0000')) ? 'disabled style="opacity:0.4"' : ''}>
                     🖨️
                 </button>
             </td>
@@ -326,6 +326,10 @@ async function salvarLeitura(clienteId) {
 
     const leituraAtual = leituraInput.value ? parseInt(leituraInput.value) : null;
     const ocorrencia = ocorrSelect ? ocorrSelect.value : '';
+    const temOcorrenciaEspecial = ocorrencia && ocorrencia !== '0000';
+
+    // Não salvar se: sem leitura E sem ocorrência especial (nada a salvar)
+    if (leituraAtual === null && !temOcorrenciaEspecial) return;
 
     // Capturar GPS se disponível
     let latitude = null, longitude = null;
@@ -347,11 +351,25 @@ async function salvarLeitura(clienteId) {
             longitude,
         });
 
-        // Atualizar UI
+        // Atualizar UI — células de consumo e total
         const consCell = document.getElementById(`cons-${clienteId}`);
         const totCell = document.getElementById(`tot-${clienteId}`);
         consCell.textContent = result.consumo;
         totCell.textContent = fmtMoeda(result.valor_total);
+
+        // Habilitar botão de impressão: quando tem leitura OU quando ocorrência especial foi salva
+        const btnPrint = document.getElementById(`btn-print-${clienteId}`);
+        if (btnPrint) {
+            const ocorrAtual = ocorrSelect ? ocorrSelect.value : '';
+            const temOcorrEspecial = ocorrAtual && ocorrAtual !== '0000';
+            if (leituraAtual !== null || temOcorrEspecial) {
+                btnPrint.disabled = false;
+                btnPrint.style.opacity = '1';
+            } else {
+                btnPrint.disabled = true;
+                btnPrint.style.opacity = '0.4';
+            }
+        }
 
         // Alertas de consumo alto/baixo/zero
         consCell.style.color = '';
