@@ -132,7 +132,8 @@ async function loadDashboard() {
         document.getElementById('dash-total-users').textContent = data.total_usuarios;
 
         if (data.importacao_ativa) {
-            currentImportacao = data.importacao_ativa;
+            // Só define currentImportacao se ainda não existe (não sobrescreve em operações de distribuição)
+            if (!currentImportacao) currentImportacao = data.importacao_ativa;
             document.getElementById('dash-imp-nome').textContent = data.importacao_ativa.nome_arquivo;
             document.getElementById('dash-imp-status').textContent = data.importacao_ativa.status;
             document.getElementById('imp-active-info').classList.remove('hidden');
@@ -216,35 +217,60 @@ async function handleUpload() {
 // ============================================
 // LEITURAS
 // ============================================
-async function loadLeituras() {
-    if (!currentImportacao) {
-        // Tentar carregar importação ativa
-        try {
-            const imps = await api.listImportacoes();
-            const ativa = imps.find(i => i.status === 'ativo');
-            if (ativa) currentImportacao = ativa;
-            else return;
-        } catch { return; }
-    }
+// Lista global de todas as importações ativas
+let _impsAtivas = [];
 
+async function loadLeituras() {
     try {
-        // Carregar ocorrências
+        // Buscar TODAS as importações ativas
+        const imps = await api.listImportacoes();
+        _impsAtivas = imps.filter(i => i.status === 'ativo');
+
+        if (!_impsAtivas.length) {
+            document.getElementById('stat-total').textContent = '0';
+            document.getElementById('stat-pend').textContent = '0';
+            document.getElementById('stat-consumo').textContent = '0 m³';
+            renderClientes([]);
+            return;
+        }
+
+        // Usar a primeira para referência (ocorrências, mês, etc.)
+        currentImportacao = _impsAtivas[0];
+
+        // Carregar ocorrências da primeira importação (são iguais entre arquivos do mesmo mês)
         ocorrencias = await api.getOcorrencias(currentImportacao.id);
 
-        // Carregar stats
-        const stats = await api.getStats(currentImportacao.id);
-        document.getElementById('stat-total').textContent = stats.total_clientes;
-        document.getElementById('stat-pend').textContent = stats.leituras_pendentes;
-        document.getElementById('stat-consumo').textContent = fmtNumero(stats.consumo_total) + ' m³';
+        // Agregar stats de TODAS as importações ativas
+        let totalClientes = 0, totalPendentes = 0, totalConsumo = 0;
+        await Promise.all(_impsAtivas.map(async imp => {
+            try {
+                const s = await api.getStats(imp.id);
+                totalClientes += (s.total_clientes || 0);
+                totalPendentes += (s.leituras_pendentes || 0);
+                totalConsumo += (s.consumo_total || 0);
+            } catch {}
+        }));
+        document.getElementById('stat-total').textContent = totalClientes;
+        document.getElementById('stat-pend').textContent = totalPendentes;
+        document.getElementById('stat-consumo').textContent = fmtNumero(totalConsumo) + ' m³';
 
-        // Carregar clientes
+        // Agregar clientes de TODAS as importações ativas
         const busca = document.getElementById('search-input')?.value || '';
-        const clientes = await api.getClientes(currentImportacao.id, busca);
-        renderClientes(clientes);
+        let allClientes = [];
+        await Promise.all(_impsAtivas.map(async imp => {
+            try {
+                const clientes = await api.getClientes(imp.id, busca);
+                // Guardar imp_id em cada cliente para contexto de impressão
+                clientes.forEach(c => c._impId = imp.id);
+                allClientes = allClientes.concat(clientes);
+            } catch {}
+        }));
+        renderClientes(allClientes);
     } catch (err) {
         showToast(err.message, 'error');
     }
 }
+
 
 function renderClientes(clientes) {
     const tbody = document.getElementById('lista-clientes');
@@ -418,12 +444,21 @@ async function salvarLeitura(clienteId) {
 }
 
 async function updateStats() {
-    if (!currentImportacao) return;
+    if (!_impsAtivas.length && !currentImportacao) return;
     try {
-        const stats = await api.getStats(currentImportacao.id);
-        document.getElementById('stat-total').textContent = stats.total_clientes;
-        document.getElementById('stat-pend').textContent = stats.leituras_pendentes;
-        document.getElementById('stat-consumo').textContent = fmtNumero(stats.consumo_total) + ' m³';
+        const lista = _impsAtivas.length ? _impsAtivas : [currentImportacao];
+        let totalClientes = 0, totalPendentes = 0, totalConsumo = 0;
+        await Promise.all(lista.map(async imp => {
+            try {
+                const s = await api.getStats(imp.id);
+                totalClientes += (s.total_clientes || 0);
+                totalPendentes += (s.leituras_pendentes || 0);
+                totalConsumo += (s.consumo_total || 0);
+            } catch {}
+        }));
+        document.getElementById('stat-total').textContent = totalClientes;
+        document.getElementById('stat-pend').textContent = totalPendentes;
+        document.getElementById('stat-consumo').textContent = fmtNumero(totalConsumo) + ' m³';
     } catch { /* silent */ }
 }
 
