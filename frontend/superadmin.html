@@ -71,7 +71,7 @@ tr:hover td{background:rgba(255,255,255,0.02)}
     <div class="sa-nav" onclick="showTab('tab-criar',this)">➕ Nova Empresa</div>
     <div class="sa-nav" onclick="showTab('tab-audit',this)">📋 Auditoria</div>
     <div style="margin-top:auto">
-      <div class="sa-nav" onclick="location.href='/app.html'">← App Principal</div>
+      <div class="sa-nav" onclick="location.href='/app'">← App Principal</div>
       <div class="sa-nav" onclick="logout()" style="color:#f87171">🚪 Sair</div>
     </div>
   </aside>
@@ -241,7 +241,7 @@ function logout() {
 async function init() {
   if(!token){location.href='/';return;}
   const user = JSON.parse(localStorage.getItem('saemi_user')||'{}');
-  if(user.role!=='superadmin'){alert('Acesso negado!');location.href='/app.html';return;}
+  if(user.role!=='superadmin'){alert('Acesso negado!');location.href='/app';return;}
   document.getElementById('sa-user-badge').textContent = '👤 '+user.nome;
   await loadStats();
   await loadEmpresas();

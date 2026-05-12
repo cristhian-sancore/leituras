@@ -166,7 +166,7 @@
             const data = await res.json();
             if (data.needs_setup) {
                 // Sistema sem superadmin → ir para a tela de primeiro acesso
-                window.location.replace('/setup.html');
+                window.location.replace('/setup');
                 return; // Para a execução aqui
             }
         } else {
@@ -180,10 +180,9 @@
     // ── PASSO 2: Se já logado, redirecionar ──
     if (api.isLoggedIn()) {
         const user = api.getUser();
-        if (user && user.role === 'superadmin') {
-            window.location.href = '/superadmin.html';
+            window.location.href = '/superadmin';
         } else {
-            window.location.href = '/app.html';
+            window.location.href = '/app';
         }
         return;
     }
@@ -262,9 +261,9 @@ async function handleLogin(e) {
         api.setUser(data.user);
 
         if (data.user && data.user.role === 'superadmin') {
-            window.location.href = '/superadmin.html';
+            window.location.href = '/superadmin';
         } else {
-            window.location.href = '/app.html';
+            window.location.href = '/app';
         }
     } catch (err) {
         errEl.textContent = err.message || 'Email ou senha inválidos';

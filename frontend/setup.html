@@ -194,7 +194,7 @@
       <div class="success-icon">✅</div>
       <h2>Pronto! Sistema configurado.</h2>
       <p id="success-msg">Redirecionando para o painel de administração...</p>
-      <a href="/superadmin.html" class="btn-goto">👑 Ir para o Painel Admin</a>
+      <a href="/superadmin" class="btn-goto">👑 Ir para o Painel Admin</a>
       <div class="next-steps">
         <p>📋 Próximos passos no painel:</p>
         <ul>
@@ -317,7 +317,7 @@ async function handleSetup(e) {
       `Conta <strong>${email}</strong> criada como Administrador Geral.<br>
        Você já está logado! Redirecionando para o painel...`;
 
-    setTimeout(() => window.location.href = '/superadmin.html', 2500);
+    setTimeout(() => window.location.href = '/superadmin', 2500);
   } catch (err) {
     step(1);
     showAlert('❌ ' + err.message);

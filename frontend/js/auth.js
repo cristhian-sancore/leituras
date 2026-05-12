@@ -18,7 +18,7 @@ async function handleLogin(e) {
         const data = await api.login(email, senha);
         api.setTokens(data.access_token, data.refresh_token);
         api.setUser(data.user);
-        window.location.href = '/app.html';
+        window.location.href = '/app';
     } catch (err) {
         errEl.textContent = err.message;
         errEl.classList.remove('hidden');

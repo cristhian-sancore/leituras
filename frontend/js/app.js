@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const role = (user.role || '').toLowerCase();
 
         if (role === 'superadmin') {
-            window.location.href = '/superadmin.html';
+            window.location.href = '/superadmin';
             return;
         }
 
@@ -701,7 +701,7 @@ function abrirImpressao(clienteId) {
         leit: user?.nome || '',
     });
 
-    window.open(`/print-conta.html?${params}`, '_blank', 'width=900,height=700');
+    window.open(`/print-conta?${params}`, '_blank', 'width=900,height=700');
 }
 
 async function desativarUsuario(id) {
