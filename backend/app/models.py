@@ -13,6 +13,7 @@ class LayoutImpressao(Base):
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     nome = Column(Text, nullable=False, unique=True)
     conteudo_cpcl = Column(Text, nullable=False) # JSON gerado pelo canvas ou string CPCL raw
+    tipo_impressora = Column(Text, nullable=False, default="ZQ520")
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 

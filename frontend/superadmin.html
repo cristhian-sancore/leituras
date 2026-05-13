@@ -469,7 +469,7 @@ async function loadLayouts() {
     tbody.innerHTML = layouts.map(l => `
       <tr>
         <td><code>${l.id}</code></td>
-        <td><strong>${sanitize(l.nome)}</strong></td>
+        <td><strong>${sanitize(l.nome)}</strong><br><span style="font-size:0.75rem;color:var(--sa-muted)">${sanitize(l.tipo_impressora || 'ZQ520')}</span></td>
         <td>
           <button class="btn btn-sm btn-primary" onclick="window.location.href='/superadmin-editor.html?id=${l.id}'">✏️ Editar</button>
           <button class="btn btn-sm btn-danger" onclick="deleteLayout(${l.id})">🗑️</button>

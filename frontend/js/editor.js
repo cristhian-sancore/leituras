@@ -32,44 +32,41 @@ function setTool(tool){
 
 // Botões de ferramenta
 document.querySelectorAll('.tool-btn').forEach(btn=>{
-  btn.addEventListener('click',()=> setTool(btn.dataset.tool));
-});
-
-// Clique no canvas – cria objeto conforme ferramenta selecionada
-canvas.on('mouse:down', function(opt){
-  if(!currentTool) return;
-  const pointer = canvas.getPointer(opt.e);
-  const x = pointer.x;
-  const y = pointer.y;
-  if(currentTool==='addText'){
-    const txt = new fabric.IText('Texto', {
-      left:x,
-      top:y,
-      fontFamily:'Inter',
-      fontSize:12,
-      fill:'#000',
-    });
-    canvas.add(txt).setActiveObject(txt);
-  }else if(currentTool==='addRect'){
-    const rect = new fabric.Rect({
-      left:x,
-      top:y,
-      width:80,
-      height:40,
-      fill:'transparent',
-      stroke:'#333',
-      strokeWidth:1,
-    });
-    canvas.add(rect).setActiveObject(rect);
-  }else if(currentTool==='addLine'){
-    const line = new fabric.Line([x, y, x+80, y], {
-      stroke:'#333',
-      strokeWidth:1,
-    });
-    canvas.add(line).setActiveObject(line);
-  }
-  // reseta a ferramenta para evitar múltiplas criações acidentais
-  currentTool = null;
+  btn.addEventListener('click',()=> {
+    const tool = btn.dataset.tool;
+    const x = 50; // default left
+    const y = 50; // default top
+    
+    if(tool === 'addText'){
+      const txt = new fabric.IText('Texto', {
+        left:x,
+        top:y,
+        fontFamily:'Inter',
+        fontSize:16,
+        fill:'#000',
+      });
+      canvas.add(txt).setActiveObject(txt);
+    }else if(tool === 'addRect'){
+      const rect = new fabric.Rect({
+        left:x,
+        top:y,
+        width:80,
+        height:40,
+        fill:'transparent',
+        stroke:'#333',
+        strokeWidth:1,
+      });
+      canvas.add(rect).setActiveObject(rect);
+    }else if(tool === 'addLine'){
+      const line = new fabric.Line([x, y, x+80, y], {
+        stroke:'#333',
+        strokeWidth:1,
+      });
+      canvas.add(line).setActiveObject(line);
+    }
+    
+    showToast('Adicionado!');
+  });
 });
 
 /*** PROPRIEDADES – aplica a objetos selecionados ***/
@@ -193,7 +190,7 @@ drawGrid();
 generateCPCL();
 
 function loadOriginalCpcl(){
-  fetch('orig_cpcl.txt?t=' + Date.now())
+  fetch('/orig_cpcl.txt?t=' + Date.now())
     .then(r => r.text())
     .then(cpcl => {
       $('#cpclRaw').textContent = cpcl;

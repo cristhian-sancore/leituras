@@ -76,11 +76,13 @@ class EmpresaConfigUpdate(BaseModel):
 class LayoutImpressaoCreate(BaseModel):
     nome: str = Field(..., min_length=2, max_length=100)
     conteudo_cpcl: str = Field(...)
+    tipo_impressora: str = Field(default="ZQ520")
 
 class LayoutImpressaoOut(BaseModel):
     id: int
     nome: str
     conteudo_cpcl: str
+    tipo_impressora: str
     created_at: datetime
     updated_at: datetime
 
