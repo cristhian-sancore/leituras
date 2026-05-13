@@ -26,10 +26,13 @@ body{background:#0f172a;color:#e2e8f0;font-family:'Inter',sans-serif}
 .receipt-wrap{display:flex;justify-content:center;padding:12px 0}
 .receipt{
   background:white;color:#111;
-  width:302px; /* 80mm @ 96dpi */
+  width:302px; /* ~80mm @ 96dpi */
+  min-height:200px;
   padding:12px;font-family:'Courier New',monospace;
   font-size:11px;line-height:1.4;
-  border-radius:4px;box-shadow:0 8px 32px rgba(0,0,0,0.5)
+  border-radius:4px;box-shadow:0 8px 32px rgba(0,0,0,0.5);
+  position:relative; /* garantir que filhos absolute fiquem dentro */
+  overflow:hidden;
 }
 .rec-center{text-align:center}
 .rec-title{font-size:13px;font-weight:900;text-align:center;margin:4px 0}
@@ -96,7 +99,6 @@ body{background:#0f172a;color:#e2e8f0;font-family:'Inter',sans-serif}
 <script src="/js/api.js"></script>
 <script src="/js/zebra-print.js"></script>
 <script>
-let selectedPrinter = null;
 let dadosImpressao = null;
 
 // ── Lê dados da URL (passados pelo app.js) ──
@@ -141,17 +143,21 @@ function renderPreview(d) {
   const el = document.getElementById('receipt-preview');
   el.innerHTML = '';
   el.style.position = 'relative';
-  el.style.height = '1200px'; // Tamanho estimado, pode estourar o limite visual
+  // A altura vai crescer conforme o conteúdo desenhado
+  el.style.height = 'auto';
+  el.style.minHeight = '200px';
 
   // Obter CPCL gerado com os dados reais
   if (typeof ZebraPrint === 'undefined' || !ZebraPrint.gerarCPCL) return;
   
   function drawCpcl(cpclText, offsetY) {
-      if(!cpclText) return offsetY;
+      if (!cpclText) return offsetY;
       const lines = cpclText.split(/\r?\n/);
-      const SCALE_X = 3.5;
-      const SCALE_Y = 3.5;
-      let maxY = 0;
+      // 80mm bobina = 99mm útil ≈ 302px visíveis → escala: 302/99 ≈ 3.05
+      // Mas coordenadas CPCL são em mm, então:
+      const SCALE_X = 302 / 99;  // ~3.05
+      const SCALE_Y = 3.2;       // ajuste fino para densidade vertical
+      let maxY = offsetY;
 
       lines.forEach(line => {
         line = line.trim();
@@ -163,7 +169,7 @@ function renderPreview(d) {
           const font = parts[1];
           const x = parseFloat(parts[3]) * SCALE_X;
           const y = parseFloat(parts[4]) * SCALE_Y + offsetY;
-          if (y > maxY) maxY = y;
+          if (y + 20 > maxY) maxY = y + 20; // +20 para incluir altura do texto
           const text = parts.slice(5).join(' ');
           
           const div = document.createElement('div');
@@ -213,6 +219,8 @@ function renderPreview(d) {
           }
         }
       });
+      // Ajusta a altura do container para acomodar o conteúdo
+      el.style.minHeight = (maxY + 30) + 'px';
       return maxY;
   }
 
@@ -292,8 +300,11 @@ function toast(msg, err = false) {
 // ── INIT ──
 dadosImpressao = lerParams();
 
-// Inicia buscando layout. Quando terminar, renderiza
+// Tenta buscar layout customizado; renderiza de qualquer forma
 ZebraPrint.fetchLayout().then(() => {
+  renderPreview(dadosImpressao);
+}).catch(() => {
+  // sem layout ou sem token: renderiza com layout genérico
   renderPreview(dadosImpressao);
 });
 </script>
