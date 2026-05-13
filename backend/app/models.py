@@ -32,11 +32,13 @@ class Empresa(Base):
     percentual_esgoto = Column(Numeric(5, 2), nullable=False, default=70.00)
     consumo_minimo_m3 = Column(Integer, nullable=False, default=10)
     layout_impressao_id = Column(BigInteger, ForeignKey("layout_impressao.id", ondelete="SET NULL"), nullable=True)
+    layout_notificacao_id = Column(BigInteger, ForeignKey("layout_impressao.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     usuarios = relationship("Usuario", back_populates="empresa", cascade="all, delete-orphan")
     importacoes = relationship("Importacao", back_populates="empresa", cascade="all, delete-orphan")
-    layout_impressao = relationship("LayoutImpressao")
+    layout_impressao = relationship("LayoutImpressao", foreign_keys=[layout_impressao_id])
+    layout_notificacao = relationship("LayoutImpressao", foreign_keys=[layout_notificacao_id])
 
 
 class Usuario(Base):

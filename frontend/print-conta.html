@@ -124,6 +124,8 @@ function lerParams() {
     valor_total: parseFloat(p.get('total') || '0'),
     categoria: p.get('cat') || '',
     leiturista: p.get('leit') || '',
+    tem_notificacao: p.get('tem_notif') === 'true',
+    mensagem_notificacao: p.get('msg_notif') || ''
   };
 }
 
@@ -131,51 +133,107 @@ function fmtR(v) {
   return 'R$ ' + parseFloat(v||0).toFixed(2).replace('.',',');
 }
 
-// ── Renderiza o preview visual ──
 function renderPreview(d) {
-  const el = document.getElementById('receipt-preview');
-  el.innerHTML = `
-    <div class="rec-center" style="font-weight:900;font-size:13px">${d.empresa_nome}</div>
-    ${d.empresa_cnpj ? `<div class="rec-center" style="font-size:10px">CNPJ: ${d.empresa_cnpj}</div>` : ''}
-    <div class="rec-title">CONTA DE ÁGUA</div>
-    <div class="rec-center" style="font-size:10px">Referência: ${d.mes_ref}</div>
-    <hr class="rec-sep">
-
-    <div class="rec-row"><span>Matrícula:</span><span><strong>${d.matricula}</strong></span></div>
-    <div style="font-size:10px;margin:2px 0"><strong>${d.nome}</strong></div>
-    <div style="font-size:10px;color:#555">${d.endereco}</div>
-    <div style="font-size:10px;color:#555">${d.bairro}</div>
-    <div class="rec-row" style="font-size:10px"><span>Rota: ${d.rota}</span><span>Setor: ${d.setor}</span></div>
-    <div style="font-size:10px;color:#555">Cat.: ${d.categoria}</div>
-    <hr class="rec-sep">
-
-    <div style="font-weight:700;text-align:center;margin:3px 0">LEITURAS</div>
-    <div class="rec-row"><span>Anterior:</span><span><strong>${d.leit_anterior}</strong></span></div>
-    <div class="rec-row"><span>Atual:</span><span><strong>${d.leit_atual}</strong></span></div>
-    <div class="rec-row bold"><span>Consumo:</span><span>${d.consumo} m³</span></div>
-    ${d.ocorrencia ? `<div class="rec-row" style="font-size:10px"><span>Ocorrência:</span><span>${d.ocorrencia}</span></div>` : ''}
-    <div style="font-size:10px;color:#555">Data: ${d.data_leitura}</div>
-    <hr class="rec-sep">
-
-    <div style="font-weight:700;text-align:center;margin:3px 0">VALORES</div>
-    <div class="rec-row"><span>Água:</span><span>${fmtR(d.valor_agua)}</span></div>
-    <div class="rec-row"><span>Esgoto:</span><span>${fmtR(d.valor_esgoto)}</span></div>
-    ${d.valor_lixo > 0 ? `<div class="rec-row"><span>Lixo:</span><span>${fmtR(d.valor_lixo)}</span></div>` : ''}
-    <hr class="rec-sep">
-    <div class="rec-row total"><span>TOTAL A PAGAR:</span><span>${fmtR(d.valor_total)}</span></div>
-    ${d.vencimento ? `<div class="rec-row" style="font-size:10px"><span>Vencimento:</span><span><strong>${d.vencimento}</strong></span></div>` : ''}
-    <hr class="rec-sep">
-
-    <div class="rec-bar">|||||||||||||||</div>
-    <div class="rec-center" style="font-size:10px;letter-spacing:1px">${d.matricula}</div>
-    <hr class="rec-sep">
-    <div class="rec-center" style="font-size:9px;color:#888">Leiturista: ${d.leiturista}</div>
-    <div class="rec-center" style="font-size:9px;color:#888">Sistema SAEMI - Leitura Digital</div>
-  `;
-
-  // Preencher info cliente no painel
+  // Preencher info cliente no painel esquerdo
   document.getElementById('client-info').innerHTML =
     `<strong>${d.nome}</strong><br>Mat. ${d.matricula} | Consumo: ${d.consumo} m³ | <strong>${fmtR(d.valor_total)}</strong>`;
+
+  const el = document.getElementById('receipt-preview');
+  el.innerHTML = '';
+  el.style.position = 'relative';
+  el.style.height = '1200px'; // Tamanho estimado, pode estourar o limite visual
+
+  // Obter CPCL gerado com os dados reais
+  if (typeof ZebraPrint === 'undefined' || !ZebraPrint.gerarCPCL) return;
+  
+  function drawCpcl(cpclText, offsetY) {
+      if(!cpclText) return offsetY;
+      const lines = cpclText.split(/\r?\n/);
+      const SCALE_X = 3.5;
+      const SCALE_Y = 3.5;
+      let maxY = 0;
+
+      lines.forEach(line => {
+        line = line.trim();
+        if (!line) return;
+
+        if (line.startsWith('T ')) {
+          const parts = line.split(' ');
+          if (parts.length < 6) return;
+          const font = parts[1];
+          const x = parseFloat(parts[3]) * SCALE_X;
+          const y = parseFloat(parts[4]) * SCALE_Y + offsetY;
+          if (y > maxY) maxY = y;
+          const text = parts.slice(5).join(' ');
+          
+          const div = document.createElement('div');
+          div.textContent = text;
+          div.style.position = 'absolute';
+          div.style.left = x + 'px';
+          div.style.top = y + 'px';
+          div.style.fontFamily = 'monospace';
+          div.style.fontSize = font === '7' ? '14px' : '11px';
+          div.style.fontWeight = font === '7' ? 'bold' : 'normal';
+          div.style.whiteSpace = 'nowrap';
+          el.appendChild(div);
+        } 
+        else if (line.startsWith('LINE ')) {
+          const parts = line.split(' ');
+          if (parts.length < 5) return;
+          const x0 = parseFloat(parts[1]) * SCALE_X;
+          const y0 = parseFloat(parts[2]) * SCALE_Y + offsetY;
+          const x1 = parseFloat(parts[3]) * SCALE_X;
+          const y1 = parseFloat(parts[4]) * SCALE_Y + offsetY;
+          if (y1 > maxY) maxY = y1;
+          
+          const div = document.createElement('div');
+          div.style.position = 'absolute';
+          div.style.left = Math.min(x0, x1) + 'px';
+          div.style.top = Math.min(y0, y1) + 'px';
+          div.style.width = Math.max(Math.abs(x1 - x0), 1) + 'px';
+          div.style.height = Math.max(Math.abs(y1 - y0), 1) + 'px';
+          div.style.backgroundColor = '#333';
+          el.appendChild(div);
+        }
+        else if (line.startsWith('B ')) {
+          const parts = line.split(' ');
+          if (parts.length > 7) {
+            const x = parseFloat(parts[5]) * SCALE_X;
+            const y = parseFloat(parts[6]) * SCALE_Y + offsetY;
+            if (y > maxY) maxY = y;
+            const div = document.createElement('div');
+            div.textContent = '||||||||||||||| [CÓDIGO DE BARRAS]';
+            div.style.position = 'absolute';
+            div.style.left = x + 'px';
+            div.style.top = y + 'px';
+            div.style.fontFamily = 'monospace';
+            div.style.fontSize = '12px';
+            div.style.letterSpacing = '1px';
+            el.appendChild(div);
+          }
+        }
+      });
+      return maxY;
+  }
+
+  const cpcl = ZebraPrint.gerarCPCL(d);
+  let lastY = drawCpcl(cpcl, 0);
+  
+  if (d.tem_notificacao && ZebraPrint.gerarCPCLNotificacao) {
+      const notifCpcl = ZebraPrint.gerarCPCLNotificacao(d);
+      if (notifCpcl) {
+          // Linha divisória
+          const div = document.createElement('div');
+          div.style.position = 'absolute';
+          div.style.top = (lastY + 30) + 'px';
+          div.style.left = '10px';
+          div.style.width = '280px';
+          div.style.borderTop = '2px dashed #999';
+          el.appendChild(div);
+          
+          drawCpcl(notifCpcl, lastY + 50);
+      }
+  }
 }
 
 // ── Bluetooth ──
@@ -233,8 +291,11 @@ function toast(msg, err = false) {
 
 // ── INIT ──
 dadosImpressao = lerParams();
-renderPreview(dadosImpressao);
-ZebraPrint.fetchLayout(); // Baixa o layout customizado no background
+
+// Inicia buscando layout. Quando terminar, renderiza
+ZebraPrint.fetchLayout().then(() => {
+  renderPreview(dadosImpressao);
+});
 </script>
 </body>
 </html>

@@ -211,9 +211,15 @@ tr:hover td{background:rgba(255,255,255,0.02)}
       <div class="ig"><label>Consumo Mínimo (m³)</label><input id="edit-minimo" type="number" min="1"></div>
     </div>
     <div class="ig" style="margin-bottom:12px">
-      <label>🖨️ Layout de Impressora (Opcional)</label>
+      <label>🖨️ Layout da Fatura Principal (Opcional)</label>
       <select id="edit-layout">
         <option value="">Nenhum (usar padrão do app)</option>
+      </select>
+    </div>
+    <div class="ig" style="margin-bottom:12px">
+      <label>⚠️ Layout de Notificação de Débito (Opcional)</label>
+      <select id="edit-layout-notificacao">
+        <option value="">Nenhum (não imprimir separadamente)</option>
       </select>
     </div>
     <div class="ig" style="margin-bottom:20px">
@@ -329,7 +335,7 @@ async function loadEmpresas() {
         <td style="text-align:center">${e.percentual_esgoto}%</td>
         <td><span class="${e.ativa?'dot-on':'dot-off'}"></span>${e.ativa?'Ativa':'Bloqueada'}</td>
         <td style="display:flex;gap:6px;flex-wrap:wrap">
-          <button class="btn btn-sm btn-outline" onclick="openEdit(${e.id},'${e.plano}',${e.max_leituristas},${e.percentual_esgoto},${e.consumo_minimo_m3},'${e.logo_url||''}','${e.layout_impressao_id||''}')">⚙️</button>
+          <button class="btn btn-sm btn-outline" onclick="openEdit(${e.id},'${e.plano}',${e.max_leituristas},${e.percentual_esgoto},${e.consumo_minimo_m3},'${e.logo_url||''}','${e.layout_impressao_id||''}','${e.layout_notificacao_id||''}')">⚙️</button>
           <button class="btn btn-sm btn-outline" onclick="verUsuarios(${e.id})">👥</button>
           <button class="btn btn-sm ${e.ativa?'btn-danger':'btn-success'}" onclick="toggleStatus(${e.id},${!e.ativa})">
             ${e.ativa?'Bloquear':'Ativar'}
@@ -374,7 +380,7 @@ async function criarEmpresa(e) {
 }
 
 // ---------- EDITAR CONFIG ----------
-function openEdit(id, plano, max, esgoto, minimo, logo, layout_id) {
+function openEdit(id, plano, max, esgoto, minimo, logo, layout_id, layout_notificacao_id) {
   document.getElementById('edit-id').value = id;
   document.getElementById('edit-plano').value = plano;
   document.getElementById('edit-max').value = max;
@@ -382,6 +388,7 @@ function openEdit(id, plano, max, esgoto, minimo, logo, layout_id) {
   document.getElementById('edit-minimo').value = minimo;
   document.getElementById('edit-logo').value = logo||'';
   document.getElementById('edit-layout').value = layout_id||'';
+  document.getElementById('edit-layout-notificacao').value = layout_notificacao_id||'';
   // Preview da logo
   const prev = document.getElementById('edit-logo-preview');
   const img = document.getElementById('edit-logo-img');
@@ -399,7 +406,8 @@ async function salvarConfig() {
       percentual_esgoto: parseFloat(document.getElementById('edit-esgoto').value),
       consumo_minimo_m3: parseInt(document.getElementById('edit-minimo').value),
       logo_url: document.getElementById('edit-logo').value||null,
-      layout_impressao_id: parseInt(document.getElementById('edit-layout').value) || null
+      layout_impressao_id: parseInt(document.getElementById('edit-layout').value) || null,
+      layout_notificacao_id: parseInt(document.getElementById('edit-layout-notificacao').value) || null
     })});
     toast('Configurações salvas!');
     closeModal();
@@ -455,9 +463,14 @@ async function loadLayouts() {
   try {
     const layouts = await apiFetch('/superadmin/layouts');
     
-    // Atualiza Select
+    // Atualiza Select Fatura
     const sel = document.getElementById('edit-layout');
     sel.innerHTML = '<option value="">Nenhum (usar padrão do app)</option>' + 
+      layouts.map(l => `<option value="${l.id}">${sanitize(l.nome)}</option>`).join('');
+
+    // Atualiza Select Notificacao
+    const selNotif = document.getElementById('edit-layout-notificacao');
+    selNotif.innerHTML = '<option value="">Nenhum (não imprimir separadamente)</option>' + 
       layouts.map(l => `<option value="${l.id}">${sanitize(l.nome)}</option>`).join('');
 
     // Atualiza Tabela

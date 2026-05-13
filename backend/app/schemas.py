@@ -53,6 +53,7 @@ class EmpresaOut(BaseModel):
     plano: str
     max_leituristas: int
     layout_impressao_id: Optional[int] = None
+    layout_notificacao_id: Optional[int] = None
     created_at: datetime
 
     class Config:
@@ -67,6 +68,7 @@ class EmpresaConfigUpdate(BaseModel):
     percentual_esgoto: Optional[float] = None
     consumo_minimo_m3: Optional[int] = None
     layout_impressao_id: Optional[int] = None
+    layout_notificacao_id: Optional[int] = None
 
 
 # ============================================

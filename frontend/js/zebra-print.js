@@ -1,20 +1,21 @@
-/**
- * SAEMI - Módulo de Impressão Zebra ZQ520/ZQ521 via Web Bluetooth (CPCL)
+ï»¿/**
+ * SAEMI - MÃ³dulo de ImpressÃ£o Zebra ZQ520/ZQ521 via Web Bluetooth (CPCL)
  */
 
 const ZebraPrint = (() => {
   let device = null;
   let server = null;
   let printCharacteristic = null;
-  let customLayout = null; 
+  let customLayout = null;
+  let customLayoutNotif = null; 
 
-  // UUIDs comuns da Zebra para impressão Bluetooth LE
+  // UUIDs comuns da Zebra para impressÃ£o Bluetooth LE
   const ZEBRA_SERVICE = '38eb4a80-c570-11e3-9507-0002a5d5c51b';
   const ZEBRA_WRITE = '38eb4a82-c570-11e3-9507-0002a5d5c51b';
 
   async function connect() {
     if (!navigator.bluetooth) {
-      throw new Error("Web Bluetooth não é suportado neste navegador. Use o Chrome no Android.");
+      throw new Error("Web Bluetooth nÃ£o Ã© suportado neste navegador. Use o Chrome no Android.");
     }
 
     try {
@@ -57,7 +58,7 @@ const ZebraPrint = (() => {
   }
 
   async function sendData(dataStr) {
-    if (!isConnected()) throw new Error("Impressora não conectada");
+    if (!isConnected()) throw new Error("Impressora nÃ£o conectada");
     
     const encoder = new TextEncoder();
     let data = encoder.encode(dataStr);
@@ -81,6 +82,7 @@ const ZebraPrint = (() => {
           if (res.ok) {
               const data = await res.json();
               customLayout = data.conteudo_cpcl;
+              customLayoutNotif = data.conteudo_cpcl_notificacao;
               console.log("Layout customizado carregado!");
           }
       } catch(e) {
@@ -91,7 +93,7 @@ const ZebraPrint = (() => {
   function gerarCPCL(dados) {
       let cpcl = customLayout;
       
-      // Se não houver layout customizado, usa um layout genérico
+      // Se nÃ£o houver layout customizado, usa um layout genÃ©rico
       if (!cpcl) {
           cpcl = `! 0 200 200 800 1\r\nIN-MILLIMETERS\r\nCOUNTRY LATIN9\r\n` +
                  `T 7 0 10 20 SAEMI\r\n` +
@@ -101,7 +103,7 @@ const ZebraPrint = (() => {
                  `FORM\r\nPRINT\r\n`;
       }
 
-      // Substituição de variáveis
+      // SubstituiÃ§Ã£o de variÃ¡veis
       const map = {
           '{NOME_COMPROMISSARIO}': dados.nome || '',
           '{ENDERECO_INSTALACAO}': dados.endereco || '',
@@ -142,11 +144,30 @@ const ZebraPrint = (() => {
       return cpcl;
   }
 
+  function gerarCPCLNotificacao(dados) {
+      if (!customLayoutNotif) return null;
+      let cpcl = customLayoutNotif;
+      
+      const map = {
+          '{NOME_COMPROMISSARIO}': dados.nome || '',
+          '{ENDERECO_INSTALACAO}': dados.endereco || '',
+          '{LIGACAO}': dados.matricula || '',
+          '{MENSAGEM_DEBITO}': dados.mensagem_notificacao || 'CONSTAM DEBITOS EM ABERTO, SUJEITO A CORTE.',
+          '{MENSAGEM_CONTAS_ABERTO}': dados.mensagem_notificacao || 'CONSTAM DEBITOS EM ABERTO, SUJEITO A CORTE.',
+          '{DATA_EMISSAO}': new Date().toLocaleDateString('pt-BR')
+      };
+
+      for (const [key, value] of Object.entries(map)) {
+          cpcl = cpcl.split(key).join(value);
+      }
+      return cpcl;
+  }
+
   async function imprimirConta(dados) {
       const cpcl = gerarCPCL(dados);
       await sendData(cpcl);
       return cpcl;
   }
 
-  return { connect, isConnected, sendData, imprimirConta, fetchLayout };
+  return { connect, isConnected, sendData, imprimirConta, fetchLayout, gerarCPCL, gerarCPCLNotificacao };
 })();

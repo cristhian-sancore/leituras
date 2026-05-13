@@ -53,21 +53,22 @@ async def get_empresa_layout(
     current_user: Usuario = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Retorna o conteúdo CPCL e tipo da impressora do layout configurado para a empresa logada. Caso não tenha, retorna erro 404."""
+    """Retorna o conteúdo CPCL da fatura e notificação."""
     result = await db.execute(select(Empresa).where(Empresa.id == current_user.empresa_id))
     empresa = result.scalar_one_or_none()
-    if not empresa or not empresa.layout_impressao_id:
-        raise HTTPException(status_code=404, detail="Nenhum layout customizado")
+    if not empresa:
+        raise HTTPException(status_code=404, detail="Empresa não encontrada")
         
-    res_layout = await db.execute(select(LayoutImpressao).where(LayoutImpressao.id == empresa.layout_impressao_id))
-    layout = res_layout.scalar_one_or_none()
+    res_layout = await db.execute(select(LayoutImpressao).where(LayoutImpressao.id == empresa.layout_impressao_id)) if empresa.layout_impressao_id else None
+    layout = res_layout.scalar_one_or_none() if res_layout else None
     
-    if not layout:
-        raise HTTPException(status_code=404, detail="Layout não encontrado")
-        
+    res_notif = await db.execute(select(LayoutImpressao).where(LayoutImpressao.id == empresa.layout_notificacao_id)) if empresa.layout_notificacao_id else None
+    layout_notif = res_notif.scalar_one_or_none() if res_notif else None
+    
     return {
-        "conteudo_cpcl": layout.conteudo_cpcl,
-        "tipo_impressora": layout.tipo_impressora
+        "conteudo_cpcl": layout.conteudo_cpcl if layout else None,
+        "tipo_impressora": layout.tipo_impressora if layout else "ZQ520",
+        "conteudo_cpcl_notificacao": layout_notif.conteudo_cpcl if layout_notif else None,
     }
 
 
