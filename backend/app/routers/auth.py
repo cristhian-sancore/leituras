@@ -98,11 +98,53 @@ async def login(data: LoginRequest, request: Request, db: AsyncSession = Depends
     access = create_access_token(token_data)
     refresh = create_refresh_token(token_data)
 
-    return TokenResponse(
-        access_token=access,
-        refresh_token=refresh,
-        user=UsuarioOut.model_validate(usuario),
-    )
+    # Limpar rate limit se fez login com sucesso
+    if client_ip in _login_attempts:
+        del _login_attempts[client_ip]
+
+    await db.commit()
+    return TokenResponse(access_token=access, refresh_token=refresh, user=UsuarioOut.model_validate(usuario))
+
+
+@router.get("/rate-limits", tags=["SuperAdmin"])
+async def listar_bloqueios(current_user: Usuario = Depends(get_current_user)):
+    """[Superadmin] Lista os IPs bloqueados atualmente no sistema."""
+    if current_user.role != "superadmin":
+        raise HTTPException(status_code=403, detail="Apenas superadmin pode acessar rate limits")
+    
+    now = time.time()
+    bloqueados = []
+    
+    # Limpa estado e conta
+    for ip, attempts in list(_login_attempts.items()):
+        valid = [t for t in attempts if now - t < RATE_LIMIT_WINDOW]
+        if valid:
+            _login_attempts[ip] = valid
+            if len(valid) >= RATE_LIMIT_MAX:
+                bloqueados.append({
+                    "ip": ip,
+                    "tentativas": len(valid),
+                    "segundos_restantes": int(RATE_LIMIT_WINDOW - (now - valid[0]))
+                })
+        else:
+            del _login_attempts[ip]
+            
+    return bloqueados
+
+
+@router.delete("/rate-limits/{ip}", tags=["SuperAdmin"])
+async def desbloquear_ip(ip: str, current_user: Usuario = Depends(get_current_user)):
+    """[Superadmin] Desbloqueia um IP específico."""
+    if current_user.role != "superadmin":
+        raise HTTPException(status_code=403, detail="Apenas superadmin pode desbloquear IPs")
+    
+    if ip in _login_attempts:
+        del _login_attempts[ip]
+        return {"status": "sucesso", "mensagem": f"IP {ip} desbloqueado."}
+    
+    return {"status": "ok", "mensagem": f"IP {ip} não estava bloqueado."}
+
+
 
 
 @router.post("/refresh", response_model=TokenResponse)
