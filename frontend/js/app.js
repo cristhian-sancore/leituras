@@ -70,24 +70,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebar-overlay');
-    const btn = document.getElementById('hamburger-btn');
+    const btn = document.querySelector('.hamburger');
+    if (!sidebar) return;
     const isOpen = sidebar.classList.contains('open');
     if (isOpen) {
         closeSidebar();
     } else {
         sidebar.classList.add('open');
-        overlay.classList.add('open');
-        btn.classList.add('open');
+        if (overlay) overlay.classList.add('open');
+        if (btn) btn.classList.add('open');
     }
 }
 
 function closeSidebar() {
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebar-overlay');
-    const btn = document.getElementById('hamburger-btn');
-    sidebar.classList.remove('open');
-    overlay.classList.remove('open');
-    btn.classList.remove('open');
+    const btn = document.querySelector('.hamburger');
+    if (sidebar) sidebar.classList.remove('open');
+    if (overlay) overlay.classList.remove('open');
+    if (btn) btn.classList.remove('open');
 }
 
 // ============================================
