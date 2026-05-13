@@ -9,26 +9,23 @@ const ZebraPrint = (() => {
   let customLayout = null;
   let customLayoutNotif = null;
 
-  // UUIDs Zebra BLE (SPP Serial Port Profile fallback)
+  // UUIDs Zebra BLE
   const ZEBRA_SERVICE = '38eb4a80-c570-11e3-9507-0002a5d5c51b';
   const ZEBRA_WRITE   = '38eb4a82-c570-11e3-9507-0002a5d5c51b';
   const SPP_SERVICE   = '000018f0-0000-1000-8000-00805f9b34fb';
   const SPP_WRITE     = '00002af1-0000-1000-8000-00805f9b34fb';
 
-  // ── Conexão Bluetooth ──────────────────────────────────
+  // ── Conexao Bluetooth ──────────────────────────────────
   async function connect() {
     if (!navigator.bluetooth) {
-      throw new Error('Web Bluetooth nao e suportado. Use Chrome no Android.');
+      throw new Error('Web Bluetooth nao suportado. Use Chrome no Android.');
     }
     try {
       device = await navigator.bluetooth.requestDevice({
         acceptAllDevices: true,
         optionalServices: [ZEBRA_SERVICE, SPP_SERVICE]
       });
-
       server = await device.gatt.connect();
-
-      // Tenta serviço Zebra nativo primeiro, cai para SPP
       try {
         const svc = await server.getPrimaryService(ZEBRA_SERVICE);
         printCharacteristic = await svc.getCharacteristic(ZEBRA_WRITE);
@@ -36,7 +33,6 @@ const ZebraPrint = (() => {
         const svc = await server.getPrimaryService(SPP_SERVICE);
         printCharacteristic = await svc.getCharacteristic(SPP_WRITE);
       }
-
       device.addEventListener('gattserverdisconnected', onDisconnected);
       return true;
     } catch (e) {
@@ -46,21 +42,14 @@ const ZebraPrint = (() => {
   }
 
   function onDisconnected() {
-    device = null;
-    server = null;
-    printCharacteristic = null;
-    const statusEl = document.getElementById('printer-status');
-    if (statusEl) {
-      statusEl.className = 'status-err';
-      statusEl.textContent = 'Desconectado';
-    }
-    const btnImpr = document.getElementById('btn-imprimir');
-    if (btnImpr) btnImpr.disabled = true;
+    device = null; server = null; printCharacteristic = null;
+    const el = document.getElementById('printer-status');
+    if (el) { el.className = 'status-err'; el.textContent = 'Desconectado'; }
+    const btn = document.getElementById('btn-imprimir');
+    if (btn) btn.disabled = true;
   }
 
-  function isConnected() {
-    return printCharacteristic !== null;
-  }
+  function isConnected() { return printCharacteristic !== null; }
 
   // ── Envio BLE em chunks ────────────────────────────────
   async function sendData(dataStr) {
@@ -73,60 +62,86 @@ const ZebraPrint = (() => {
     return true;
   }
 
-  // ── Busca layout customizado da API ───────────────────
+  // ── Busca layouts da API ───────────────────────────────
   async function fetchLayout() {
     const token = localStorage.getItem('saemi_token');
-    if (!token) return; // sem token, usa layout generico
+    if (!token) return;
     try {
       const res = await fetch('/api/v1/empresa/layout', {
         headers: { 'Authorization': 'Bearer ' + token }
       });
       if (res.ok) {
         const data = await res.json();
-        customLayout = data.conteudo_cpcl || null;
+        customLayout      = data.conteudo_cpcl || null;
         customLayoutNotif = data.conteudo_cpcl_notificacao || null;
-        console.log('[ZebraPrint] Layout carregado:', !!customLayout, '| Notif:', !!customLayoutNotif);
+        console.log('[ZebraPrint] Fatura:', !!customLayout, '| Notif:', !!customLayoutNotif);
       }
     } catch (e) {
-      console.warn('[ZebraPrint] Falha ao buscar layout, usando generico.', e);
+      console.warn('[ZebraPrint] Sem layout customizado, usando generico.', e);
     }
   }
 
-  // ── Tabela de substituição de variáveis ───────────────
+  // ── Mapa completo de variáveis ─────────────────────────
   function buildMap(dados) {
+    const now  = new Date();
+    const hora = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const fv   = (n) => parseFloat(n || 0).toFixed(2);
+
     return {
-      '{NOME_COMPROMISSARIO}': dados.nome || '',
-      '{ENDERECO_INSTALACAO}': dados.endereco || '',
-      '{ENDERECO_ENTREGA}':    dados.endereco || '',
-      '{CEP}':                 '',
-      '{ROTA}':                dados.rota || '',
-      '{SEQUENCIA}':           '',
-      '{LIGACAO}':             dados.matricula || '',
-      '{REFERENCIA}':          dados.mes_ref || '',
-      '{NR_GUIA}':             '',
-      '{CATEGORIA}':           dados.categoria || '',
-      '{LANCAMENTO_DESC_1}':   'Agua',
-      '{LANCAMENTO_VAL_1}':    parseFloat(dados.valor_agua  || 0).toFixed(2),
-      '{LANCAMENTO_DESC_2}':   'Esgoto',
-      '{LANCAMENTO_VAL_2}':    parseFloat(dados.valor_esgoto || 0).toFixed(2),
-      '{LANCAMENTO_DESC_3}':   'Taxa Lixo',
-      '{LANCAMENTO_VAL_3}':    parseFloat(dados.valor_lixo  || 0).toFixed(2),
-      '{DATA_LEITURA_ANT}':    dados.data_leitura || '',
-      '{DATA_LEITURA_ATU}':    dados.data_leitura || '',
-      '{DATA_VENCIMENTO}':     dados.vencimento || '',
-      '{VALOR_PAGAR}':         parseFloat(dados.valor_total || 0).toFixed(2),
-      '{LEIT_ANT}':            String(dados.leit_anterior || 0),
-      '{LEIT_ATUAL}':          String(dados.leit_atual || 0),
-      '{CONS_REAL}':           String(dados.consumo || 0),
-      '{CONS_FATURADO}':       String(dados.consumo || 0),
-      '{MEDIA}':               String(Math.round(parseFloat(dados.consumo || 0) / 6)),
-      '{NR_HIDROMETRO}':       '',
-      '{VAZAO}':               '',
-      '{DIAMETRO}':            '',
-      '{DATA_INSTALACAO}':     '',
-      '{OCORRENCIA}':          dados.ocorrencia || '',
-      '{CODIGO_BARRAS}':       dados.matricula || '000000',
-      '{DATA_EMISSAO}':        new Date().toLocaleDateString('pt-BR'),
+      '{NOME_COMPROMISSARIO}':  dados.nome        || '',
+      '{ENDERECO_LOGRADOURO}':  dados.endereco    || '',
+      '{ENDERECO_BAIRRO}':      dados.bairro      || '',
+      '{ENDERECO_INSTALACAO}':  dados.endereco    || '',
+      '{ENDERECO_ENTREGA}':     dados.endereco    || '',
+      '{CEP}':                  dados.cep         || '',
+      '{ROTA}':                 dados.rota        || '',
+      '{SEQUENCIA}':            dados.setor       || '',
+      '{LOTE}':                 '',
+      '{QUADRA}':               '',
+      '{COD_BAIXA}':            '',
+      '{LIGACAO}':              dados.matricula   || '',
+      '{COD_LIGACAO}':          dados.matricula   || '',
+      '{REFERENCIA}':           dados.mes_ref     || '',
+      '{NR_GUIA}':              dados.matricula   || '',
+      '{CATEGORIA}':            dados.categoria   || '',
+      // Lançamentos
+      '{LANCAMENTO_DESC_1}':    'AGUA',
+      '{LANCAMENTO_VAL_1}':     fv(dados.valor_agua),
+      '{LANCAMENTO_DESC_2}':    'ESGOTO',
+      '{LANCAMENTO_VAL_2}':     fv(dados.valor_esgoto),
+      '{LANCAMENTO_DESC_3}':    'TAXA LIXO',
+      '{LANCAMENTO_VAL_3}':     fv(dados.valor_lixo),
+      // Leituras
+      '{DATA_LEITURA_ANT}':     dados.data_leitura || '',
+      '{DATA_LEITURA_ATU}':     dados.data_leitura || '',
+      '{LEIT_ANT}':             String(dados.leit_anterior || 0),
+      '{LEIT_ATUAL}':           String(dados.leit_atual    || 0),
+      '{CONS_REAL}':            String(dados.consumo       || 0),
+      '{CONS_FATURADO}':        String(dados.consumo       || 0),
+      '{MEDIA}':                String(Math.round(parseFloat(dados.consumo || 0) / 6)),
+      // Hidrômetro
+      '{NR_HIDROMETRO}':        '',
+      '{VAZAO}':                '',
+      '{DIAMETRO}':             '',
+      '{DATA_INSTALACAO}':      '',
+      // Valores
+      '{DATA_VENCIMENTO}':      dados.vencimento   || '',
+      '{VALOR_PAGAR}':          fv(dados.valor_total),
+      '{TOTAL_PAGAR}':          fv(dados.valor_total),
+      '{DIVIDA}':               'R$ ' + fv(dados.valor_total),
+      // Débitos anteriores (notificação)
+      '{MES_ANO_1}':            dados.mes_ref     || '',
+      '{VENCIMENTO_1}':         dados.vencimento  || '',
+      '{VALOR_1}':              fv(dados.valor_total),
+      '{MES_ANO_2}':            '',
+      '{VENCIMENTO_2}':         '',
+      '{VALOR_2}':              '',
+      // Outros
+      '{OCORRENCIA}':           dados.ocorrencia  || 'LEITURA NORMAL',
+      '{CODIGO_BARRAS}':        (dados.matricula  || '000000').replace(/\D/g, ''),
+      '{LINHA_DIGITAVEL}':      dados.matricula   || '',
+      '{DATA_EMISSAO}':         now.toLocaleDateString('pt-BR'),
+      '{HORA_EMISSAO}':         hora,
     };
   }
 
@@ -139,35 +154,71 @@ const ZebraPrint = (() => {
 
   // ── Layout genérico (fallback sem customização) ────────
   function layoutGenerico(dados) {
-    const v = (n) => parseFloat(n || 0).toFixed(2);
+    const fv = (n) => parseFloat(n || 0).toFixed(2);
     return [
-      '! 0 200 200 800 1',
+      '! 0 200 200 600 1',
       'IN-MILLIMETERS',
       'COUNTRY LATIN9',
-      'T 7 0 10 10 ' + (dados.empresa_nome || 'SAEMI'),
-      'LINE 5 18 99 18 1',
-      'T 5 0 5 22 MATRICULA: ' + (dados.matricula || ''),
-      'T 5 0 5 30 NOME: ' + (dados.nome || ''),
-      'T 5 0 5 38 REFERENCIA: ' + (dados.mes_ref || ''),
-      'T 5 0 5 46 VENCIMENTO: ' + (dados.vencimento || ''),
-      'LINE 5 52 99 52 1',
-      'T 5 0 5 56 LEITURA ANTERIOR: ' + (dados.leit_anterior || 0),
-      'T 5 0 5 63 LEITURA ATUAL: ' + (dados.leit_atual || 0),
-      'T 7 0 5 71 CONSUMO: ' + (dados.consumo || 0) + ' m3',
-      'LINE 5 78 99 78 1',
-      'T 5 0 5 82 AGUA: R$ ' + v(dados.valor_agua),
-      'T 5 0 5 89 ESGOTO: R$ ' + v(dados.valor_esgoto),
-      (parseFloat(dados.valor_lixo || 0) > 0 ? 'T 5 0 5 96 TAXA LIXO: R$ ' + v(dados.valor_lixo) : ''),
-      'LINE 5 104 99 104 1',
-      'T 7 0 5 109 TOTAL A PAGAR: R$ ' + v(dados.valor_total),
-      'LINE 5 118 99 118 1',
-      'T 5 0 5 122 OCORRENCIA: ' + (dados.ocorrencia || ''),
-      'T 5 0 5 130 LEITURISTA: ' + (dados.leiturista || ''),
-      'LINE 5 137 99 137 1',
-      'B QR 2 1 5 145 ' + (dados.matricula || '000'),
+      'LINE 2 15 100 15 0.2',
+      'LINE 2 15 2 100 0.2',
+      'LINE 100 15 100 100 0.2',
+      'LINE 2 100 100 100 0.2',
+      'LINE 76 15 76 39 0.2',
+      'LINE 76 22 100 22 0.2',
+      'LINE 76 30 100 30 0.2',
+      'LINE 2 39 100 39 0.2',
+      'LINE 2 44 100 44 0.2',
+      'T 7 0 3 16 {NOME_COMPROMISSARIO}',
+      'T 7 0 3 19 {ENDERECO_LOGRADOURO}',
+      'T 7 0 3 22 {ENDERECO_BAIRRO}',
+      'T 7 0 3 28 LIGACAO: {LIGACAO}',
+      'T 7 2 78 15 MES/ANO: {REFERENCIA}',
+      'T 7 0 78 23 NR. GUIA',
+      'T 7 0 78 26 {NR_GUIA}',
+      'T 7 0 78 31 CATEGORIA',
+      'T 7 0 82 35 {CATEGORIA}',
+      'T 7 0 30 40 DESCRICAO',
+      'T 7 0 89 40 VALOR',
+      'T 7 0 5 45 {LANCAMENTO_DESC_1}',
+      'T 7 0 87 45 {LANCAMENTO_VAL_1}',
+      'T 7 0 5 48 {LANCAMENTO_DESC_2}',
+      'T 7 0 87 48 {LANCAMENTO_VAL_2}',
+      'T 0 2 4 80 DATA LEIT. ANT.',
+      'T 7 2 5 83 {DATA_LEITURA_ANT}',
+      'T 0 2 30 80 DATA LEIT. ATUAL',
+      'T 7 2 30 83 {DATA_LEITURA_ATU}',
+      'T 0 2 60 80 VENCIMENTO',
+      'T 7 2 56 83 {DATA_VENCIMENTO}',
+      'T 0 2 80 80 VALOR A PAGAR',
+      'T 7 2 82 83 R$ {VALOR_PAGAR}',
+      'LINE 2 80 100 80 0.2',
+      'LINE 2 89 100 89 0.2',
+      'T 0 2 7 89 LEIT. ANT.',
+      'T 0 2 28 89 LEIT. ATUAL',
+      'T 0 2 45 89 CONSUMO',
+      'T 0 2 86 89 MEDIA',
+      'T 5 0 9 93 {LEIT_ANT}',
+      'T 5 0 30 93 {LEIT_ATUAL}',
+      'T 5 0 50 93 {CONS_REAL}',
+      'T 5 0 87 93 {MEDIA}',
+      'LINE 2 97 100 97 0.2',
+      'LINE 2 110 100 110 0.2',
+      'T 7 0 4 107 OCORRENCIA: {OCORRENCIA}',
+      'T 0 2 76 145 EMISSAO: {DATA_EMISSAO}',
+      'LINE 2 144 100 144 0.2',
+      'T 7 0 3 184 {NOME_COMPROMISSARIO}',
+      'T 7 0 3 187 {ENDERECO_LOGRADOURO}',
+      'T 7 0 78 184 MES/ANO: {REFERENCIA}',
+      'T 7 0 12 200 LIGACAO',
+      'T 7 0 12 203 {LIGACAO}',
+      'T 7 0 47 200 VENCIMENTO',
+      'T 7 0 47 203 {DATA_VENCIMENTO}',
+      'T 7 0 80 200 VALOR A PAGAR',
+      'T 7 0 82 203 R$ {VALOR_PAGAR}',
+      'B I2OF5 0.245 25 8 0 212 {CODIGO_BARRAS}',
       'FORM',
       'PRINT',
-    ].filter(Boolean).join('\r\n');
+    ].join('\r\n');
   }
 
   // ── Gerar CPCL da fatura ───────────────────────────────
@@ -176,31 +227,24 @@ const ZebraPrint = (() => {
     return aplicarVariaveis(raw, buildMap(dados));
   }
 
-  // ── Gerar CPCL da notificação ─────────────────────────
+  // ── Gerar CPCL da notificacao ─────────────────────────
   function gerarCPCLNotificacao(dados) {
     if (!customLayoutNotif) return null;
-    const map = {
-      '{NOME_COMPROMISSARIO}': dados.nome || '',
-      '{ENDERECO_INSTALACAO}': dados.endereco || '',
-      '{LIGACAO}':             dados.matricula || '',
-      '{MENSAGEM_DEBITO}':     dados.mensagem_notificacao || 'CONSTAM DEBITOS EM ABERTO. SUJEITO A CORTE.',
-      '{MENSAGEM_CONTAS_ABERTO}': dados.mensagem_notificacao || 'CONSTAM DEBITOS EM ABERTO. SUJEITO A CORTE.',
-      '{DATA_EMISSAO}':        new Date().toLocaleDateString('pt-BR'),
-    };
-    return aplicarVariaveis(customLayoutNotif, map);
+    return aplicarVariaveis(customLayoutNotif, buildMap(dados));
   }
 
-  // ── Imprimir conta (fatura + notificação se houver) ───
+  // ── Imprimir conta + notificacao ──────────────────────
   async function imprimirConta(dados) {
-    const cpclFatura = gerarCPCL(dados);
-    await sendData(cpclFatura);
+    // Pagina 1: Fatura
+    await sendData(gerarCPCL(dados));
 
+    // Pagina 2: Notificacao (somente se houver layout e flag)
     const cpclNotif = gerarCPCLNotificacao(dados);
     if (cpclNotif && dados.tem_notificacao) {
-      await new Promise(r => setTimeout(r, 1200)); // aguarda buffer BLE
+      await new Promise(r => setTimeout(r, 1200));
       await sendData(cpclNotif);
     }
-    return cpclFatura;
+    return true;
   }
 
   return {

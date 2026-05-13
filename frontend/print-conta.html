@@ -3,59 +3,62 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SAEMI - Impressão LIS</title>
+<title>SAEMI - Impressão</title>
 <link rel="stylesheet" href="/css/style.css">
 <style>
-body{background:#0f172a;color:#e2e8f0;font-family:'Inter',sans-serif}
-.print-layout{display:grid;grid-template-columns:420px 1fr;gap:24px;padding:24px;min-height:100vh}
+body{background:#0f172a;color:#e2e8f0;font-family:'Inter',sans-serif;margin:0}
+.print-layout{display:grid;grid-template-columns:400px 1fr;gap:24px;padding:24px;min-height:100vh}
+@media(max-width:768px){.print-layout{grid-template-columns:1fr}}
+
+/* Painel esquerdo */
 .panel{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:20px}
 .panel-title{font-weight:700;font-size:1rem;margin-bottom:16px;color:#38bdf8}
-.ig{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
-.ig label{font-size:0.75rem;color:#64748b}
-.ig input,.ig select{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#e2e8f0;padding:8px 12px;border-radius:8px;font-size:0.85rem}
-.btn{padding:10px 20px;border-radius:8px;border:none;cursor:pointer;font-weight:600;font-size:0.85rem;transition:.15s}
-.btn-print{background:#38bdf8;color:#0a0f1e;width:100%}
-.btn-print:hover{background:#0ea5e9}
-.btn-test{background:rgba(56,189,248,0.15);color:#38bdf8;border:1px solid rgba(56,189,248,0.3);width:100%;margin-top:8px}
+.btn{padding:10px 20px;border-radius:8px;border:none;cursor:pointer;font-weight:600;font-size:0.85rem;transition:.15s;width:100%;margin-top:8px}
+.btn-print{background:#38bdf8;color:#0a0f1e}
+.btn-print:disabled{background:#334155;color:#64748b;cursor:not-allowed}
+.btn-test{background:rgba(56,189,248,0.15);color:#38bdf8;border:1px solid rgba(56,189,248,0.3)}
 .btn-back{background:transparent;color:#64748b;border:1px solid rgba(255,255,255,0.1);margin-bottom:16px}
-.status-ok{color:#34d399;font-size:0.8rem}
-.status-err{color:#f87171;font-size:0.8rem}
-.status-loading{color:#fbbf24;font-size:0.8rem}
+.status-ok{color:#34d399;font-size:0.8rem;margin:8px 0}
+.status-err{color:#f87171;font-size:0.8rem;margin:8px 0}
+.status-loading{color:#fbbf24;font-size:0.8rem;margin:8px 0;animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.hint{font-size:0.72rem;color:#475569;margin-top:10px;line-height:1.5}
 
-/* ── PREVIEW 80mm ── */
-.receipt-wrap{display:flex;justify-content:center;padding:12px 0}
+/* Preview area */
+.preview-area{display:flex;flex-direction:column;gap:24px}
+.page-label{
+  font-size:0.75rem;font-weight:700;text-transform:uppercase;
+  letter-spacing:1px;color:#64748b;margin-bottom:8px;
+  display:flex;align-items:center;gap:8px
+}
+.page-label::before{content:'';flex:1;height:1px;background:rgba(255,255,255,0.1)}
+.page-label::after{content:'';flex:1;height:1px;background:rgba(255,255,255,0.1)}
+
+/* Cupom - simula papel 80mm */
+.receipt-wrap{display:flex;justify-content:center}
 .receipt{
   background:white;color:#111;
-  width:302px; /* ~80mm @ 96dpi */
+  width:302px;        /* 80mm @ 96dpi */
   min-height:200px;
-  padding:12px;font-family:'Courier New',monospace;
+  padding:0;          /* sem padding - o CPCL posiciona tudo */
+  font-family:'Courier New',monospace;
   font-size:11px;line-height:1.4;
-  border-radius:4px;box-shadow:0 8px 32px rgba(0,0,0,0.5);
-  position:relative; /* garantir que filhos absolute fiquem dentro */
-  overflow:hidden;
+  border-radius:4px;
+  box-shadow:0 8px 32px rgba(0,0,0,0.5);
+  position:relative;
+  overflow:visible;   /* linhas podem extrapolar, não cortar */
 }
-.rec-center{text-align:center}
-.rec-title{font-size:13px;font-weight:900;text-align:center;margin:4px 0}
-.rec-sep{border:none;border-top:1px dashed #333;margin:6px 0}
-.rec-row{display:flex;justify-content:space-between;margin:2px 0}
-.rec-row.bold{font-weight:900;font-size:12px}
-.rec-row.total{font-weight:900;font-size:14px;margin-top:4px}
-.rec-bar{text-align:center;margin:8px 0;letter-spacing:2px;font-size:20px;font-family:monospace}
-.printer-list{margin-top:8px;display:flex;flex-direction:column;gap:6px}
-.printer-item{padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);cursor:pointer;font-size:0.8rem;display:flex;justify-content:space-between}
-.printer-item:hover,.printer-item.selected{border-color:#38bdf8;background:rgba(56,189,248,0.08)}
-.printer-item .pname{font-weight:600;color:#e2e8f0}
-.printer-item .puid{color:#64748b;font-size:0.72rem}
+
+/* Toast */
 .toast{position:fixed;bottom:20px;right:20px;background:#1e293b;border:1px solid rgba(255,255,255,0.1);padding:12px 20px;border-radius:10px;font-size:0.85rem;display:none;z-index:999}
-.toast.show{display:block}.toast.err{color:#f87171;border-color:#f87171}
-.toast.ok{color:#34d399;border-color:#34d399}
+.toast.show{display:block}.toast.err{color:#f87171;border-color:#f87171}.toast.ok{color:#34d399;border-color:#34d399}
 </style>
 </head>
 <body>
 
 <div class="print-layout">
 
-  <!-- PAINEL ESQUERDO: config -->
+  <!-- PAINEL ESQUERDO -->
   <div>
     <button class="btn btn-back" onclick="history.back()">← Voltar</button>
 
@@ -64,34 +67,49 @@ body{background:#0f172a;color:#e2e8f0;font-family:'Inter',sans-serif}
       <div class="panel-title">🖨️ Impressora Zebra (Bluetooth)</div>
       <div id="printer-status" class="status-err">Desconectado</div>
       <button class="btn btn-test" id="btn-conectar" onclick="conectarBluetooth()">🔗 Conectar Bluetooth</button>
-      <button class="btn btn-test" onclick="imprimirTeste()" style="margin-top:4px">📄 Imprimir Teste</button>
+      <button class="btn btn-test" onclick="imprimirTeste()">📄 Imprimir Teste</button>
+      <div class="hint">⚠️ Ligue o Bluetooth do aparelho. O Chrome irá pedir permissão para parear com a Zebra.</div>
     </div>
 
     <!-- Ações -->
     <div class="panel">
-      <div class="panel-title">🖨️ Imprimir Conta</div>
+      <div class="panel-title">📋 Dados do Cliente</div>
       <div id="client-info" style="font-size:0.85rem;color:#94a3b8;margin-bottom:16px">
-        Nenhum cliente selecionado.
+        Carregando...
       </div>
       <button class="btn btn-print" id="btn-imprimir" onclick="imprimirConta()" disabled>
         🖨️ Imprimir Agora
       </button>
-      <div style="margin-top:12px;font-size:0.75rem;color:#475569">
-        ⚠️ É necessário ligar o Bluetooth e o GPS do aparelho. O navegador irá pedir permissão para parear.
+      <div id="notif-badge" style="display:none;margin-top:10px;padding:8px 12px;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);border-radius:8px;font-size:0.78rem;color:#fbbf24">
+        ⚠️ Este cliente possui notificação de débito — serão impressas 2 páginas.
       </div>
     </div>
   </div>
 
-  <!-- PAINEL DIREITO: preview -->
-  <div class="panel">
-    <div class="panel-title">👁️ Preview da Impressão (80mm)</div>
-    <div class="receipt-wrap">
-      <div class="receipt" id="receipt-preview">
-        <!-- preenchido por JS -->
+  <!-- PAINEL DIREITO: preview das páginas -->
+  <div class="preview-area" id="preview-area">
+
+    <!-- Página 1: Fatura -->
+    <div>
+      <div class="page-label">📄 Página 1 — Fatura / Conta de Água</div>
+      <div class="receipt-wrap">
+        <div class="receipt" id="receipt-fatura">
+          <div style="padding:20px;color:#888;font-size:11px">Carregando layout...</div>
+        </div>
       </div>
     </div>
-  </div>
 
+    <!-- Página 2: Notificação (oculta por padrão) -->
+    <div id="page-notif" style="display:none">
+      <div class="page-label">⚠️ Página 2 — Notificação de Débitos</div>
+      <div class="receipt-wrap">
+        <div class="receipt" id="receipt-notif">
+          <div style="padding:20px;color:#888;font-size:11px">Carregando...</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -101,175 +119,185 @@ body{background:#0f172a;color:#e2e8f0;font-family:'Inter',sans-serif}
 <script>
 let dadosImpressao = null;
 
-// ── Lê dados da URL (passados pelo app.js) ──
+// ── Lê dados da URL ──────────────────────────────────────
 function lerParams() {
   const p = new URLSearchParams(location.search);
   return {
-    empresa_nome: p.get('empresa') || 'SAEMI',
-    empresa_cnpj: p.get('cnpj') || '',
-    mes_ref: p.get('mes') || '',
-    data_leitura: p.get('data') || new Date().toLocaleDateString('pt-BR'),
-    vencimento: p.get('venc') || '',
-    matricula: p.get('mat') || '',
-    nome: p.get('nome') || '',
-    endereco: p.get('end') || '',
-    bairro: p.get('bairro') || '',
-    rota: p.get('rota') || '',
-    setor: p.get('setor') || '',
-    leit_anterior: p.get('ant') || '0',
-    leit_atual: p.get('atu') || '0',
-    consumo: p.get('cons') || '0',
-    ocorrencia: p.get('ocorr') || '',
-    valor_agua: parseFloat(p.get('agua') || '0'),
+    empresa_nome: p.get('empresa')   || 'SAEMI',
+    empresa_cnpj: p.get('cnpj')      || '',
+    mes_ref:      p.get('mes')       || '',
+    data_leitura: p.get('data')      || new Date().toLocaleDateString('pt-BR'),
+    vencimento:   p.get('venc')      || '',
+    matricula:    p.get('mat')       || '',
+    nome:         p.get('nome')      || '',
+    endereco:     p.get('end')       || '',
+    bairro:       p.get('bairro')    || '',
+    rota:         p.get('rota')      || '',
+    setor:        p.get('setor')     || '',
+    leit_anterior:p.get('ant')       || '0',
+    leit_atual:   p.get('atu')       || '0',
+    consumo:      p.get('cons')      || '0',
+    ocorrencia:   p.get('ocorr')     || '',
+    valor_agua:   parseFloat(p.get('agua')   || '0'),
     valor_esgoto: parseFloat(p.get('esgoto') || '0'),
-    valor_lixo: parseFloat(p.get('lixo') || '0'),
-    valor_total: parseFloat(p.get('total') || '0'),
-    categoria: p.get('cat') || '',
-    leiturista: p.get('leit') || '',
-    tem_notificacao: p.get('tem_notif') === 'true',
-    mensagem_notificacao: p.get('msg_notif') || ''
+    valor_lixo:   parseFloat(p.get('lixo')   || '0'),
+    valor_total:  parseFloat(p.get('total')  || '0'),
+    categoria:    p.get('cat')       || '',
+    leiturista:   p.get('leit')      || '',
+    tem_notificacao:      p.get('tem_notif') === 'true',
+    mensagem_notificacao: p.get('msg_notif') || '',
+    cep:          p.get('cep')       || '',
   };
 }
 
-function fmtR(v) {
-  return 'R$ ' + parseFloat(v||0).toFixed(2).replace('.',',');
-}
+function fmtR(v) { return 'R$ ' + parseFloat(v||0).toFixed(2).replace('.',','); }
 
-function renderPreview(d) {
-  // Preencher info cliente no painel esquerdo
-  document.getElementById('client-info').innerHTML =
-    `<strong>${d.nome}</strong><br>Mat. ${d.matricula} | Consumo: ${d.consumo} m³ | <strong>${fmtR(d.valor_total)}</strong>`;
-
-  const el = document.getElementById('receipt-preview');
+// ── Desenha um CPCL em um elemento ──────────────────────
+function drawCpcl(cpclText, el) {
   el.innerHTML = '';
   el.style.position = 'relative';
-  // A altura vai crescer conforme o conteúdo desenhado
-  el.style.height = 'auto';
-  el.style.minHeight = '200px';
 
-  // Obter CPCL gerado com os dados reais
-  if (typeof ZebraPrint === 'undefined' || !ZebraPrint.gerarCPCL) return;
-  
-  function drawCpcl(cpclText, offsetY) {
-      if (!cpclText) return offsetY;
-      const lines = cpclText.split(/\r?\n/);
-      // 80mm bobina = 99mm útil ≈ 302px visíveis → escala: 302/99 ≈ 3.05
-      // Mas coordenadas CPCL são em mm, então:
-      const SCALE_X = 302 / 99;  // ~3.05
-      const SCALE_Y = 3.2;       // ajuste fino para densidade vertical
-      let maxY = offsetY;
-
-      lines.forEach(line => {
-        line = line.trim();
-        if (!line) return;
-
-        if (line.startsWith('T ')) {
-          const parts = line.split(' ');
-          if (parts.length < 6) return;
-          const font = parts[1];
-          const x = parseFloat(parts[3]) * SCALE_X;
-          const y = parseFloat(parts[4]) * SCALE_Y + offsetY;
-          if (y + 20 > maxY) maxY = y + 20; // +20 para incluir altura do texto
-          const text = parts.slice(5).join(' ');
-          
-          const div = document.createElement('div');
-          div.textContent = text;
-          div.style.position = 'absolute';
-          div.style.left = x + 'px';
-          div.style.top = y + 'px';
-          div.style.fontFamily = 'monospace';
-          div.style.fontSize = font === '7' ? '14px' : '11px';
-          div.style.fontWeight = font === '7' ? 'bold' : 'normal';
-          div.style.whiteSpace = 'nowrap';
-          el.appendChild(div);
-        } 
-        else if (line.startsWith('LINE ')) {
-          const parts = line.split(' ');
-          if (parts.length < 5) return;
-          const x0 = parseFloat(parts[1]) * SCALE_X;
-          const y0 = parseFloat(parts[2]) * SCALE_Y + offsetY;
-          const x1 = parseFloat(parts[3]) * SCALE_X;
-          const y1 = parseFloat(parts[4]) * SCALE_Y + offsetY;
-          if (y1 > maxY) maxY = y1;
-          
-          const div = document.createElement('div');
-          div.style.position = 'absolute';
-          div.style.left = Math.min(x0, x1) + 'px';
-          div.style.top = Math.min(y0, y1) + 'px';
-          div.style.width = Math.max(Math.abs(x1 - x0), 1) + 'px';
-          div.style.height = Math.max(Math.abs(y1 - y0), 1) + 'px';
-          div.style.backgroundColor = '#333';
-          el.appendChild(div);
-        }
-        else if (line.startsWith('B ')) {
-          const parts = line.split(' ');
-          if (parts.length > 7) {
-            const x = parseFloat(parts[5]) * SCALE_X;
-            const y = parseFloat(parts[6]) * SCALE_Y + offsetY;
-            if (y > maxY) maxY = y;
-            const div = document.createElement('div');
-            div.textContent = '||||||||||||||| [CÓDIGO DE BARRAS]';
-            div.style.position = 'absolute';
-            div.style.left = x + 'px';
-            div.style.top = y + 'px';
-            div.style.fontFamily = 'monospace';
-            div.style.fontSize = '12px';
-            div.style.letterSpacing = '1px';
-            el.appendChild(div);
-          }
-        }
-      });
-      // Ajusta a altura do container para acomodar o conteúdo
-      el.style.minHeight = (maxY + 30) + 'px';
-      return maxY;
+  if (!cpclText) {
+    el.innerHTML = '<div style="padding:16px;color:#aaa;font-size:11px">Sem layout definido.</div>';
+    return;
   }
 
-  const cpcl = ZebraPrint.gerarCPCL(d);
-  let lastY = drawCpcl(cpcl, 0);
-  
-  if (d.tem_notificacao && ZebraPrint.gerarCPCLNotificacao) {
-      const notifCpcl = ZebraPrint.gerarCPCLNotificacao(d);
-      if (notifCpcl) {
-          // Linha divisória
-          const div = document.createElement('div');
-          div.style.position = 'absolute';
-          div.style.top = (lastY + 30) + 'px';
-          div.style.left = '10px';
-          div.style.width = '280px';
-          div.style.borderTop = '2px dashed #999';
-          el.appendChild(div);
-          
-          drawCpcl(notifCpcl, lastY + 50);
+  // Escala: coordenadas CPCL em mm, bobina 80mm → 302px visíveis.
+  // Largura util CPCL = ~99mm → escala X = 302/99 ≈ 3.05
+  const SX = 302 / 99;
+  const SY = 3.05;
+  let maxY = 0;
+
+  const lines = cpclText.split(/\r?\n/);
+  lines.forEach(raw => {
+    const line = raw.trim();
+    if (!line || line.startsWith('!') || line.startsWith('IN-') ||
+        line.startsWith('COUNTRY') || line === 'CENTER' || line === 'LEFT' ||
+        line === 'RIGHT' || line === 'FORM' || line === 'PRINT') return;
+
+    // TEXT: T <font> <rotation> <x_mm> <y_mm> <texto...>
+    if (line.startsWith('T ')) {
+      const p = line.split(' ');
+      if (p.length < 6) return;
+      const font = p[1];           // '7'=bold/grande, '5'=medio, '0'=pequeno
+      const x = parseFloat(p[3]) * SX;
+      const y = parseFloat(p[4]) * SY;
+      const text = p.slice(5).join(' ');
+      if (y + 16 > maxY) maxY = y + 16;
+
+      const fontSize = (font === '7') ? 11 : (font === '5') ? 10 : 9;
+      const fontWeight = (font === '7') ? 'bold' : 'normal';
+
+      const div = document.createElement('div');
+      div.textContent = text;
+      Object.assign(div.style, {
+        position: 'absolute', left: x + 'px', top: y + 'px',
+        fontFamily: "'Courier New', monospace",
+        fontSize: fontSize + 'px', fontWeight,
+        whiteSpace: 'nowrap', color: '#111'
+      });
+      el.appendChild(div);
+    }
+
+    // LINE: LINE <x0> <y0> <x1> <y1> <width>
+    else if (line.startsWith('LINE ')) {
+      const p = line.split(' ');
+      if (p.length < 5) return;
+      const x0 = parseFloat(p[1]) * SX, y0 = parseFloat(p[2]) * SY;
+      const x1 = parseFloat(p[3]) * SX, y1 = parseFloat(p[4]) * SY;
+      if (y1 > maxY) maxY = y1;
+
+      const isHorizontal = Math.abs(y1 - y0) < 1;
+      const div = document.createElement('div');
+      Object.assign(div.style, {
+        position: 'absolute',
+        left:   Math.min(x0, x1) + 'px',
+        top:    Math.min(y0, y1) + 'px',
+        width:  isHorizontal ? Math.abs(x1 - x0) + 'px' : '1px',
+        height: isHorizontal ? '1px' : Math.abs(y1 - y0) + 'px',
+        backgroundColor: '#333'
+      });
+      el.appendChild(div);
+    }
+
+    // BARCODE: B <type> ... <x_mm> <y_mm> <data>
+    else if (line.startsWith('B ')) {
+      const p = line.split(' ');
+      // formato: B type module_width ratio height x y data
+      if (p.length >= 8) {
+        const x = parseFloat(p[5]) * SX;
+        const y = parseFloat(p[6]) * SY;
+        if (y + 20 > maxY) maxY = y + 20;
+
+        const div = document.createElement('div');
+        Object.assign(div.style, {
+          position: 'absolute', left: x + 'px', top: y + 'px',
+          fontFamily: "'Courier New', monospace", fontSize: '14px',
+          letterSpacing: '2px', color: '#111'
+        });
+        div.textContent = '|||||||||||||||||||||||||';
+        el.appendChild(div);
       }
+    }
+  });
+
+  // Altura dinâmica com folga
+  el.style.minHeight = (maxY + 20) + 'px';
+}
+
+// ── Renderiza ambas as páginas ───────────────────────────
+function renderPreview(d) {
+  // Info cliente no painel esquerdo
+  document.getElementById('client-info').innerHTML =
+    `<strong>${d.nome || '—'}</strong><br>` +
+    `Mat. <strong>${d.matricula}</strong><br>` +
+    `Ref: ${d.mes_ref} | Consumo: ${d.consumo} m³<br>` +
+    `<span style="font-size:1.1em;color:#34d399;font-weight:900">${fmtR(d.valor_total)}</span>`;
+
+  // Página 1: Fatura
+  const cpclFatura = ZebraPrint.gerarCPCL(d);
+  drawCpcl(cpclFatura, document.getElementById('receipt-fatura'));
+
+  // Página 2: Notificação
+  const cpclNotif = ZebraPrint.gerarCPCLNotificacao(d);
+  const pageNotif = document.getElementById('page-notif');
+  const badgeNotif = document.getElementById('notif-badge');
+
+  if (cpclNotif && d.tem_notificacao) {
+    drawCpcl(cpclNotif, document.getElementById('receipt-notif'));
+    pageNotif.style.display = 'block';
+    badgeNotif.style.display = 'block';
+  } else {
+    pageNotif.style.display = 'none';
+    badgeNotif.style.display = 'none';
   }
 }
 
-// ── Bluetooth ──
+// ── Bluetooth ────────────────────────────────────────────
 async function conectarBluetooth() {
-  const statusEl = document.getElementById('printer-status');
-  statusEl.className = 'status-loading';
-  statusEl.textContent = 'Conectando...';
+  const st = document.getElementById('printer-status');
+  st.className = 'status-loading';
+  st.textContent = 'Conectando...';
   try {
     await ZebraPrint.connect();
-    statusEl.className = 'status-ok';
-    statusEl.textContent = '✅ Conectado à Impressora';
+    st.className = 'status-ok';
+    st.textContent = '✅ Conectado!';
     document.getElementById('btn-imprimir').disabled = false;
   } catch (e) {
-    statusEl.className = 'status-err';
-    statusEl.textContent = '❌ ' + e.message;
+    st.className = 'status-err';
+    st.textContent = '❌ ' + e.message;
   }
 }
 
-// ── Imprimir conta ──
+// ── Imprimir conta ───────────────────────────────────────
 async function imprimirConta() {
   if (!ZebraPrint.isConnected()) { toast('Conecte a impressora primeiro', true); return; }
-  if (!dadosImpressao) { toast('Nenhum dado de impressão', true); return; }
   const btn = document.getElementById('btn-imprimir');
   btn.textContent = '⏳ Enviando...';
   btn.disabled = true;
   try {
     await ZebraPrint.imprimirConta(dadosImpressao);
-    toast('✅ Conta impressa!');
+    toast('✅ Impressão concluída!');
   } catch (e) {
     toast('❌ ' + e.message, true);
   } finally {
@@ -278,10 +306,10 @@ async function imprimirConta() {
   }
 }
 
-// ── Imprimir teste ──
+// ── Imprimir teste ───────────────────────────────────────
 async function imprimirTeste() {
   if (!ZebraPrint.isConnected()) { toast('Conecte a impressora primeiro', true); return; }
-  const cpcl = `! 0 200 200 400 1\r\nIN-MILLIMETERS\r\nT 7 0 10 10 SAEMI - TESTE OK!\r\nT 5 0 10 30 ${new Date().toLocaleString('pt-BR')}\r\nFORM\r\nPRINT\r\n`;
+  const cpcl = `! 0 200 200 150 1\r\nIN-MILLIMETERS\r\nCOUNTRY LATIN9\r\nT 7 0 10 10 SAEMI - TESTE OK!\r\nT 5 0 10 25 ${new Date().toLocaleString('pt-BR')}\r\nT 5 0 10 38 Impressora conectada!\r\nFORM\r\nPRINT\r\n`;
   try {
     await ZebraPrint.sendData(cpcl);
     toast('✅ Teste enviado!');
@@ -294,19 +322,15 @@ function toast(msg, err = false) {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.className = 'toast show ' + (err ? 'err' : 'ok');
-  setTimeout(() => t.className = 'toast', 3000);
+  setTimeout(() => t.className = 'toast', 3500);
 }
 
-// ── INIT ──
+// ── INIT ─────────────────────────────────────────────────
 dadosImpressao = lerParams();
 
-// Tenta buscar layout customizado; renderiza de qualquer forma
-ZebraPrint.fetchLayout().then(() => {
-  renderPreview(dadosImpressao);
-}).catch(() => {
-  // sem layout ou sem token: renderiza com layout genérico
-  renderPreview(dadosImpressao);
-});
+// Busca layout customizado → renderiza. Se falhar, renderiza com genérico.
+ZebraPrint.fetchLayout()
+  .finally(() => renderPreview(dadosImpressao));
 </script>
 </body>
 </html>
