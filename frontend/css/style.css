@@ -1,6 +1,9 @@
-﻿/* ============================================
+/* ============================================
    SAEMI SaaS - Design System
    ============================================ */
+
+/* Hide mobile modal on desktop */
+.modal-leitura-mobile { display: none; }
 
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
 
@@ -1061,11 +1064,3 @@ tbody tr:hover { background: var(--primary-50); }
     }
     .mlm-footer .btn { flex: 1; padding: 16px; font-size: 1.1rem; }
 }
-
- / *   H i d e   m o b i l e   m o d a l   o n   d e s k t o p   * / 
- . m o d a l - l e i t u r a - m o b i l e   {   d i s p l a y :   n o n e ;   } 
- 
- 
-
-/* Hide mobile modal on desktop */
-.modal-leitura-mobile { display: none; }

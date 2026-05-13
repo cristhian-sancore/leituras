@@ -270,6 +270,7 @@ async function loadLeituras() {
                 allClientes = allClientes.concat(clientes);
             } catch {}
         }));
+        window._allClientesList = allClientes;
         renderClientes(allClientes);
     } catch (err) {
         showToast(err.message, 'error');
@@ -443,7 +444,7 @@ function fecharLeituraMobile() {
     _currentMobileCliente = null;
 }
 
-async function salvarLeituraMobileAtual() {
+async function salvarLeituraMobileAtual(imprimir = false) {
     if (!_currentMobileCliente) return;
     const cliente = _currentMobileCliente;
     
@@ -475,8 +476,20 @@ async function salvarLeituraMobileAtual() {
         if (cIdx !== -1) {
             window._mobileClientesList[cIdx].leitura_atual = leituraAtual;
             window._mobileClientesList[cIdx].ocorrencia_codigo = ocorrenciaCod;
+            // Atualiza global list também para impressão
+            const globalC = (window._allClientesList || []).find(x => x.id === cliente.id);
+            if (globalC) {
+                globalC.leitura_atual = leituraAtual;
+                globalC.ocorrencia_codigo = ocorrenciaCod;
+                globalC.consumo = data.consumo;
+                globalC.valor_total = data.valor_total;
+            }
             // Refaz a renderizacao mobile para mostrar 'Salva'
             renderClientesMobile(window._mobileClientesList, '');
+        }
+
+        if (imprimir) {
+            abrirImpressao(cliente.id);
         }
         
         // Ir para o próximo pendente (começando a partir do cliente salvo)
@@ -538,7 +551,11 @@ async function salvarLeitura(clienteId) {
     if (navigator.geolocation) {
         try {
             const pos = await new Promise((resolve, reject) => {
-                navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 3000 });
+                navigator.geolocation.getCurrentPosition(resolve, reject, { 
+                    timeout: 10000, 
+                    maximumAge: 60000, 
+                    enableHighAccuracy: true 
+                });
             });
             latitude = pos.coords.latitude;
             longitude = pos.coords.longitude;
@@ -913,21 +930,40 @@ function abrirImpressao(clienteId) {
     const imp = currentImportacao;
     if (!imp) return;
 
-    // Coletar dados do DOM
-    const leitAtual = document.getElementById(`leit-${clienteId}`)?.value || '0';
-    const consumo = document.getElementById(`cons-${clienteId}`)?.textContent || '0';
-    const total = document.getElementById(`tot-${clienteId}`)?.textContent?.replace(/[^0-9,]/g,'').replace(',','.') || '0';
-    const ocorr = document.getElementById(`ocorr-${clienteId}`)?.value || '';
+    // Achar cliente na lista global para obter o resto dos dados
+    const c = (window._allClientesList || []).find(x => x.id === clienteId) || {};
 
-    // Montar URL com parâmetros
+    // Coletar dados do DOM (pois a leitura acabou de ser feita e pode não estar na lista global se não recarregou)
+    // Se não achar no DOM (ex: mobile), pega da lista global `c`
+    const leitAtual = document.getElementById(`leit-${clienteId}`)?.value || c.leitura_atual || '0';
+    const consumo = document.getElementById(`cons-${clienteId}`)?.textContent || c.consumo || '0';
+    const total = document.getElementById(`tot-${clienteId}`)?.textContent?.replace(/[^0-9,]/g,'').replace(',','.') || c.valor_total || '0';
+    const ocorr = document.getElementById(`ocorr-${clienteId}`)?.value || c.ocorrencia_codigo || '';
+
+    // Montar URL com parâmetros completos
     const params = new URLSearchParams({
-        mat: clienteId,
-        mes: imp.mes_referencia || '',
+        mat: c.matricula || clienteId,
+        mes: imp.mes_referencia || c.mes_ano_ref || '',
         data: new Date().toLocaleDateString('pt-BR'),
         cons: consumo,
         total: total,
         ocorr: ocorr,
         leit: user?.nome || '',
+        nome: c.nome || '',
+        end: (c.rua || '') + (c.numero ? ', ' + c.numero : ''),
+        bairro: c.bairro || '',
+        rota: c.rota || '',
+        setor: c.sequencia || '',
+        ant: c.leitura_anterior || '0',
+        atu: leitAtual,
+        cat: c.categoria || '',
+        agua: c.valor_agua || '0',
+        esgoto: c.valor_esgoto || '0',
+        lixo: c.valor_lixo || '0',
+        cep: c.cep || '',
+        venc: c.data_vencimento || '',
+        fatura: c.num_fatura || '',
+        tem_notif: c.tem_notificacao || false,
     });
 
     window.open(`/print-conta?${params}`, '_blank', 'width=900,height=700');

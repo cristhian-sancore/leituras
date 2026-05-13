@@ -100,6 +100,9 @@ async def salvar_leitura(
         leitura.leitura_atual     = body.leitura_atual
         leitura.ocorrencia_codigo = body.ocorrencia_codigo
         leitura.consumo           = consumo
+        leitura.valor_agua        = resultado.get("valor_agua", 0)
+        leitura.valor_esgoto      = resultado.get("valor_esgoto", 0)
+        leitura.valor_lixo        = resultado.get("valor_lixo", 0)
         leitura.valor_total       = resultado.get("valor_total", 0)
         leitura.latitude          = body.latitude
         leitura.longitude         = body.longitude
@@ -113,6 +116,9 @@ async def salvar_leitura(
             leitura_atual=body.leitura_atual,
             ocorrencia_codigo=body.ocorrencia_codigo,
             consumo=consumo,
+            valor_agua=resultado.get("valor_agua", 0),
+            valor_esgoto=resultado.get("valor_esgoto", 0),
+            valor_lixo=resultado.get("valor_lixo", 0),
             valor_total=resultado.get("valor_total", 0),
             latitude=body.latitude,
             longitude=body.longitude,
@@ -345,10 +351,17 @@ async def list_clientes_com_leituras(
             zona=c.zona,
             rota=c.rota,
             sequencia=c.sequencia,
+            cep=c.cep if hasattr(c, 'cep') else '',
+            mes_ano_ref=c.mes_ano_ref,
+            data_vencimento=c.data_vencimento,
+            num_fatura=c.num_fatura,
             leitura_atual=leitura.leitura_atual if leitura else None,
             ocorrencia_codigo=leitura.ocorrencia_codigo if leitura else None,
             consumo=leitura.consumo if leitura else 0,
-            valor_total=float(leitura.valor_total) if leitura else 0.0,
+            valor_agua=float(leitura.valor_agua) if leitura and leitura.valor_agua else 0.0,
+            valor_esgoto=float(leitura.valor_esgoto) if leitura and leitura.valor_esgoto else 0.0,
+            valor_lixo=float(leitura.valor_lixo) if leitura and leitura.valor_lixo else 0.0,
+            valor_total=float(leitura.valor_total) if leitura and leitura.valor_total else 0.0,
         ))
 
     return items

@@ -166,10 +166,17 @@ class ClienteComLeitura(BaseModel):
     zona: Optional[str] = None
     rota: Optional[str] = None
     sequencia: Optional[str] = None
+    cep: Optional[str] = None
+    mes_ano_ref: Optional[str] = None
+    data_vencimento: Optional[str] = None
+    num_fatura: Optional[str] = None
     # Dados da leitura (se existir)
     leitura_atual: Optional[int] = None
     ocorrencia_codigo: Optional[str] = None
     consumo: int = 0
+    valor_agua: float = 0.0
+    valor_esgoto: float = 0.0
+    valor_lixo: float = 0.0
     valor_total: float = 0.0
 
     class Config:
