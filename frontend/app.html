@@ -14,11 +14,14 @@
 
 <!-- HEADER MOBILE -->
 <div class="mobile-header">
-    <button class="hamburger-btn" id="hamburger-btn" onclick="toggleSidebar()" aria-label="Menu">
+    <div class="hamburger" onclick="toggleSidebar()">
         <span></span><span></span><span></span>
-    </button>
+    </div>
     <div class="mobile-header-brand">💧 SAEMI</div>
-    <div id="mobile-user-badge" style="color:#94a3b8;font-size:0.75rem;"></div>
+    <div style="display: flex; align-items: center; gap: 10px;">
+        <div id="mobile-user-badge" style="color:#94a3b8;font-size:0.75rem;"></div>
+        <button onclick="logout()" style="background: none; border: 1px solid var(--border-color); color: var(--text-color); padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; cursor: pointer;">Sair</button>
+    </div>
 </div>
 
 <!-- SIDEBAR -->
