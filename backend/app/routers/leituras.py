@@ -1,4 +1,4 @@
-﻿from typing import List, Optional
+from typing import List, Optional
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -283,7 +283,7 @@ async def list_clientes_com_leituras(
     # DISTRIBUIÇÃO: leiturista só vê os clientes atribuídos a ele
     # Se supervisor/admin → vê tudo. Se leiturista → filtrar pelos seus.
     # Mas só filtra se houver alguma atribuição nessa importação (evita travar importações antigas)
-    if current_user.role == "leiturista":
+    if (current_user.role or "").lower() == "leiturista":
         # Verificar se existe alguma atribuição nesta importação
         atrib_check = await db.execute(
             select(sqlfunc.count(Cliente.id)).where(
