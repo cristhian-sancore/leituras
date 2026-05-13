@@ -151,6 +151,9 @@ $('#copyBtn').addEventListener('click',()=>{
   navigator.clipboard.writeText($('#cpclRaw').textContent).then(()=>showToast('📋 CPCL copiado'));
 });
 $('#importBtn').addEventListener('click', loadOriginalCpcl);
+if($('#importNotifBtn')) {
+  $('#importNotifBtn').addEventListener('click', loadNotificacaoCpcl);
+}
 $('#downloadBtn').addEventListener('click',()=>{
   generateCPCL();
   const blob = new Blob([$('#cpclRaw').textContent],{type:'text/plain'});
@@ -200,6 +203,20 @@ function loadOriginalCpcl(){
     .catch(err => {
       console.error(err);
       showToast('Falha ao carregar layout original');
+    });
+}
+
+function loadNotificacaoCpcl(){
+  fetch('/notificacao_cpcl.txt?t=' + Date.now())
+    .then(r => r.text())
+    .then(cpcl => {
+      $('#cpclRaw').textContent = cpcl;
+      parseCpclToCanvas(cpcl);
+      showToast('Notificação carregada!');
+    })
+    .catch(err => {
+      console.error(err);
+      showToast('Falha ao carregar notificação');
     });
 }
 
