@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    if (role === 'leiturista' && window.innerWidth <= 768) {
+    if (role === 'leiturista') {
         showTab('tab-leitura');
     } else {
         showTab('tab-dashboard');
