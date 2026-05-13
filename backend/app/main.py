@@ -17,6 +17,8 @@ async def run_migrations(conn):
         # Atribuicao de leiturista por cliente
         "ALTER TABLE clientes ADD COLUMN IF NOT EXISTS leiturista_atribuido_id BIGINT REFERENCES usuarios(id) ON DELETE SET NULL",
         "CREATE INDEX IF NOT EXISTS ix_cliente_leiturista ON clientes(leiturista_atribuido_id)",
+        # Layouts de impressao customizaveis
+        "ALTER TABLE empresas ADD COLUMN IF NOT EXISTS layout_impressao_id BIGINT REFERENCES layout_impressao(id) ON DELETE SET NULL",
         # Flags de servico por cliente: SO AGUA = sem esgoto; sem A12 lixo = sem lixo
         "ALTER TABLE clientes ADD COLUMN IF NOT EXISTS tem_esgoto BOOLEAN NOT NULL DEFAULT true",
         "ALTER TABLE clientes ADD COLUMN IF NOT EXISTS tem_lixo BOOLEAN NOT NULL DEFAULT true",

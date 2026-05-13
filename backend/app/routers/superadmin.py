@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func as sqlfunc, desc
 from app.database import get_db
 from app.models import Empresa, Usuario, Importacao, Leitura, AuditLog
-from app.schemas import EmpresaOut
+from app.schemas import EmpresaOut, UsuarioOut, LayoutImpressaoCreate, LayoutImpressaoOut
 from app.auth.deps import require_role, get_current_user
 from app.auth.password import hash_password
 from app.config import get_settings
@@ -49,6 +49,7 @@ class AtualizarEmpresaRequest(BaseModel):
     max_leituristas: Optional[int] = None
     percentual_esgoto: Optional[float] = None
     consumo_minimo_m3: Optional[int] = None
+    layout_impressao_id: Optional[int] = None
     logo_url: Optional[str] = None
 
 
@@ -216,6 +217,7 @@ async def list_todas_empresas(
             created_at=empresa.created_at,
             percentual_esgoto=float(empresa.percentual_esgoto or 70),
             consumo_minimo_m3=int(empresa.consumo_minimo_m3 or 10),
+            layout_impressao_id=empresa.layout_impressao_id,
             total_usuarios=total_u,
             total_leituras=total_l,
         ))
@@ -299,8 +301,11 @@ async def update_empresa_config(
         empresa.percentual_esgoto = data.percentual_esgoto
     if data.consumo_minimo_m3 is not None:
         empresa.consumo_minimo_m3 = data.consumo_minimo_m3
+    if data.layout_impressao_id is not None:
+        empresa.layout_impressao_id = data.layout_impressao_id if data.layout_impressao_id > 0 else None
     if data.logo_url is not None:
         empresa.logo_url = data.logo_url
+    await db.commit()
     return {"detail": "Empresa atualizada com sucesso"}
 
 
@@ -389,3 +394,70 @@ async def toggle_usuario(
     status_str = "ativado" if usuario.ativo else "desativado"
     return {"detail": f"Usuario {usuario.nome} {status_str}", "ativo": usuario.ativo}
 
+
+# ==================================================
+# LAYOUTS DE IMPRESSÃO
+# ==================================================
+
+from app.models import LayoutImpressao
+
+@router.get("/layouts", response_model=List[LayoutImpressaoOut])
+async def listar_layouts(
+    current_user: Usuario = Depends(require_role("superadmin")),
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(LayoutImpressao).order_by(LayoutImpressao.created_at.desc()))
+    return result.scalars().all()
+
+@router.post("/layouts", response_model=LayoutImpressaoOut, status_code=201)
+async def criar_layout(
+    data: LayoutImpressaoCreate,
+    current_user: Usuario = Depends(require_role("superadmin")),
+    db: AsyncSession = Depends(get_db)
+):
+    exist = await db.execute(select(LayoutImpressao).where(LayoutImpressao.nome == data.nome))
+    if exist.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="Já existe um layout com este nome")
+    
+    novo = LayoutImpressao(nome=data.nome, conteudo_cpcl=data.conteudo_cpcl)
+    db.add(novo)
+    await db.commit()
+    await db.refresh(novo)
+    return novo
+
+@router.put("/layouts/{layout_id}", response_model=LayoutImpressaoOut)
+async def editar_layout(
+    layout_id: int,
+    data: LayoutImpressaoCreate,
+    current_user: Usuario = Depends(require_role("superadmin")),
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(LayoutImpressao).where(LayoutImpressao.id == layout_id))
+    layout = result.scalar_one_or_none()
+    if not layout:
+        raise HTTPException(status_code=404, detail="Layout não encontrado")
+    
+    if data.nome != layout.nome:
+        exist = await db.execute(select(LayoutImpressao).where(LayoutImpressao.nome == data.nome))
+        if exist.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="Já existe um layout com este nome")
+            
+    layout.nome = data.nome
+    layout.conteudo_cpcl = data.conteudo_cpcl
+    await db.commit()
+    await db.refresh(layout)
+    return layout
+
+@router.delete("/layouts/{layout_id}", status_code=204)
+async def deletar_layout(
+    layout_id: int,
+    current_user: Usuario = Depends(require_role("superadmin")),
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(LayoutImpressao).where(LayoutImpressao.id == layout_id))
+    layout = result.scalar_one_or_none()
+    if not layout:
+        raise HTTPException(status_code=404, detail="Layout não encontrado")
+    
+    await db.delete(layout)
+    await db.commit()

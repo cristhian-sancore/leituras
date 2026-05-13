@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Editor de Layout CPCL – Zebra ZQ520</title>
+  <link rel="stylesheet" href="/css/editor.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fetch/1.1.0/fetch.min.js"></script>
+  <!-- Fabric.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div style="display: flex; align-items: center; gap: 1rem;">
+      <button class="btn btn-secondary" onclick="window.location.href='/superadmin.html'">⬅ Voltar</button>
+      <h1>⚡ Editor de Layout CPCL</h1>
+      <span>Zebra ZQ520 — 58 mm</span>
+    </div>
+    <div style="display: flex; gap: 1rem; align-items: center;">
+      <input type="text" id="layoutName" placeholder="Nome do Layout" style="padding: 8px; border-radius: 4px; border: 1px solid #475569; background: #1e293b; color: white;">
+      <button class="btn btn-success" id="saveServerBtn">💾 Salvar no Servidor</button>
+    </div>
+  </header>
+
+  <div class="main">
+    <!-- Toolbar esquerda -->
+    <aside class="panel-left">
+      <div class="section-title">Ferramentas</div>
+      <button class="tool-btn" data-tool="addText">Adicionar Texto</button>
+      <button class="tool-btn" data-tool="addRect">Retângulo</button>
+      <button class="tool-btn" data-tool="addLine">Linha</button>
+      <hr class="sep">
+      <div class="section-title">Papel da Impressora</div>
+      <div class="prop-panel">
+        <label>Largura (mm)
+          <input type="number" id="paperWidth" value="105">
+        </label>
+        <label>Altura (mm)
+          <input type="number" id="paperHeight" value="250">
+        </label>
+        <button class="btn btn-primary" id="applyPaperSize" style="width:100%">Ajustar Tela</button>
+      </div>
+      <hr class="sep">
+      <div class="section-title">Propriedades</div>
+      <div id="propPanel" class="prop-panel hidden">
+        <label>Fonte
+          <select id="fontFamily">
+            <option value="5">Normal (5)</option>
+            <option value="7">Grande (7)</option>
+          </select>
+        </label>
+        <label>Tamanho (px)
+          <input type="number" id="fontSize" min="8" max="36" step="1" value="12">
+        </label>
+        <label>Cor
+          <input type="color" id="fontColor" value="#000000">
+        </label>
+        <button class="btn btn-primary" id="applyProps">Aplicar</button>
+      </div>
+      <hr class="sep">
+      <div class="section-title">Ações</div>
+      <button class="btn btn-primary" id="importBtn">Importar layout original</button>
+      <button class="btn btn-primary" id="exportBtn">Gerar CPCL</button>
+      <button class="btn btn-secondary" id="copyBtn">Copiar CPCL</button>
+      <button class="btn btn-success" id="downloadBtn">Baixar .cpcl</button>
+    </aside>
+
+    <!-- Canvas central -->
+    <main class="panel-center">
+      <canvas id="cvs" width="840" height="2000"></canvas>
+    </main>
+
+    <!-- Painel CPCL raw direita -->
+    <aside class="panel-right">
+      <div class="section-title">CPCL Gerado</div>
+      <pre id="cpclRaw" class="cpcl-box">—</pre>
+    </aside>
+  </div>
+
+  <div id="toast"></div>
+
+  <script src="/js/editor.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", async () => {
+      const token = localStorage.getItem('saemi_token');
+      if(!token) { window.location.href = '/'; return; }
+
+      // Get ID from URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const layoutId = urlParams.get('id');
+
+      if (layoutId) {
+        try {
+          const res = await fetch(`/api/v1/superadmin/layouts`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const layouts = await res.json();
+          const layout = layouts.find(l => l.id == layoutId);
+          if(layout) {
+            document.getElementById('layoutName').value = layout.nome;
+            // Parse and load CPCL into canvas (we need a way to deserialize, but actually the editor ONLY exports CPCL.
+            // Wait, the editor imports CPCL via the import button logic!
+            document.getElementById('cpclRaw').textContent = layout.conteudo_cpcl;
+            // The editor.js parser logic can be triggered to draw it!
+            if (typeof window.parseCpclToCanvas === 'function') {
+                window.parseCpclToCanvas(layout.conteudo_cpcl);
+            }
+          }
+        } catch(e) { console.error("Erro ao carregar layout", e); }
+      }
+
+      document.getElementById('saveServerBtn').addEventListener('click', async () => {
+          const nome = document.getElementById('layoutName').value;
+          if(!nome) {
+              alert("Por favor, digite um nome para o layout!");
+              return;
+          }
+          // Força a geração do CPCL
+          if(typeof window.generateCPCL === 'function') {
+              window.generateCPCL();
+          }
+          const cpcl = document.getElementById('cpclRaw').textContent;
+          
+          if(cpcl === "—" || cpcl.trim() === "") {
+              alert("Gere o CPCL primeiro!");
+              return;
+          }
+
+          const method = layoutId ? "PUT" : "POST";
+          const endpoint = layoutId ? `/api/v1/superadmin/layouts/${layoutId}` : `/api/v1/superadmin/layouts`;
+          
+          try {
+              const res = await fetch(endpoint, {
+                  method: method,
+                  headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${token}`
+                  },
+                  body: JSON.stringify({ nome: nome, conteudo_cpcl: cpcl })
+              });
+              
+              if(res.ok) {
+                  alert("Layout salvo com sucesso!");
+                  window.location.href = '/superadmin.html';
+              } else {
+                  const error = await res.json();
+                  alert("Erro: " + error.detail);
+              }
+          } catch(e) {
+              alert("Erro de comunicação com o servidor.");
+          }
+      });
+    });
+  </script>
+</body>
+</html>

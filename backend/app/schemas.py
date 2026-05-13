@@ -52,6 +52,7 @@ class EmpresaOut(BaseModel):
     ativa: bool
     plano: str
     max_leituristas: int
+    layout_impressao_id: Optional[int] = None
     created_at: datetime
 
     class Config:
@@ -65,7 +66,26 @@ class EmpresaUpdate(BaseModel):
 class EmpresaConfigUpdate(BaseModel):
     percentual_esgoto: Optional[float] = None
     consumo_minimo_m3: Optional[int] = None
+    layout_impressao_id: Optional[int] = None
 
+
+# ============================================
+# LAYOUT DE IMPRESSÃO
+# ============================================
+
+class LayoutImpressaoCreate(BaseModel):
+    nome: str = Field(..., min_length=2, max_length=100)
+    conteudo_cpcl: str = Field(...)
+
+class LayoutImpressaoOut(BaseModel):
+    id: int
+    nome: str
+    conteudo_cpcl: str
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
 
 # ============================================
 # USUARIO

@@ -7,6 +7,16 @@ from sqlalchemy.orm import relationship
 from app.database import Base
 
 
+class LayoutImpressao(Base):
+    __tablename__ = "layout_impressao"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    nome = Column(Text, nullable=False, unique=True)
+    conteudo_cpcl = Column(Text, nullable=False) # JSON gerado pelo canvas ou string CPCL raw
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+
 class Empresa(Base):
     __tablename__ = "empresas"
 
@@ -20,10 +30,12 @@ class Empresa(Base):
     max_leituristas = Column(Integer, nullable=False, default=5)
     percentual_esgoto = Column(Numeric(5, 2), nullable=False, default=70.00)
     consumo_minimo_m3 = Column(Integer, nullable=False, default=10)
+    layout_impressao_id = Column(BigInteger, ForeignKey("layout_impressao.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     usuarios = relationship("Usuario", back_populates="empresa", cascade="all, delete-orphan")
     importacoes = relationship("Importacao", back_populates="empresa", cascade="all, delete-orphan")
+    layout_impressao = relationship("LayoutImpressao")
 
 
 class Usuario(Base):

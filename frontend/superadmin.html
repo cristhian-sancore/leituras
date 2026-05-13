@@ -69,6 +69,7 @@ tr:hover td{background:rgba(255,255,255,0.02)}
     <div class="sa-brand">💧 SAEMI<span>SaaS Master Panel</span></div>
     <div class="sa-nav active" onclick="showTab('tab-empresas',this)">🏢 Empresas</div>
     <div class="sa-nav" onclick="showTab('tab-criar',this)">➕ Nova Empresa</div>
+    <div class="sa-nav" onclick="showTab('tab-layouts',this)">🖨️ Layouts CPCL</div>
     <div class="sa-nav" onclick="showTab('tab-audit',this)">📋 Auditoria</div>
     <div class="sa-nav" onclick="showTab('tab-firewall',this)">🛡️ Firewall (Bloqueios)</div>
     <div style="margin-top:auto">
@@ -169,6 +170,24 @@ tr:hover td{background:rgba(255,255,255,0.02)}
       </div>
     </div>
 
+    <!-- TAB: LAYOUTS -->
+    <div id="tab-layouts" class="tab-panel">
+      <div class="sa-card">
+        <div class="sa-card-title">🖨️ Layouts de Impressão CPCL
+          <button class="btn btn-primary btn-sm" onclick="window.location.href='/superadmin-editor.html'">+ Novo Layout</button>
+        </div>
+        <p style="font-size: 0.85rem; color: var(--sa-muted); margin-bottom: 16px;">
+          Crie ou edite layouts de impressão Zebra ZQ520 e vincule-os aos clientes.
+        </p>
+        <table>
+          <thead><tr>
+            <th>ID</th><th>Nome do Layout</th><th>Ações</th>
+          </tr></thead>
+          <tbody id="tb-layouts"><tr><td colspan="3" style="text-align:center;padding:30px;color:var(--sa-muted)">Carregando...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -190,6 +209,12 @@ tr:hover td{background:rgba(255,255,255,0.02)}
     <div class="form-grid" style="margin-bottom:12px">
       <div class="ig"><label>% Esgoto</label><input id="edit-esgoto" type="number" min="0" max="100" step="0.5"></div>
       <div class="ig"><label>Consumo Mínimo (m³)</label><input id="edit-minimo" type="number" min="1"></div>
+    </div>
+    <div class="ig" style="margin-bottom:12px">
+      <label>🖨️ Layout de Impressora (Opcional)</label>
+      <select id="edit-layout">
+        <option value="">Nenhum (usar padrão do app)</option>
+      </select>
     </div>
     <div class="ig" style="margin-bottom:20px">
       <label>🖼️ URL da Logo</label>
@@ -264,6 +289,7 @@ async function init() {
   if(user.role!=='superadmin'){alert('Acesso negado!');location.href='/app';return;}
   document.getElementById('sa-user-badge').textContent = '👤 '+user.nome;
   await loadStats();
+  await loadLayouts(); // Carrega tabela e o select de edit
   await loadEmpresas();
 }
 
@@ -303,7 +329,7 @@ async function loadEmpresas() {
         <td style="text-align:center">${e.percentual_esgoto}%</td>
         <td><span class="${e.ativa?'dot-on':'dot-off'}"></span>${e.ativa?'Ativa':'Bloqueada'}</td>
         <td style="display:flex;gap:6px;flex-wrap:wrap">
-          <button class="btn btn-sm btn-outline" onclick="openEdit(${e.id},'${e.plano}',${e.max_leituristas},${e.percentual_esgoto},${e.consumo_minimo_m3},'${e.logo_url||''}')">⚙️</button>
+          <button class="btn btn-sm btn-outline" onclick="openEdit(${e.id},'${e.plano}',${e.max_leituristas},${e.percentual_esgoto},${e.consumo_minimo_m3},'${e.logo_url||''}','${e.layout_impressao_id||''}')">⚙️</button>
           <button class="btn btn-sm btn-outline" onclick="verUsuarios(${e.id})">👥</button>
           <button class="btn btn-sm ${e.ativa?'btn-danger':'btn-success'}" onclick="toggleStatus(${e.id},${!e.ativa})">
             ${e.ativa?'Bloquear':'Ativar'}
@@ -348,13 +374,14 @@ async function criarEmpresa(e) {
 }
 
 // ---------- EDITAR CONFIG ----------
-function openEdit(id, plano, max, esgoto, minimo, logo) {
+function openEdit(id, plano, max, esgoto, minimo, logo, layout_id) {
   document.getElementById('edit-id').value = id;
   document.getElementById('edit-plano').value = plano;
   document.getElementById('edit-max').value = max;
   document.getElementById('edit-esgoto').value = esgoto;
   document.getElementById('edit-minimo').value = minimo;
   document.getElementById('edit-logo').value = logo||'';
+  document.getElementById('edit-layout').value = layout_id||'';
   // Preview da logo
   const prev = document.getElementById('edit-logo-preview');
   const img = document.getElementById('edit-logo-img');
@@ -372,6 +399,7 @@ async function salvarConfig() {
       percentual_esgoto: parseFloat(document.getElementById('edit-esgoto').value),
       consumo_minimo_m3: parseInt(document.getElementById('edit-minimo').value),
       logo_url: document.getElementById('edit-logo').value||null,
+      layout_impressao_id: parseInt(document.getElementById('edit-layout').value) || null
     })});
     toast('Configurações salvas!');
     closeModal();
@@ -420,6 +448,45 @@ async function resetarSenhaUsuario(userId) {
   } catch(e) {
     toast(e.message, true);
   }
+}
+
+// ---------- LAYOUTS DE IMPRESSAO ----------
+async function loadLayouts() {
+  try {
+    const layouts = await apiFetch('/superadmin/layouts');
+    
+    // Atualiza Select
+    const sel = document.getElementById('edit-layout');
+    sel.innerHTML = '<option value="">Nenhum (usar padrão do app)</option>' + 
+      layouts.map(l => `<option value="${l.id}">${sanitize(l.nome)}</option>`).join('');
+
+    // Atualiza Tabela
+    const tbody = document.getElementById('tb-layouts');
+    if(!layouts.length) {
+      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:30px;color:var(--sa-muted)">Nenhum layout criado</td></tr>';
+      return;
+    }
+    tbody.innerHTML = layouts.map(l => `
+      <tr>
+        <td><code>${l.id}</code></td>
+        <td><strong>${sanitize(l.nome)}</strong></td>
+        <td>
+          <button class="btn btn-sm btn-primary" onclick="window.location.href='/superadmin-editor.html?id=${l.id}'">✏️ Editar</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteLayout(${l.id})">🗑️</button>
+        </td>
+      </tr>
+    `).join('');
+  } catch(e) { toast(e.message, true); }
+}
+
+async function deleteLayout(id) {
+  if(!confirm("Tem certeza que deseja deletar este layout? Todas as empresas que o usam voltarão para o layout padrão.")) return;
+  try {
+    await apiFetch(`/superadmin/layouts/${id}`, { method: 'DELETE' });
+    toast("Layout deletado com sucesso!");
+    loadLayouts();
+    loadEmpresas();
+  } catch(e) { toast(e.message, true); }
 }
 
 // ---------- AUDIT ----------
