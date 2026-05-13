@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.database import get_db
-from app.models import Empresa, Usuario
+from app.models import Empresa, Usuario, LayoutImpressao
 from app.schemas import EmpresaOut, EmpresaUpdate, EmpresaConfigUpdate
 from app.auth.deps import get_current_user, require_role
 from app.config import get_settings
@@ -46,6 +46,29 @@ async def get_empresa(
     if not empresa:
         raise HTTPException(status_code=404, detail="Empresa nao encontrada")
     return EmpresaOut.model_validate(empresa)
+
+
+@router.get("/layout")
+async def get_empresa_layout(
+    current_user: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Retorna o conteúdo CPCL e tipo da impressora do layout configurado para a empresa logada. Caso não tenha, retorna erro 404."""
+    result = await db.execute(select(Empresa).where(Empresa.id == current_user.empresa_id))
+    empresa = result.scalar_one_or_none()
+    if not empresa or not empresa.layout_impressao_id:
+        raise HTTPException(status_code=404, detail="Nenhum layout customizado")
+        
+    res_layout = await db.execute(select(LayoutImpressao).where(LayoutImpressao.id == empresa.layout_impressao_id))
+    layout = res_layout.scalar_one_or_none()
+    
+    if not layout:
+        raise HTTPException(status_code=404, detail="Layout não encontrado")
+        
+    return {
+        "conteudo_cpcl": layout.conteudo_cpcl,
+        "tipo_impressora": layout.tipo_impressora
+    }
 
 
 @router.put("/", response_model=EmpresaOut)

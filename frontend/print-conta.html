@@ -58,10 +58,9 @@ body{background:#0f172a;color:#e2e8f0;font-family:'Inter',sans-serif}
 
     <!-- Impressora -->
     <div class="panel" style="margin-bottom:16px">
-      <div class="panel-title">🖨️ Impressora Zebra ZQ521e</div>
-      <div id="printer-status" class="status-loading">Buscando impressoras...</div>
-      <div class="printer-list" id="printer-list"></div>
-      <button class="btn btn-test" onclick="buscarImpressoras()">🔄 Atualizar Impressoras</button>
+      <div class="panel-title">🖨️ Impressora Zebra (Bluetooth)</div>
+      <div id="printer-status" class="status-err">Desconectado</div>
+      <button class="btn btn-test" id="btn-conectar" onclick="conectarBluetooth()">🔗 Conectar Bluetooth</button>
       <button class="btn btn-test" onclick="imprimirTeste()" style="margin-top:4px">📄 Imprimir Teste</button>
     </div>
 
@@ -75,9 +74,7 @@ body{background:#0f172a;color:#e2e8f0;font-family:'Inter',sans-serif}
         🖨️ Imprimir Agora
       </button>
       <div style="margin-top:12px;font-size:0.75rem;color:#475569">
-        ⚠️ Instale o <strong>Zebra Browser Print</strong> no tablet/notebook para conectar via Bluetooth.
-        <br><br>
-        <a href="https://www.zebra.com/us/en/support-downloads/printer-software/browser-print.html" target="_blank" style="color:#38bdf8">Download Browser Print →</a>
+        ⚠️ É necessário ligar o Bluetooth e o GPS do aparelho. O navegador irá pedir permissão para parear.
       </div>
     </div>
   </div>
@@ -181,38 +178,16 @@ function renderPreview(d) {
     `<strong>${d.nome}</strong><br>Mat. ${d.matricula} | Consumo: ${d.consumo} m³ | <strong>${fmtR(d.valor_total)}</strong>`;
 }
 
-// ── Buscar impressoras Zebra ──
-async function buscarImpressoras() {
+// ── Bluetooth ──
+async function conectarBluetooth() {
   const statusEl = document.getElementById('printer-status');
-  const listEl = document.getElementById('printer-list');
   statusEl.className = 'status-loading';
-  statusEl.textContent = 'Buscando...';
-  listEl.innerHTML = '';
+  statusEl.textContent = 'Conectando...';
   try {
-    const devs = await ZebraPrint.getDevices();
-    if (!devs.length) {
-      statusEl.className = 'status-err';
-      statusEl.textContent = '❌ Nenhuma impressora Zebra encontrada';
-      return;
-    }
+    await ZebraPrint.connect();
     statusEl.className = 'status-ok';
-    statusEl.textContent = `✅ ${devs.length} impressora(s) encontrada(s)`;
-    devs.forEach((d, i) => {
-      const item = document.createElement('div');
-      item.className = 'printer-item' + (i === 0 ? ' selected' : '');
-      item.innerHTML = `<div><div class="pname">🖨️ ${d.name || 'Zebra ZQ521e'}</div><div class="puid">${d.uid || d.connection || ''}</div></div><span style="color:#34d399">●</span>`;
-      item.onclick = () => {
-        document.querySelectorAll('.printer-item').forEach(x => x.classList.remove('selected'));
-        item.classList.add('selected');
-        selectedPrinter = d;
-        document.getElementById('btn-imprimir').disabled = false;
-      };
-      listEl.appendChild(item);
-      if (i === 0) {
-        selectedPrinter = d;
-        document.getElementById('btn-imprimir').disabled = false;
-      }
-    });
+    statusEl.textContent = '✅ Conectado à Impressora';
+    document.getElementById('btn-imprimir').disabled = false;
   } catch (e) {
     statusEl.className = 'status-err';
     statusEl.textContent = '❌ ' + e.message;
@@ -221,14 +196,14 @@ async function buscarImpressoras() {
 
 // ── Imprimir conta ──
 async function imprimirConta() {
-  if (!selectedPrinter) { toast('Selecione uma impressora', true); return; }
+  if (!ZebraPrint.isConnected()) { toast('Conecte a impressora primeiro', true); return; }
   if (!dadosImpressao) { toast('Nenhum dado de impressão', true); return; }
   const btn = document.getElementById('btn-imprimir');
   btn.textContent = '⏳ Enviando...';
   btn.disabled = true;
   try {
-    await ZebraPrint.imprimirConta(dadosImpressao, selectedPrinter);
-    toast('✅ Conta enviada para impressão!');
+    await ZebraPrint.imprimirConta(dadosImpressao);
+    toast('✅ Conta impressa!');
   } catch (e) {
     toast('❌ ' + e.message, true);
   } finally {
@@ -239,10 +214,10 @@ async function imprimirConta() {
 
 // ── Imprimir teste ──
 async function imprimirTeste() {
-  if (!selectedPrinter) { toast('Selecione uma impressora', true); return; }
-  const zpl = `^XA^PW560^LL0^FO10,20^A0N,24,24^FB540,1,,C^FDSAEMI - TESTE DE IMPRESSAO^FS^FO10,55^GB540,2,2^FS^FO10,65^A0N,20,20^FB540,1,,C^FDZebra ZQ521e OK!^FS^FO10,92^A0N,16,16^FB540,1,,C^FD${new Date().toLocaleString('pt-BR')}^FS^XZ`;
+  if (!ZebraPrint.isConnected()) { toast('Conecte a impressora primeiro', true); return; }
+  const cpcl = `! 0 200 200 400 1\r\nIN-MILLIMETERS\r\nT 7 0 10 10 SAEMI - TESTE OK!\r\nT 5 0 10 30 ${new Date().toLocaleString('pt-BR')}\r\nFORM\r\nPRINT\r\n`;
   try {
-    await ZebraPrint.sendZPL(zpl, selectedPrinter);
+    await ZebraPrint.sendData(cpcl);
     toast('✅ Teste enviado!');
   } catch (e) {
     toast('❌ ' + e.message, true);
@@ -259,7 +234,7 @@ function toast(msg, err = false) {
 // ── INIT ──
 dadosImpressao = lerParams();
 renderPreview(dadosImpressao);
-buscarImpressoras();
+ZebraPrint.fetchLayout(); // Baixa o layout customizado no background
 </script>
 </body>
 </html>
