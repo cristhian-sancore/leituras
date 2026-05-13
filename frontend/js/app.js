@@ -27,10 +27,11 @@ function sanitize(str) {
 document.addEventListener('DOMContentLoaded', async () => {
     if (!checkAuth()) return;
 
+    let role = '';
     const user = api.getUser();
     if (user) {
         // Normalizar role para lowercase (evita inconsistência entre 'Supervisor' e 'supervisor')
-        const role = (user.role || '').toLowerCase();
+        role = (user.role || '').toLowerCase();
 
         if (role === 'superadmin') {
             window.location.href = '/superadmin';
