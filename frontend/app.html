@@ -19,6 +19,7 @@
     </div>
     <div class="mobile-header-brand">💧 SAEMI</div>
     <div style="display: flex; align-items: center; gap: 10px;">
+        <button id="btn-bt-mobile" onclick="conectarZebraGlobal()" style="background:none; border:none; font-size:1.2rem; cursor:pointer;" title="Conectar Impressora">🖨️</button>
         <div id="mobile-user-badge" style="color:#94a3b8;font-size:0.75rem;"></div>
         <button onclick="logout()" style="background: none; border: 1px solid var(--border-color); color: var(--text-color); padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; cursor: pointer;">Sair</button>
     </div>
@@ -64,10 +65,11 @@
             <!-- User info -->
             <div class="user-info">
                 <div class="user-avatar" id="user-avatar">US</div>
-                <div>
+                <div style="flex:1">
                     <div class="user-name" id="user-name">Usuário</div>
                     <div class="user-role" id="user-role">leiturista</div>
                 </div>
+                <button id="btn-bt-desktop" onclick="conectarZebraGlobal()" style="background:none; border:none; font-size:1.2rem; cursor:pointer;" title="Conectar Impressora">🖨️</button>
             </div>
             <button class="btn btn-outline btn-sm mt-1" onclick="logout()" style="width:100%;justify-content:center;color:#94a3b8;border-color:rgba(255,255,255,0.1)">
                 Sair

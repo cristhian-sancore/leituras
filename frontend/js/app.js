@@ -62,7 +62,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else {
         showTab('tab-dashboard');
     }
+
+    // Carregar layout da Zebra ao iniciar
+    ZebraPrint.fetchLayout().catch(() => {});
 });
+
+// ============================================
+// BLUETOOTH GLOBAL (Zebra)
+// ============================================
+async function conectarZebraGlobal() {
+    const btnM = document.getElementById('btn-bt-mobile');
+    const btnD = document.getElementById('btn-bt-desktop');
+    try {
+        await ZebraPrint.connect();
+        showToast('Impressora conectada com sucesso!', 'ok');
+        if (btnM) btnM.textContent = '✅';
+        if (btnD) btnD.textContent = '✅';
+    } catch (e) {
+        showToast('Erro Bluetooth: ' + e.message, 'error');
+        if (btnM) btnM.textContent = '🖨️';
+        if (btnD) btnD.textContent = '🖨️';
+    }
+}
 
 // ============================================
 // SIDEBAR MOBILE
@@ -925,7 +946,7 @@ function abrirResetSenha(id, nome) { abrirModalSenha(id, nome); }
 
 // IMPRESSÃO ZEBRA LIS
 // ============================================
-function abrirImpressao(clienteId) {
+async function abrirImpressao(clienteId) {
     const user = api.getUser();
     const imp = currentImportacao;
     if (!imp) return;
@@ -940,6 +961,42 @@ function abrirImpressao(clienteId) {
     const total = document.getElementById(`tot-${clienteId}`)?.textContent?.replace(/[^0-9,]/g,'').replace(',','.') || c.valor_total || '0';
     const ocorr = document.getElementById(`ocorr-${clienteId}`)?.value || c.ocorrencia_codigo || '';
 
+    // Se estiver conectado via Bluetooth global, imprime direto!
+    if (ZebraPrint.isConnected()) {
+        const dados = {
+            matricula: c.matricula || clienteId,
+            mes_ref: imp.mes_referencia || c.mes_ano_ref || '',
+            data_leitura: new Date().toLocaleDateString('pt-BR'),
+            consumo: consumo,
+            valor_total: total,
+            ocorrencia: ocorr,
+            leiturista: user?.nome || '',
+            nome: c.nome || '',
+            endereco: (c.rua || '') + (c.numero ? ', ' + c.numero : ''),
+            bairro: c.bairro || '',
+            rota: c.rota || '',
+            setor: c.sequencia || '',
+            leit_anterior: c.leitura_anterior || '0',
+            leit_atual: leitAtual,
+            categoria: c.categoria || '',
+            valor_agua: c.valor_agua || '0',
+            valor_esgoto: c.valor_esgoto || '0',
+            valor_lixo: c.valor_lixo || '0',
+            cep: c.cep || '',
+            vencimento: c.data_vencimento || '',
+            num_fatura: c.num_fatura || '',
+            tem_notificacao: c.tem_notificacao || false,
+        };
+        try {
+            await ZebraPrint.imprimirConta(dados);
+            showToast('🖨️ Fatura impressa!');
+        } catch (e) {
+            showToast('Erro ao imprimir: ' + e.message, 'error');
+        }
+        return; // Sai sem abrir janela
+    }
+
+    // Fallback: Abre a janela separada caso não esteja conectado globalmente
     // Montar URL com parâmetros completos
     const params = new URLSearchParams({
         mat: c.matricula || clienteId,
