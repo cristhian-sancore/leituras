@@ -117,16 +117,17 @@ const ZebraPrint = (() => {
       '{ROTA}':                 dados.rota || '',
       '{SEQUENCIA}':            (dados.setor || ' ') + ' - ' + (dados.quadra || ' ') + ' - ' + (dados.lote || '  '),
       '{LIGACAO}':              dados.matricula || '',
+      '{ROTEIRO}':              dados.roteiro || '',
       '{REFERENCIA}':           dados.referencia || dados.mes_ref || '',
       '{NR_GUIA}':              dados.nosso_numero || dados.matricula || '',
       '{CATEGORIA}':            dados.categoria || '',
       
       // Lançamentos
-      '{LANCAMENTO_DESC_1}':    parseFloat(dados.valor_agua||0) > 0 ? 'AGUA' : '',
+      '{LANCAMENTO_DESC_1}':    parseFloat(dados.valor_agua||0) > 0 ? 'FORNEC. E ABASTEC. DE AGUA' : '',
       '{LANCAMENTO_VAL_1}':     parseFloat(dados.valor_agua||0) > 0 ? formatarValor(dados.valor_agua) : '',
       '{LANCAMENTO_DESC_2}':    parseFloat(dados.valor_esgoto||0) > 0 ? 'ESGOTO' : '',
       '{LANCAMENTO_VAL_2}':     parseFloat(dados.valor_esgoto||0) > 0 ? formatarValor(dados.valor_esgoto) : '',
-      '{LANCAMENTO_DESC_3}':    parseFloat(dados.valor_lixo||0) > 0 ? 'TAXA DE LIXO' : '',
+      '{LANCAMENTO_DESC_3}':    parseFloat(dados.valor_lixo||0) > 0 ? 'TARIFA DE COLETA DE LIXO' : '',
       '{LANCAMENTO_VAL_3}':     parseFloat(dados.valor_lixo||0) > 0 ? formatarValor(dados.valor_lixo) : '',
 
       // Leituras
@@ -151,11 +152,15 @@ const ZebraPrint = (() => {
       '{DIVIDA}':               'R$ ' + formatarValor(dados.valor_total),
       
       // Outros
-      '{OCORRENCIA}':           dados.ocorrencia || '0000',
+      '{OCORRENCIA}':           dados.ocorrencia || 'Normal',
       '{CODIGO_BARRAS}':        codStr,
       '{LINHA_DIGITAVEL}':      codStr,
       '{DATA_EMISSAO}':         now.toLocaleDateString('pt-BR'),
       '{HORA_EMISSAO}':         hora,
+
+      // Mensagens dinâmicas do Backend
+      '{MENSAGEM_1}':           dados.mensagem_1 || '',
+      '{MENSAGEM_2}':           dados.mensagem_2 || '',
 
       // Fallbacks em branco pro histórico (1 a 6)
       ...Array.from({length: 6}).reduce((acc, _, i) => {
@@ -177,6 +182,11 @@ const ZebraPrint = (() => {
           map[`{HIST_MEDIA_${i+1}}`] = h.media || '0';
         }
       });
+    }
+
+    // Se houver contas em aberto, gerar mensagem automaticamente se o backend não enviou
+    if (dados.faturas_abertas > 0 && !map['{MENSAGEM_1}']) {
+      map['{MENSAGEM_1}'] = `Constam ${dados.faturas_abertas} Faturas em Aberto.`;
     }
 
     return map;
@@ -218,6 +228,7 @@ const ZebraPrint = (() => {
       'T 7 0 3 25 END. ENT: {ENDERECO_BAIRRO}',
       'T 7 0 3 28 Sequencia anterior: {SEQUENCIA}',
       'T 7 0 3 31 LIGACAO: {LIGACAO}',
+      'T 7 0 3 34 ROTEIRO: {ROTEIRO}',
       'T 7 2 78 15 MES/ANO: {REFERENCIA}',
       'T 7 0 78 23 NR. GUIA ',
       'T 7 0 78 26 {NR_GUIA}',
@@ -305,6 +316,8 @@ const ZebraPrint = (() => {
       'T 7 0 31 133 {HIST_DIAS_6}',
       'T 7 0 38 133 {HIST_MEDIA_6}',
       'T 7 0 45 110 MENSAGEM',
+      'T 7 0 45 114 {MENSAGEM_1}',
+      'T 7 0 45 117 {MENSAGEM_2}',
       'LINE 2 144 100 144 0.2',
       'T 7 0 10 144 DETALHES SOBRE',
       'T 7 0 8 147 LEGISLACAO VIDE VERSO',
