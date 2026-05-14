@@ -214,13 +214,13 @@ const ZebraPrint = (() => {
       'LINE 78 80 78 89 0.2',
       'LINE 2 89 100 89 0.2',
 
-      'T 0 0 4 80 DATA LEITURA ANTERIOR',
+      'T 7 0 4 80 DT. LEIT. ANT',
       'T 7 2 5 83 {DATA_LEITURA_ANT}',
-      'T 0 0 30 80 DATA LEITURA ATUAL',
+      'T 7 0 30 80 DT. LEIT. ATUAL',
       'T 7 2 30 83 {DATA_LEITURA_ATU}',
-      'T 0 0 60 80 VENCIMENTO',
+      'T 7 0 60 80 VENCIMENTO',
       'T 7 2 56 83 {DATA_VENCIMENTO}',
-      'T 0 0 80 80 VALOR A PAGAR',
+      'T 7 0 80 80 VALOR A PAGAR',
       'T 7 2 82 83 R$ {VALOR_PAGAR}',
 
       // TABELA CONSUMO
@@ -231,11 +231,11 @@ const ZebraPrint = (() => {
       'LINE 2 97 100 97 0.2',
       'LINE 2 105 100 105 0.2',
 
-      'T 0 0 7 89 LEITURA ANTERIOR',
-      'T 0 0 28 89 LEITURA ATUAL',
-      'T 0 0 45 89 CONSUMO REAL',
-      'T 0 0 61 89 CONS. FATURADO',
-      'T 0 0 86 89 MEDIA',
+      'T 7 0 7 89 LEITURA ANT.',
+      'T 7 0 28 89 LEITURA ATUAL',
+      'T 7 0 45 89 CONS. REAL',
+      'T 7 0 61 89 CONS. FATUR.',
+      'T 7 0 86 89 MEDIA',
 
       'T 5 0 9 93 {LEIT_ANT}',
       'T 5 0 30 93 {LEIT_ATUAL}',
@@ -248,10 +248,10 @@ const ZebraPrint = (() => {
       'LINE 60 97 60 105 0.2',
       'LINE 78 97 78 105 0.2',
 
-      'T 0 0 15 97 NR. DO HIDROMETRO',
-      'T 0 0 50 97 VAZAO',
-      'T 0 0 64 97 DIAMETRO',
-      'T 0 0 80 97 DATA INST.',
+      'T 7 0 15 97 NR. DO HIDROMETRO',
+      'T 7 0 50 97 VAZAO',
+      'T 7 0 64 97 DIAMETRO',
+      'T 7 0 80 97 DATA INST.',
 
       'T 5 0 15 101 {NR_HIDROMETRO}',
 
@@ -260,37 +260,37 @@ const ZebraPrint = (() => {
 
       // DADOS HISTORICO / MENSAGEM
       'LINE 44 110 44 144 0.2',
-      'T 0 0 4 110 DADOS DOS ULTIMOS 6 MESES',
+      'T 7 0 4 110 ULTIMOS 6 MESES',
       'LINE 2 114 44 114 0.2',
 
-      'T 0 0 4 114 MES',
-      'T 0 0 18 114 CONSUMO',
-      'T 0 0 31 114 DIAS',
-      'T 0 0 38 114 MEDIA',
+      'T 7 0 4 114 MES',
+      'T 7 0 18 114 CONSUMO',
+      'T 7 0 31 114 DIAS',
+      'T 7 0 38 114 MEDIA',
 
-      'T 0 0 45 110 MENSAGEM',
+      'T 7 0 45 110 MENSAGEM',
 
       // QUALIDADE E LEGISLACAO
       'LINE 2 144 100 144 0.2',
-      'T 0 0 10 144 DETALHES SOBRE',
-      'T 0 0 8 147 LEGISLACAO VIDE VERSO',
+      'T 7 0 10 144 DETALHES SOBRE',
+      'T 7 0 8 147 LEGISLACAO VIDE VERSO',
       'LINE 35 144 35 151 0.2',
 
-      'T 0 0 42 145 PERIODO DA ANALISE:',
+      'T 7 0 42 145 PERIODO DA ANALISE:',
       'LINE 2 151 100 151 0.2',
 
-      'T 0 0 10 152 PARAMETRO',
-      'T 0 0 28 152 UNIDADE',
-      'T 0 0 47 152 VMP',
-      'T 0 0 60 151 TOTAL DE ANALISES',
-      'T 0 0 64 154 REALIZADAS',
-      'T 0 0 87 151 VALOR MEDIO',
-      'T 0 0 87 154 DETECTADO',
+      'T 7 0 10 152 PARAMETRO',
+      'T 7 0 28 152 UNIDADE',
+      'T 7 0 47 152 VMP',
+      'T 7 0 60 151 ANALISES',
+      'T 7 0 64 154 REALIZADAS',
+      'T 7 0 87 151 V. MEDIO',
+      'T 7 0 87 154 DETECTADO',
 
       'LINE 2 157 100 157 0.2',
       
-      'T 0 0 3 176 FAVOR AUTENTICAR NO VERSO - DEVOLVER AO USUARIO',
-      'T 0 0 76 176 EMISSAO: {DATA_EMISSAO} {HORA_EMISSAO}',
+      'T 7 0 3 176 AUTENTICAR NO VERSO - DEVOLVER AO USUARIO',
+      'T 7 0 76 176 EMISSAO: {DATA_EMISSAO} {HORA_EMISSAO}',
 
       // CAIXA DO CANHOTO (de 182 a 206)
       'LINE 2 182 2 206 0.2',
