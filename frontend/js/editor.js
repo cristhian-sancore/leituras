@@ -42,8 +42,9 @@ document.querySelectorAll('.tool-btn').forEach(btn=>{
         left:x,
         top:y,
         fontFamily:'Inter',
-        fontSize:16,
+        fontSize:14,
         fill:'#000',
+        cpclFont: '5'
       });
       canvas.add(txt).setActiveObject(txt);
     }else if(tool === 'addRect'){
@@ -75,8 +76,8 @@ function loadProperties(obj){
   $('#propPanel').classList.remove('hidden');
   // fonte (apenas para textos)
   if(obj.type==='i-text'){
-    $('#fontFamily').value = obj.fontFamily === 'Inter' ? '5' : '7';
-    $('#fontSize').value   = obj.fontSize;
+    $('#fontFamily').value = obj.cpclFont || (obj.fontSize > 14 ? '7' : '5');
+    $('#fontSize').value   = Math.round(obj.fontSize);
     $('#fontColor').value  = obj.fill;
   }else{
     // para retângulo/linha, apenas cor de preenchimento ou traço
@@ -85,9 +86,22 @@ function loadProperties(obj){
     $('#fontColor').value  = obj.stroke || '#000';
   }
 }
-canvas.on('selection:created', e=> loadProperties(e.target));
-canvas.on('selection:updated', e=> loadProperties(e.target));
+canvas.on('selection:created', e=> loadProperties(e.selected ? e.selected[0] : e.target));
+canvas.on('selection:updated', e=> loadProperties(e.selected ? e.selected[0] : e.target));
 canvas.on('selection:cleared', ()=> loadProperties(null));
+
+// Corrige o tamanho da fonte ao redimensionar pela caixa (handles)
+canvas.on('object:scaling', (e) => {
+  const obj = e.target;
+  if (obj && obj.type === 'i-text') {
+    obj.fontSize = Math.round(obj.fontSize * obj.scaleY);
+    obj.scaleX = 1;
+    obj.scaleY = 1;
+    // Auto-ajusta a fonte CPCL baseado no novo tamanho visual
+    obj.cpclFont = obj.fontSize > 16 ? '7' : '5';
+    loadProperties(obj);
+  }
+});
 
 // Aplicar propriedades ao objeto selecionado
 $('#applyProps').addEventListener('click',()=>{
@@ -97,7 +111,7 @@ $('#applyProps').addEventListener('click',()=>{
   const size = parseInt($('#fontSize').value,10);
   const color = $('#fontColor').value;
   if(obj.type==='i-text'){
-    obj.set({fontFamily:font==='5'?'Inter':'Inter', fontSize:size, fill:color});
+    obj.set({fontFamily:'Inter', fontSize:size, fill:color, cpclFont:font});
   }else if(obj.type==='rect' || obj.type==='line'){
     obj.set({stroke:color});
   }
@@ -119,8 +133,8 @@ function generateCPCL(){
       const x = mapCanvasToDots(obj.left);
       const y = mapCanvasToDots(obj.top);
       const txt = obj.text.replace(/\r?\n/g,' ');
-      // fonte CPCL: usamos 5 (normal) ou 7 (grande) – mapeamos de acordo com fontSize
-      const cpclFont = obj.fontSize>14 ? '7' : '5';
+      // fonte CPCL: usamos a definida nas props
+      const cpclFont = obj.cpclFont || (obj.fontSize > 14 ? '7' : '5');
       cpcl += `T ${cpclFont} 0 ${x} ${y} ${txt}\r\n`;
     }else if(obj.type==='rect'){
       const x0 = mapCanvasToDots(obj.left);
@@ -250,7 +264,8 @@ function parseCpclToCanvas(cpcl) {
         top: y,
         fontFamily: 'Inter',
         fontSize: fontSize,
-        fill: '#000'
+        fill: '#000',
+        cpclFont: font
       });
       canvas.add(txtObj);
     } 
