@@ -149,6 +149,12 @@ const ZebraPrint = (() => {
     for (const [key, val] of Object.entries(map)) {
       cpcl = cpcl.split(key).join(val);
     }
+    
+    // Forçar a instrução JOURNAL caso falte (evita o problema da impressora puxar papel infinitamente)
+    if (!cpcl.includes('JOURNAL')) {
+        cpcl = cpcl.replace(/(!\s.*\r?\n)/, '$1JOURNAL\r\n');
+    }
+    
     return cpcl;
   }
 
@@ -157,6 +163,7 @@ const ZebraPrint = (() => {
     const fv = (n) => parseFloat(n || 0).toFixed(2);
     return [
       '! 0 200 200 600 1',
+      'JOURNAL',
       'IN-MILLIMETERS',
       'COUNTRY LATIN9',
       'LINE 2 15 100 15 0.2',

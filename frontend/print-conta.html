@@ -114,8 +114,8 @@ body{background:#0f172a;color:#e2e8f0;font-family:'Inter',sans-serif;margin:0}
 
 <div class="toast" id="toast"></div>
 
-<script src="/js/api.js?v=2"></script>
-<script src="/js/zebra-print.js?v=2"></script>
+<script src="/js/api.js?v=4"></script>
+<script src="/js/zebra-print.js?v=4"></script>
 <script>
 let dadosImpressao = null;
 
@@ -309,7 +309,7 @@ async function imprimirConta() {
 // ── Imprimir teste ───────────────────────────────────────
 async function imprimirTeste() {
   if (!ZebraPrint.isConnected()) { toast('Conecte a impressora primeiro', true); return; }
-  const cpcl = `! 0 200 200 150 1\r\nIN-MILLIMETERS\r\nCOUNTRY LATIN9\r\nT 7 0 10 10 SAEMI - TESTE OK!\r\nT 5 0 10 25 ${new Date().toLocaleString('pt-BR')}\r\nT 5 0 10 38 Impressora conectada!\r\nFORM\r\nPRINT\r\n`;
+  const cpcl = `! 0 200 200 150 1\r\nJOURNAL\r\nIN-MILLIMETERS\r\nCOUNTRY LATIN9\r\nT 7 0 10 10 SAEMI - TESTE OK!\r\nT 5 0 10 25 ${new Date().toLocaleString('pt-BR')}\r\nT 5 0 10 38 Impressora conectada!\r\nFORM\r\nPRINT\r\n`;
   try {
     await ZebraPrint.sendData(cpcl);
     toast('✅ Teste enviado!');
