@@ -86,9 +86,9 @@ function loadProperties(obj){
     $('#fontColor').value  = obj.stroke || '#000';
   }
 }
-canvas.on('selection:created', e=> loadProperties(e.selected ? e.selected[0] : e.target));
-canvas.on('selection:updated', e=> loadProperties(e.selected ? e.selected[0] : e.target));
-canvas.on('selection:cleared', ()=> loadProperties(null));
+canvas.on('selection:created', () => loadProperties(canvas.getActiveObject()));
+canvas.on('selection:updated', () => loadProperties(canvas.getActiveObject()));
+canvas.on('selection:cleared', () => loadProperties(null));
 
 // Corrige o tamanho da fonte ao redimensionar pela caixa (handles)
 canvas.on('object:scaling', (e) => {
