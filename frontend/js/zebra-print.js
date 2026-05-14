@@ -184,8 +184,8 @@ const ZebraPrint = (() => {
     let sb = '';
     const add = (str) => { sb += str + '\r\n'; };
     
-    // Header
-    add('! 0 200 200 230 1');
+    // Header (altura de pagina para 250 mm para acomodar o canhoto ate 236mm)
+    add('! 0 200 200 250 1');
     add('JOURNAL');
     add('IN-MILLIMETERS');
     add('COUNTRY LATIN9');
@@ -250,13 +250,13 @@ const ZebraPrint = (() => {
     add('LINE 78 80 78 89 0.2');
     add('LINE 2 89 100 89 0.2');
 
-    add('T 0 2 4 80 DATA LEITURA ANTERIOR ');
+    add('T 7 0 4 80 DT. LEIT. ANT');
     add('T 7 2 5 83 ' + formatData(dados.leitura_anterior_data || dados.data_leitura_ant));
-    add('T 0 2 30 80 DATA LEITURA ATUAL ');
+    add('T 7 0 30 80 DT. LEIT. ATUAL');
     add('T 7 2 30 83 ' + formatData(dados.leitura_atual_data || dados.data_leitura));
-    add('T 0 2 60 80 VENCIMENTO ');
+    add('T 7 0 60 80 VENCIMENTO');
     add('T 7 2 56 83 ' + formatData(dados.vencimento));
-    add('T 0 2 80 80 VALOR A PAGAR');
+    add('T 7 0 80 80 VALOR A PAGAR');
     add('T 7 2 82 83 R$ ' + formatarValor(dados.valor_total));
 
     add('LINE 25 89 25 97 0.2');
@@ -266,11 +266,11 @@ const ZebraPrint = (() => {
     add('LINE 2 97 100 97 0.2');
     add('LINE 2 105 100 105 0.2');
 
-    add('T 0 2 7 89 LEITURA ANTERIOR ');
-    add('T 0 2 28 89 LEITURA ATUAL ');
-    add('T 0 2 45 89 CONSUMO REAL ');
-    add('T 0 2 61 89 CONS. FATURADO ');
-    add('T 0 2 86 89 MEDIA ');
+    add('T 7 0 7 89 LEITURA ANT.');
+    add('T 7 0 28 89 LEITURA ATUAL');
+    add('T 7 0 45 89 CONS. REAL');
+    add('T 7 0 61 89 CONS. FATUR.');
+    add('T 7 0 86 89 MEDIA');
 
     add('T 5 0 9 93 ' + (dados.leit_anterior || ' '));
     add('T 5 0 30 93 ' + (dados.leit_atual || ' '));
@@ -282,10 +282,10 @@ const ZebraPrint = (() => {
     add('LINE 60 97 60 105 0.2');
     add('LINE 78 97 78 105 0.2');
 
-    add('T 0 2 15 97 NR. DO HIDROMETRO ');
-    add('T 0 2 50 97 VAZAO ');
-    add('T 0 2 64 97 DIAMETRO ');
-    add('T 0 2 80 97 DATA DE INSTALACAO ');
+    add('T 7 0 15 97 NR. DO HIDROMETRO');
+    add('T 7 0 50 97 VAZAO');
+    add('T 7 0 64 97 DIAMETRO');
+    add('T 7 0 80 97 DATA DE INSTALACAO');
 
     add('T 5 0 15 101 ' + (dados.hidrometro || ' '));
     add('T 5 0 50 101  ');
@@ -296,13 +296,13 @@ const ZebraPrint = (() => {
     add('T 7 0 4 107 OCORRENCIA: ' + (dados.ocorrencia || '0000'));
 
     add('LINE 44 110 44 144 0.2');
-    add('T 0 2 4 110 DADOS DOS ULTIMOS 6 MESES ');
+    add('T 7 0 4 110 ULTIMOS 6 MESES');
     add('LINE 2 114 44 114 0.2');
 
-    add('T 0 2 4 114 MES ');
-    add('T 0 2 18 114 CONSUMO ');
-    add('T 0 2 31 114 DIAS ');
-    add('T 0 2 38 114 MEDIA ');
+    add('T 7 0 4 114 MES');
+    add('T 7 0 18 114 CONSUMO');
+    add('T 7 0 31 114 DIAS');
+    add('T 7 0 38 114 MEDIA');
 
     let yh = 118;
     if(dados.historico && dados.historico.length > 0) {
@@ -315,22 +315,22 @@ const ZebraPrint = (() => {
       });
     }
 
-    add('T 0 2 45 110 MENSAGEM');
+    add('T 7 0 45 110 MENSAGEM');
     add('LINE 2 144 100 144 0.2');
-    add('T 0 2 10 144 DETALHES SOBRE ');
-    add('T 0 2 8 147 LEGISLACAO VIDE VERSO');
+    add('T 7 0 10 144 DETALHES SOBRE');
+    add('T 7 0 8 147 LEGISLACAO VIDE VERSO');
     add('LINE 35 144 35 151 0.2');
 
-    add('T 0 2 42 145 PERIODO DA ANALISE: 24/08/2021 a ');
+    add('T 7 0 42 145 PERIODO DA ANALISE: 24/08/2021 a ');
     add('LINE 2 151 100 151 0.2');
 
-    add('T 0 2 10 152 PARAMETRO ');
-    add('T 0 2 28 152 UNIDADE ');
-    add('T 0 2 47 152 VMP ');
-    add('T 0 2 60 151 TOTAL DE ANALISES ');
-    add('T 0 2 64 154 REALIZADAS ');
-    add('T 0 2 87 151 VALOR MEDIO ');
-    add('T 0 2 87 154 DETECTADO ');
+    add('T 7 0 10 152 PARAMETRO');
+    add('T 7 0 28 152 UNIDADE');
+    add('T 7 0 47 152 VMP');
+    add('T 7 0 60 151 ANALISES');
+    add('T 7 0 64 154 REALIZADAS');
+    add('T 7 0 87 151 V. MEDIO');
+    add('T 7 0 87 154 DETECTADO');
 
     add('T 7 0 8 158 Cloro ');
     add('T 7 0 28 158 mg/L ');
@@ -343,14 +343,14 @@ const ZebraPrint = (() => {
     const dtEmissao = new Date().toLocaleDateString("pt-BR");
     const hrEmissao = new Date().getHours().toString().padStart(2, "0") + ":" + new Date().getMinutes().toString().padStart(2, "0");
 
-    add('T 0 2 3 180 FAVOR AUTENTICAR NO VERSO - DEVOLVER AO USUARIO');
-    add('T 0 2 76 180 EMISSAO: ' + dtEmissao + ' ' + hrEmissao);
+    add('T 7 0 3 180 FAVOR AUTENTICAR NO VERSO - DEVOLVER AO USUARIO');
+    add('T 7 0 76 180 EMISSAO: ' + dtEmissao + ' ' + hrEmissao);
 
-    // Canhoto
-    add('LINE 2 174 100 174 0.2');
-    add('LINE 2 174 2 206 0.2');
-    add('LINE 100 174 100 206 0.2');
-    add('LINE 2 199 100 199 0.2');
+    // Canhoto deslocado para 182mm (18.2cm)
+    add('LINE 2 182 100 182 0.2'); // Topo do canhoto
+    add('LINE 2 182 2 236 0.2');   // Esquerda do canhoto
+    add('LINE 100 182 100 236 0.2'); // Direita do canhoto
+    add('LINE 2 210 100 210 0.2'); // Divisoria dos dados do canhoto pro codigo de barras
 
     add('T 7 0 3 184 ' + nomeCompromissario);
     add('T 7 0 3 187 ' + enderecoInst);
@@ -360,27 +360,27 @@ const ZebraPrint = (() => {
     add('T 7 0 78 184 MES/ANO: ' + (dados.referencia || ''));
 
     add('LINE 76 187 100 187 0.2');
-    add('T 7 0 78 187.5 NR. GUIA ');
+    add('T 7 0 78 188 NR. GUIA ');
     add('T 7 0 78 190 ' + (dados.nosso_numero || ''));
     add('LINE 76 193 100 193 0.2');
-    add('T 7 0 78 193 CATEGORIA/QTDE ');
+    add('T 7 0 78 194 CATEGORIA/QTDE ');
     add('T 7 0 82 196 ' + (dados.categoria || ''));
 
-    add('T 7 0 12 200 LIGACAO ');
-    add('T 7 0 12 203 ' + instalacao);
-    add('LINE 35 199 35 206 0.2');
-    add('T 7 0 47 200 VENCIMENTO ');
-    add('T 7 0 47 203 ' + formatData(dados.vencimento));
-    add('T 7 0 80 200 VALOR A PAGAR ');
-    add('T 7 0 82 203 R$ ' + formatarValor(dados.valor_total));
-    add('LINE 76 174 76 206 0.2');
-    add('LINE 2 206 100 206 0.2');
+    add('T 7 0 12 201 LIGACAO ');
+    add('T 7 0 12 204 ' + instalacao);
+    add('LINE 35 199 35 210 0.2');
+    add('T 7 0 47 201 VENCIMENTO ');
+    add('T 7 0 47 204 ' + formatData(dados.vencimento));
+    add('T 7 0 80 201 VALOR A PAGAR ');
+    add('T 7 0 82 204 R$ ' + formatarValor(dados.valor_total));
+    add('LINE 76 182 76 210 0.2');
+    add('LINE 2 236 100 236 0.2');
 
     add('CENTER');
     let codStr = (dados.matricula || "000000").replace(/\D/g, "");
     if (codStr.length % 2 !== 0) codStr = "0" + codStr;
-    add('T 5 0 0 208 ' + codStr);
-    add('B I2OF5 0.245 25 8 0 212 ' + codStr);
+    add('T 5 0 0 215 ' + codStr);
+    add('B I2OF5 0.245 25 8 0 220 ' + codStr);
     add('FORM');
     add('PRINT');
 
