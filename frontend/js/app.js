@@ -1021,6 +1021,9 @@ async function abrirImpressao(clienteId) {
         venc: c.data_vencimento || '',
         fatura: c.num_fatura || '',
         tem_notif: c.tem_notificacao || false,
+        desc_agua: imp.desc_agua || '',
+        desc_esgoto: imp.desc_esgoto || '',
+        desc_lixo: imp.desc_lixo || '',
     });
 
     window.open(`/print-conta?${params}`, '_blank', 'width=900,height=700');

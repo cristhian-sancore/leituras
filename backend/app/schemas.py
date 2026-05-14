@@ -144,6 +144,9 @@ class ImportacaoOut(BaseModel):
     total_clientes: int
     status: str
     mes_referencia: Optional[str] = None
+    desc_agua: Optional[str] = None
+    desc_esgoto: Optional[str] = None
+    desc_lixo: Optional[str] = None
 
     class Config:
         from_attributes = True

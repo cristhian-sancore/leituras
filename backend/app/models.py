@@ -72,6 +72,9 @@ class Importacao(Base):
     total_clientes = Column(Integer, nullable=False, default=0)
     status = Column(Text, nullable=False, default="ativo")
     mes_referencia = Column(Text, nullable=True)
+    desc_agua = Column(Text, nullable=True, default="FORNECIMENTO DE AGUA")
+    desc_esgoto = Column(Text, nullable=True, default="ESGOTO")
+    desc_lixo = Column(Text, nullable=True, default="TAXA DE LIXO")
 
     __table_args__ = (
         Index("ix_importacao_empresa_status", "empresa_id", "status"),

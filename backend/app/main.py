@@ -28,6 +28,10 @@ async def run_migrations(conn):
         "ALTER TABLE usuarios ALTER COLUMN empresa_id DROP NOT NULL",
         # Audit log do superadmin: empresa_id pode ser null
         "ALTER TABLE audit_log ALTER COLUMN empresa_id DROP NOT NULL",
+        # Descricoes dinamicas da importacao
+        "ALTER TABLE importacoes ADD COLUMN IF NOT EXISTS desc_agua TEXT DEFAULT 'FORNECIMENTO DE AGUA'",
+        "ALTER TABLE importacoes ADD COLUMN IF NOT EXISTS desc_esgoto TEXT DEFAULT 'ESGOTO'",
+        "ALTER TABLE importacoes ADD COLUMN IF NOT EXISTS desc_lixo TEXT DEFAULT 'TAXA DE LIXO'",
     ]
     for sql in migrations:
         try:

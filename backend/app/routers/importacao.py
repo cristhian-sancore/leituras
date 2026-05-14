@@ -54,6 +54,9 @@ async def upload_rem(
         total_clientes=len(dados['clientes']),
         status="ativo",
         mes_referencia=mes_ref,
+        desc_agua=dados.get('desc_agua', 'FORNECIMENTO DE AGUA'),
+        desc_esgoto=dados.get('desc_esgoto', 'ESGOTO'),
+        desc_lixo=dados.get('desc_lixo', 'TAXA DE LIXO'),
     )
     db.add(importacao)
     await db.flush()  # garante que importacao.id seja gerado

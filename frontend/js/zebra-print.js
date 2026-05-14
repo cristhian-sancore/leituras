@@ -122,12 +122,12 @@ const ZebraPrint = (() => {
       '{NR_GUIA}':              dados.nosso_numero || dados.matricula || '',
       '{CATEGORIA}':            dados.categoria || '',
       
-      // Lançamentos
-      '{LANCAMENTO_DESC_1}':    parseFloat(dados.valor_agua||0) > 0 ? 'FORNEC. E ABASTEC. DE AGUA' : '',
+      // Lançamentos e Valores
+      '{LANCAMENTO_DESC_1}':    parseFloat(dados.valor_agua||0) > 0 ? (dados.desc_agua || 'FORNEC. E ABASTEC. DE AGUA') : '',
       '{LANCAMENTO_VAL_1}':     parseFloat(dados.valor_agua||0) > 0 ? formatarValor(dados.valor_agua) : '',
-      '{LANCAMENTO_DESC_2}':    parseFloat(dados.valor_esgoto||0) > 0 ? 'ESGOTO' : '',
+      '{LANCAMENTO_DESC_2}':    parseFloat(dados.valor_esgoto||0) > 0 ? (dados.desc_esgoto || 'ESGOTO') : '',
       '{LANCAMENTO_VAL_2}':     parseFloat(dados.valor_esgoto||0) > 0 ? formatarValor(dados.valor_esgoto) : '',
-      '{LANCAMENTO_DESC_3}':    parseFloat(dados.valor_lixo||0) > 0 ? 'TARIFA DE COLETA DE LIXO' : '',
+      '{LANCAMENTO_DESC_3}':    parseFloat(dados.valor_lixo||0) > 0 ? (dados.desc_lixo || 'TARIFA DE COLETA DE LIXO') : '',
       '{LANCAMENTO_VAL_3}':     parseFloat(dados.valor_lixo||0) > 0 ? formatarValor(dados.valor_lixo) : '',
 
       // Leituras

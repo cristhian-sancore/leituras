@@ -20,6 +20,13 @@ def parse_rem(content: str) -> dict:
     """
     lines = content.split('\n')
 
+    # -----------------------------------------------------------
+    # Descricoes dinamicas
+    # -----------------------------------------------------------
+    desc_agua = 'AGUA'
+    desc_esgoto = 'ESGOTO'
+    desc_lixo = 'TAXA DE LIXO'
+
     tarifas_raw = {
         'residencial': {'agua': [], 'lixo': []},
         'comercial': {'agua': [], 'lixo': []},
@@ -39,11 +46,20 @@ def parse_rem(content: str) -> dict:
     matriculas_com_lixo = set()
     for line in lines:
         clean = line.strip()
+        # Captura descricoes do A01
+        if clean.startswith('A01'):
+            if len(line) >= 58:
+                desc_agua = line[18:58].strip()
+            if len(line) >= 98:
+                desc_esgoto = line[58:98].strip()
+
         if clean.startswith('A12') and len(clean) > 25:
             mat_a12 = clean[3:18].strip()
             descricao_a12 = clean[20:70].upper()
             if 'LIXO' in descricao_a12:
                 matriculas_com_lixo.add(mat_a12)
+                if desc_lixo == 'TAXA DE LIXO': # Pega o primeiro como padrao
+                    desc_lixo = clean[20:70].strip()
 
     for line in lines:
         clean = line.strip()
@@ -189,6 +205,9 @@ def parse_rem(content: str) -> dict:
                 })
 
     return {
+        'desc_agua': desc_agua,
+        'desc_esgoto': desc_esgoto,
+        'desc_lixo': desc_lixo,
         'tarifas': tarifas_list,
         'ocorrencias': ocorrencias,
         'clientes': clientes,
