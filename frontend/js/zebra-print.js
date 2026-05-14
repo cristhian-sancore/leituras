@@ -162,172 +162,229 @@ const ZebraPrint = (() => {
   }
 
   // ── Layout genérico (fallback sem customização) ────────
+  function removerAcentos(str) {
+    if(!str) return '';
+    return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+
+  function formatarValor(val) {
+    return parseFloat(val || 0).toFixed(2).replace('.', ',');
+  }
+
+  function formatData(data) {
+    if (!data) return '';
+    if (data.indexOf('-') > 0) {
+      let p = data.split('-');
+      if (p.length === 3) return p[2] + '/' + p[1] + '/' + p[0];
+    }
+    return data;
+  }
+
   function layoutGenerico(dados) {
-    const fv = (n) => parseFloat(n || 0).toFixed(2);
-    return [
-      '! 0 200 200 240 1',
-      'JOURNAL',
-      'IN-MILLIMETERS',
-      'COUNTRY LATIN9',
+    let sb = '';
+    const add = (str) => { sb += str + '\r\n'; };
+    
+    // Header
+    add('! 0 200 200 230 1');
+    add('JOURNAL');
+    add('IN-MILLIMETERS');
+    add('COUNTRY LATIN9');
 
-      // CAIXA PRINCIPAL SUPERIOR (15 até 174)
-      'LINE 2 15 100 15 0.2',
-      'LINE 2 15 2 174 0.2',
-      'LINE 100 15 100 174 0.2',
-      'LINE 2 174 100 174 0.2',
+    // Box 1 lines
+    add('LINE 2 15 100 15 0.2');
+    add('LINE 2 15 2 174 0.2');
+    add('LINE 100 15 100 174 0.2');
+    add('LINE 2 174 100 174 0.2');
+    
+    add('LINE 76 15 76 39 0.2');
+    add('LINE 76 22 100 22 0.2');
+    add('LINE 76 30 100 30 0.2');
+    add('LINE 76 34 100 34 0.2');
+    add('LINE 2 39 100 39 0.2');
+    add('LINE 2 44 100 44 0.2');
 
-      // DIVISÕES SUPERIORES
-      'LINE 76 15 76 39 0.2',
-      'LINE 76 22 100 22 0.2',
-      'LINE 76 30 100 30 0.2',
-      'LINE 76 34 100 34 0.2',
-      'LINE 2 39 100 39 0.2',
-      'LINE 2 44 100 44 0.2',
+    let nomeCompromissario = removerAcentos(dados.cliente_nome || '');
+    let enderecoInst = removerAcentos(dados.cliente_endereco || '') + ', ' + (dados.cliente_numero || '') + ', ' + removerAcentos(dados.cliente_bairro || '');
+    let cep = dados.cliente_cep || ' ';
+    let rota = dados.rota || '';
+    let enderecoEntrega = removerAcentos(dados.cliente_endereco || '') + ', ' + (dados.cliente_numero || '') + ', ' + removerAcentos(dados.cliente_bairro || '');
+    let sequencia = (dados.setor || ' ') + ' - ' + (dados.quadra || ' ') + ' - ' + (dados.lote || '  ');
+    let instalacao = dados.matricula || '';
 
-      'T 7 0 3 16 {NOME_COMPROMISSARIO}',
-      'T 7 0 3 19 {ENDERECO_LOGRADOURO}',
-      'T 7 0 3 22 CEP: {CEP}, Rota: {ROTA}',
-      'T 7 0 3 25 END. ENT: {ENDERECO_BAIRRO}',
-      'T 7 0 3 28 Sequencia anterior: {SEQUENCIA}',
-      'T 7 0 3 31 LIGACAO: {LIGACAO}',
+    add('T 7 0 3 16 ' + nomeCompromissario);
+    add('T 7 0 3 19 ' + enderecoInst);
+    add('T 7 0 3 22 CEP: ' + cep + ', Rota: ' + rota);
+    add('T 7 0 3 25 END. ENT: ' + enderecoEntrega);
+    add('T 7 0 3 28 Sequencia anterior: ' + sequencia);
+    add('T 7 0 3 31 LIGACAO: ' + instalacao);
 
-      'T 7 2 78 15 MES/ANO: {REFERENCIA}',
-      'T 7 0 78 23 NR. GUIA',
-      'T 7 0 78 26 {NR_GUIA}',
-      'T 7 0 78 31 CATEGORIA/QTDE',
-      'T 7 0 82 35 {CATEGORIA}',
+    add('T 7 2 78 15 MES/ANO: ' + (dados.referencia || ''));
+    add('T 7 0 78 23 NR. GUIA ');
+    add('T 7 0 78 26 ' + (dados.nosso_numero || ''));
+    add('T 7 0 78 31 CATEGORIA/QTDE ');
+    add('T 7 0 82 35 ' + (dados.categoria || ''));
 
-      'T 7 0 30 40 DESCRICAO',
-      'T 7 0 89 40 VALOR',
+    add('T 7 0 30 40 DESCRICAO ');
+    add('T 7 0 89 40 VALOR ');
 
-      'T 7 0 5 45 {LANCAMENTO_DESC_1}',
-      'T 7 0 87 45 {LANCAMENTO_VAL_1}',
-      'T 7 0 5 48 {LANCAMENTO_DESC_2}',
-      'T 7 0 87 48 {LANCAMENTO_VAL_2}',
-      'T 7 0 5 51 TAXA LIXO/OUTROS',
-      'T 7 0 87 51 {LANCAMENTO_VAL_3}',
+    let y5 = 45;
+    if (parseFloat(dados.valor_agua || 0) > 0) {
+       add('T 7 0 5 ' + y5 + ' AGUA');
+       add('T 7 0 87 ' + y5 + '  ' + formatarValor(dados.valor_agua));
+       y5 += 3;
+    }
+    if (parseFloat(dados.valor_esgoto || 0) > 0) {
+       add('T 7 0 5 ' + y5 + ' ESGOTO');
+       add('T 7 0 87 ' + y5 + '  ' + formatarValor(dados.valor_esgoto));
+       y5 += 3;
+    }
+    if (parseFloat(dados.valor_lixo || 0) > 0) {
+       add('T 7 0 5 ' + y5 + '  TAXA DE LIXO');
+       add('T 7 0 87 ' + y5 + '  ' + formatarValor(dados.valor_lixo));
+       y5 += 3;
+    }
 
-      // TABELA DATA LEITURA
-      'LINE 2 80 100 80 0.2',
-      'LINE 28 80 28 89 0.2',
-      'LINE 50 80 50 89 0.2',
-      'LINE 78 80 78 89 0.2',
-      'LINE 2 89 100 89 0.2',
+    add('LINE 2 80 100 80 0.2');
+    add('LINE 28 80 28 89 0.2');
+    add('LINE 50 80 50 89 0.2');
+    add('LINE 78 80 78 89 0.2');
+    add('LINE 2 89 100 89 0.2');
 
-      'T 7 0 4 80 DT. LEIT. ANT',
-      'T 7 2 5 83 {DATA_LEITURA_ANT}',
-      'T 7 0 30 80 DT. LEIT. ATUAL',
-      'T 7 2 30 83 {DATA_LEITURA_ATU}',
-      'T 7 0 60 80 VENCIMENTO',
-      'T 7 2 56 83 {DATA_VENCIMENTO}',
-      'T 7 0 80 80 VALOR A PAGAR',
-      'T 7 2 82 83 R$ {VALOR_PAGAR}',
+    add('T 0 2 4 80 DATA LEITURA ANTERIOR ');
+    add('T 7 2 5 83 ' + formatData(dados.leitura_anterior_data));
+    add('T 0 2 30 80 DATA LEITURA ATUAL ');
+    add('T 7 2 30 83 ' + formatData(dados.leitura_atual_data));
+    add('T 0 2 60 80 VENCIMENTO ');
+    add('T 7 2 56 83 ' + formatData(dados.vencimento));
+    add('T 0 2 80 80 VALOR A PAGAR');
+    add('T 7 2 82 83 R$ ' + formatarValor(dados.valor_total));
 
-      // TABELA CONSUMO
-      'LINE 25 89 25 97 0.2',
-      'LINE 44 89 44 97 0.2',
-      'LINE 60 89 60 97 0.2',
-      'LINE 78 89 78 97 0.2',
-      'LINE 2 97 100 97 0.2',
-      'LINE 2 105 100 105 0.2',
+    add('LINE 25 89 25 97 0.2');
+    add('LINE 44 89 44 97 0.2');
+    add('LINE 60 89 60 97 0.2');
+    add('LINE 78 89 78 97 0.2');
+    add('LINE 2 97 100 97 0.2');
+    add('LINE 2 105 100 105 0.2');
 
-      'T 7 0 7 89 LEITURA ANT.',
-      'T 7 0 28 89 LEITURA ATUAL',
-      'T 7 0 45 89 CONS. REAL',
-      'T 7 0 61 89 CONS. FATUR.',
-      'T 7 0 86 89 MEDIA',
+    add('T 0 2 7 89 LEITURA ANTERIOR ');
+    add('T 0 2 28 89 LEITURA ATUAL ');
+    add('T 0 2 45 89 CONSUMO REAL ');
+    add('T 0 2 61 89 CONS. FATURADO ');
+    add('T 0 2 86 89 MEDIA ');
 
-      'T 5 0 9 93 {LEIT_ANT}',
-      'T 5 0 30 93 {LEIT_ATUAL}',
-      'T 5 0 50 93 {CONS_REAL}',
-      'T 5 0 66 93 {CONS_FATURADO}',
-      'T 5 0 87 93 {MEDIA}',
+    add('T 5 0 9 93 ' + (dados.leit_anterior || ' '));
+    add('T 5 0 30 93 ' + (dados.leit_atual || ' '));
+    add('T 5 0 50 93 ' + (dados.consumo || ' '));
+    add('T 5 0 66 93 ' + (dados.consumo || ' '));
+    add('T 5 0 87 93 ' + Math.round(parseFloat(dados.consumo||0)/6));
 
-      // TABELA HIDROMETRO
-      'LINE 44 97 44 105 0.2',
-      'LINE 60 97 60 105 0.2',
-      'LINE 78 97 78 105 0.2',
+    add('LINE 44 97 44 105 0.2');
+    add('LINE 60 97 60 105 0.2');
+    add('LINE 78 97 78 105 0.2');
 
-      'T 7 0 15 97 NR. DO HIDROMETRO',
-      'T 7 0 50 97 VAZAO',
-      'T 7 0 64 97 DIAMETRO',
-      'T 7 0 80 97 DATA INST.',
+    add('T 0 2 15 97 NR. DO HIDROMETRO ');
+    add('T 0 2 50 97 VAZAO ');
+    add('T 0 2 64 97 DIAMETRO ');
+    add('T 0 2 80 97 DATA DE INSTALACAO ');
 
-      'T 5 0 15 101 {NR_HIDROMETRO}',
+    add('T 5 0 15 101 ' + (dados.hidrometro || ' '));
+    add('T 5 0 50 101  ');
+    add('T 5 0 66 101  ');
+    add('T 5 0 82 101  ');
 
-      'LINE 2 110 100 110 0.2',
-      'T 7 0 4 107 OCORRENCIA: {OCORRENCIA}',
+    add('LINE 2 110 100 110 0.2');
+    add('T 7 0 4 107 OCORRENCIA: ' + (dados.ocorrencia || '0000'));
 
-      // DADOS HISTORICO / MENSAGEM
-      'LINE 44 110 44 144 0.2',
-      'T 7 0 4 110 ULTIMOS 6 MESES',
-      'LINE 2 114 44 114 0.2',
+    add('LINE 44 110 44 144 0.2');
+    add('T 0 2 4 110 DADOS DOS ULTIMOS 6 MESES ');
+    add('LINE 2 114 44 114 0.2');
 
-      'T 7 0 4 114 MES',
-      'T 7 0 18 114 CONSUMO',
-      'T 7 0 31 114 DIAS',
-      'T 7 0 38 114 MEDIA',
+    add('T 0 2 4 114 MES ');
+    add('T 0 2 18 114 CONSUMO ');
+    add('T 0 2 31 114 DIAS ');
+    add('T 0 2 38 114 MEDIA ');
 
-      'T 7 0 45 110 MENSAGEM',
+    let yh = 118;
+    if(dados.historico && dados.historico.length > 0) {
+      dados.historico.forEach(h => {
+        add('T 7 0 4 ' + yh + ' ' + (h.mes||''));
+        add('T 7 0 20 ' + yh + ' ' + (h.consumo||''));
+        add('T 7 0 31 ' + yh + ' ' + (h.dias||''));
+        add('T 7 0 38 ' + yh + '  ' + (h.media||'0'));
+        yh += 3;
+      });
+    }
 
-      // QUALIDADE E LEGISLACAO
-      'LINE 2 144 100 144 0.2',
-      'T 7 0 10 144 DETALHES SOBRE',
-      'T 7 0 8 147 LEGISLACAO VIDE VERSO',
-      'LINE 35 144 35 151 0.2',
+    add('T 0 2 45 110 MENSAGEM');
+    add('LINE 2 144 100 144 0.2');
+    add('T 0 2 10 144 DETALHES SOBRE ');
+    add('T 0 2 8 147 LEGISLACAO VIDE VERSO');
+    add('LINE 35 144 35 151 0.2');
 
-      'T 7 0 42 145 PERIODO DA ANALISE:',
-      'LINE 2 151 100 151 0.2',
+    add('T 0 2 42 145 PERIODO DA ANALISE: 24/08/2021 a ');
+    add('LINE 2 151 100 151 0.2');
 
-      'T 7 0 10 152 PARAMETRO',
-      'T 7 0 28 152 UNIDADE',
-      'T 7 0 47 152 VMP',
-      'T 7 0 60 151 ANALISES',
-      'T 7 0 64 154 REALIZADAS',
-      'T 7 0 87 151 V. MEDIO',
-      'T 7 0 87 154 DETECTADO',
+    add('T 0 2 10 152 PARAMETRO ');
+    add('T 0 2 28 152 UNIDADE ');
+    add('T 0 2 47 152 VMP ');
+    add('T 0 2 60 151 TOTAL DE ANALISES ');
+    add('T 0 2 64 154 REALIZADAS ');
+    add('T 0 2 87 151 VALOR MEDIO ');
+    add('T 0 2 87 154 DETECTADO ');
 
-      'LINE 2 157 100 157 0.2',
-      
-      'T 7 0 3 176 AUTENTICAR NO VERSO - DEVOLVER AO USUARIO',
-      'T 7 0 76 176 EMISSAO: {DATA_EMISSAO} {HORA_EMISSAO}',
+    add('T 7 0 8 158 Cloro ');
+    add('T 7 0 28 158 mg/L ');
+    add('T 7 0 40 158 0,2 a 2 ');
+    add('T 7 0 65 158 1 ');
+    add('T 7 0 85 158 1,3 ');
 
-      // CAIXA DO CANHOTO (de 182 a 206)
-      'LINE 2 182 2 206 0.2',
-      'LINE 100 182 100 206 0.2',
-      'LINE 2 182 100 182 0.2',
-      'LINE 2 199 100 199 0.2',
-      'LINE 2 206 100 206 0.2',
-      'LINE 76 182 76 206 0.2',
+    add('LINE 2 157 100 157 0.2');
 
-      'T 7 0 3 184 {NOME_COMPROMISSARIO}',
-      'T 7 0 3 187 {ENDERECO_LOGRADOURO}',
-      'T 7 0 3 190 CEP: {CEP}, Rota: {ROTA}',
-      'T 7 0 3 193 END. ENT: {ENDERECO_BAIRRO}',
-      'T 7 0 3 196 Sequencia anterior: {SEQUENCIA}',
+    const dtEmissao = new Date().toLocaleDateString("pt-BR");
+    const hrEmissao = new Date().getHours().toString().padStart(2, "0") + ":" + new Date().getMinutes().toString().padStart(2, "0");
 
-      'T 7 0 78 184 MES/ANO: {REFERENCIA}',
-      'LINE 76 187 100 187 0.2',
-      'T 7 0 78 188 NR. GUIA',
-      'T 7 0 78 190 {NR_GUIA}',
-      'LINE 76 193 100 193 0.2',
-      'T 7 0 78 194 CATEGORIA/QTDE',
-      'T 7 0 82 197 {CATEGORIA}',
+    add('T 0 2 3 180 FAVOR AUTENTICAR NO VERSO - DEVOLVER AO USUARIO');
+    add('T 0 2 76 180 EMISSAO: ' + dtEmissao + ' ' + hrEmissao);
 
-      'T 7 0 12 200 LIGACAO',
-      'T 7 0 12 203 {LIGACAO}',
-      'LINE 35 199 35 206 0.2',
-      'T 7 0 47 200 VENCIMENTO',
-      'T 7 0 47 203 {DATA_VENCIMENTO}',
-      'T 7 0 80 200 VALOR A PAGAR',
-      'T 7 0 82 203 R$ {VALOR_PAGAR}',
+    // Canhoto
+    add('LINE 2 174 100 174 0.2');
+    add('LINE 2 174 2 206 0.2');
+    add('LINE 100 174 100 206 0.2');
+    add('LINE 2 199 100 199 0.2');
 
-      'CENTER',
-      'T 5 0 0 208 {LINHA_DIGITAVEL}',
-      'B I2OF5 0.245 25 8 0 213 {CODIGO_BARRAS}',
-      'FORM',
-      'PRINT',
-    ].join('\r\n');
+    add('T 7 0 3 184 ' + nomeCompromissario);
+    add('T 7 0 3 187 ' + enderecoInst);
+    add('T 7 0 3 190 CEP: ' + cep + ', Rota: ' + rota);
+    add('T 7 0 3 193 END. ENT: ' + enderecoEntrega);
+    add('T 7 0 3 196 Sequencia anterior: ' + sequencia);
+    add('T 7 0 78 184 MES/ANO: ' + (dados.referencia || ''));
+
+    add('LINE 76 187 100 187 0.2');
+    add('T 7 0 78 187.5 NR. GUIA ');
+    add('T 7 0 78 190 ' + (dados.nosso_numero || ''));
+    add('LINE 76 193 100 193 0.2');
+    add('T 7 0 78 193 CATEGORIA/QTDE ');
+    add('T 7 0 82 196 ' + (dados.categoria || ''));
+
+    add('T 7 0 12 200 LIGACAO ');
+    add('T 7 0 12 203 ' + instalacao);
+    add('LINE 35 199 35 206 0.2');
+    add('T 7 0 47 200 VENCIMENTO ');
+    add('T 7 0 47 203 ' + formatData(dados.vencimento));
+    add('T 7 0 80 200 VALOR A PAGAR ');
+    add('T 7 0 82 203 R$ ' + formatarValor(dados.valor_total));
+    add('LINE 76 174 76 206 0.2');
+    add('LINE 2 206 100 206 0.2');
+
+    add('CENTER');
+    let codStr = (dados.matricula || "000000").replace(/\D/g, "");
+    if (codStr.length % 2 !== 0) codStr = "0" + codStr;
+    add('T 5 0 0 208 ' + codStr);
+    add('B I2OF5 0.245 25 8 0 212 ' + codStr);
+    add('FORM');
+    add('PRINT');
+
+    return sb;
   }
 
   // ── Gerar CPCL da fatura ───────────────────────────────
