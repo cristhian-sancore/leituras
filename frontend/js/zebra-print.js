@@ -86,6 +86,9 @@ const ZebraPrint = (() => {
     const now  = new Date();
     const hora = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     const fv   = (n) => parseFloat(n || 0).toFixed(2);
+    
+    let codStr = (dados.matricula || '000000').replace(/\D/g, '');
+    if (codStr.length % 2 !== 0) codStr = '0' + codStr; // I2OF5 exige numeração par
 
     return {
       '{NOME_COMPROMISSARIO}':  dados.nome        || '',
@@ -138,7 +141,7 @@ const ZebraPrint = (() => {
       '{VALOR_2}':              '',
       // Outros
       '{OCORRENCIA}':           dados.ocorrencia  || 'LEITURA NORMAL',
-      '{CODIGO_BARRAS}':        (dados.matricula  || '000000').replace(/\D/g, ''),
+      '{CODIGO_BARRAS}':        codStr,
       '{LINHA_DIGITAVEL}':      dados.matricula   || '',
       '{DATA_EMISSAO}':         now.toLocaleDateString('pt-BR'),
       '{HORA_EMISSAO}':         hora,
@@ -216,9 +219,9 @@ const ZebraPrint = (() => {
       'LINE 75 100 75 112 0.2',
 
       'T 0 2 3 102 DATA LEITURA ANTERIOR',
-      'T 5 0 4 107 {DATA_LEITURA_ANT}',
+      'T 7 0 4 107 {DATA_LEITURA_ANT}',
       'T 0 2 26 102 DATA LEITURA ATUAL',
-      'T 5 0 28 107 {DATA_LEITURA_ATU}',
+      'T 7 0 28 107 {DATA_LEITURA_ATU}',
       'T 7 0 52 102 VENCIMENTO',
       'T 7 0 54 107 {DATA_VENCIMENTO}',
       'T 7 0 76 102 VALOR A PAGAR',
@@ -231,29 +234,29 @@ const ZebraPrint = (() => {
       'LINE 75 112 75 119 0.2',
 
       'T 0 2 3 113 LEIT. ANT.',
-      'T 5 0 5 116 {LEIT_ANT}',
+      'T 7 0 5 116 {LEIT_ANT}',
       'T 0 2 20 113 LEIT. ATUAL',
-      'T 5 0 22 116 {LEIT_ATUAL}',
+      'T 7 0 22 116 {LEIT_ATUAL}',
       'T 0 2 37 113 CONS. REAL',
-      'T 5 0 39 116 {CONS_REAL}',
+      'T 7 0 39 116 {CONS_REAL}',
       'T 0 2 57 113 MEDIA',
-      'T 5 0 62 116 {MEDIA}',
+      'T 7 0 62 116 {MEDIA}',
 
       // --- Hidrometro / Ocorrencia ---
       'LINE 2 119 100 119 0.2',
       'LINE 45 119 45 125 0.2',
       'LINE 2 125 100 125 0.2',
       'T 0 2 3 120 NR. HIDROMETRO',
-      'T 5 0 3 122 {NR_HIDROMETRO}',
+      'T 7 0 3 122 {NR_HIDROMETRO}',
       'T 0 2 46 120 DIAS DE CONSUMO: 30',
-      'T 5 0 3 126 OCORRENCIA: {OCORRENCIA}',
+      'T 7 0 3 126 OCORRENCIA: {OCORRENCIA}',
 
       // --- Ultimos 6 Meses ---
       'LINE 2 130 100 130 0.2',
       'LINE 45 130 45 155 0.2',
       'T 0 2 3 131 DADOS DOS ULTIMOS 6 MESES',
       'T 0 2 46 131 MENSAGEM',
-      'T 5 0 3 134 MES     CONS',
+      'T 7 0 3 134 MES     CONS',
 
       // --- Qualidade / Emissao ---
       'LINE 2 155 100 155 0.2',
@@ -272,10 +275,10 @@ const ZebraPrint = (() => {
 
       // --- CANHOTO ---
       'T 7 0 3 184 {NOME_COMPROMISSARIO}',
-      'T 5 0 3 188 {ENDERECO_LOGRADOURO}',
-      'T 5 0 3 191 {CEP}, {ENDERECO_BAIRRO}',
-      'T 5 0 3 194 ROTA: {ROTA}-{SEQUENCIA}',
-      'T 5 0 3 198 LIGACAO:{LIGACAO}       ID.ELETRO.:000',
+      'T 7 0 3 188 {ENDERECO_LOGRADOURO}',
+      'T 7 0 3 191 {CEP}, {ENDERECO_BAIRRO}',
+      'T 7 0 3 194 ROTA: {ROTA}-{SEQUENCIA}',
+      'T 7 0 3 198 LIGACAO:{LIGACAO}       ID.ELETRO.:000',
 
       'LINE 62 181 62 202 0.2',
       'LINE 62 188 100 188 0.2',
@@ -284,10 +287,10 @@ const ZebraPrint = (() => {
       'LINE 40 202 40 210 0.2',
       'LINE 2 210 100 210 0.2',
 
-      'T 5 0 63 183 MES/ANO:{REFERENCIA}',
-      'T 5 0 63 190 NR. GUIA',
-      'T 5 0 63 192 {NR_GUIA}',
-      'T 5 0 63 197 CATEGORIA/QTDE 1-{CATEGORIA}',
+      'T 7 0 63 183 MES/ANO:{REFERENCIA}',
+      'T 7 0 63 190 NR. GUIA',
+      'T 7 0 63 192 {NR_GUIA}',
+      'T 7 0 63 197 CATEGORIA/QTDE 1-{CATEGORIA}',
 
       'T 7 0 8 204 VENCIMENTO',
       'T 7 0 10 207 {DATA_VENCIMENTO}',
