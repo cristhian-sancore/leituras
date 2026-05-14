@@ -162,10 +162,9 @@ function drawCpcl(cpclText, el) {
     return;
   }
 
-  // Escala: coordenadas CPCL em mm, bobina 80mm → 302px visíveis.
-  // Largura util CPCL = ~99mm → escala X = 302/99 ≈ 3.05
-  const SX = 302 / 99;
-  const SY = 3.05;
+  // Escala: coordenadas CPCL em mm, papel ZQ521 104mm
+  const SX = 3.2; // 332px visíveis para 104mm
+  const SY = 3.2;
   let maxY = 0;
 
   const lines = cpclText.split(/\r?\n/);
@@ -185,7 +184,8 @@ function drawCpcl(cpclText, el) {
       const text = p.slice(5).join(' ');
       if (y + 16 > maxY) maxY = y + 16;
 
-      const fontSize = (font === '7') ? 11 : (font === '5') ? 10 : 9;
+      // Fonte 0 é a menor, Fonte 5 média, Fonte 7 bold
+      const fontSize = (font === '7') ? 11 : (font === '5') ? 9 : 7;
       const fontWeight = (font === '7') ? 'bold' : 'normal';
 
       const div = document.createElement('div');
@@ -194,7 +194,7 @@ function drawCpcl(cpclText, el) {
         position: 'absolute', left: x + 'px', top: y + 'px',
         fontFamily: "'Courier New', monospace",
         fontSize: fontSize + 'px', fontWeight,
-        whiteSpace: 'nowrap', color: '#111'
+        whiteSpace: 'pre', color: '#111', letterSpacing: '-0.5px'
       });
       el.appendChild(div);
     }
