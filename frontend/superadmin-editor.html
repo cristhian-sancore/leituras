@@ -83,7 +83,7 @@
 
   <div id="toast"></div>
 
-  <script src="/js/editor.js"></script>
+  <script src="/js/editor.js?v=2"></script>
   <script>
     document.addEventListener("DOMContentLoaded", async () => {
       const token = localStorage.getItem('saemi_token');
@@ -95,8 +95,9 @@
 
       if (layoutId) {
         try {
-          const res = await fetch(`/api/v1/superadmin/layouts`, {
-            headers: { 'Authorization': `Bearer ${token}` }
+          const res = await fetch(`/api/v1/superadmin/layouts?t=${Date.now()}`, {
+            headers: { 'Authorization': `Bearer ${token}` },
+            cache: 'no-store'
           });
           const layouts = await res.json();
           const layout = layouts.find(l => l.id == layoutId);

@@ -110,7 +110,9 @@ let isImporting = false;
 function mapCanvasToDots(val){ return Math.round(val / SCALE_X); }
 function generateCPCL(){
   if (isImporting) return;
-  let cpcl = `! 0 ${DOTS_W} ${DOTS_W} ${DOTS_H} 1\r\nIN-MILLIMETERS\r\nCOUNTRY LATIN9\r\n`;
+  // Use a altura do canvas para definir o tamanho da etiqueta em dots (altura em mm * 8)
+  const hDots = Math.round(canvas.height);
+  let cpcl = `! 0 ${DOTS_W} ${DOTS_W} ${hDots} 1\r\nIN-MILLIMETERS\r\nCOUNTRY LATIN9\r\n`;
   // percorre objetos na ordem de criação (stack)
   canvas.getObjects().forEach(obj=>{
     if(obj.type==='i-text'){

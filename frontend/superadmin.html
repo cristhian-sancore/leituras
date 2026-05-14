@@ -254,8 +254,10 @@ const BASE = '/api/v1';
 let token = localStorage.getItem('saemi_token'); // ← corrigido: era 'saemi_access_token'
 
 async function apiFetch(path, opts={}) {
-  const r = await fetch(BASE + path, {
+  const sep = path.includes('?') ? '&' : '?';
+  const r = await fetch(BASE + path + sep + 't=' + Date.now(), {
     headers: {'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+    cache: 'no-store',
     ...opts
   });
   if (!r.ok) {
