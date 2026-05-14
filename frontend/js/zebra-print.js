@@ -203,11 +203,11 @@ const ZebraPrint = (() => {
     add('LINE 2 39 100 39 0.2');
     add('LINE 2 44 100 44 0.2');
 
-    let nomeCompromissario = removerAcentos(dados.cliente_nome || '');
-    let enderecoInst = removerAcentos(dados.cliente_endereco || '') + ', ' + (dados.cliente_numero || '') + ', ' + removerAcentos(dados.cliente_bairro || '');
-    let cep = dados.cliente_cep || ' ';
+    let nomeCompromissario = removerAcentos(dados.nome || '');
+    let enderecoInst = removerAcentos(dados.endereco || '') + ', ' + (dados.numero || '') + ', ' + removerAcentos(dados.bairro || '');
+    let cep = dados.cep || ' ';
     let rota = dados.rota || '';
-    let enderecoEntrega = removerAcentos(dados.cliente_endereco || '') + ', ' + (dados.cliente_numero || '') + ', ' + removerAcentos(dados.cliente_bairro || '');
+    let enderecoEntrega = removerAcentos(dados.endereco || '') + ', ' + (dados.numero || '') + ', ' + removerAcentos(dados.bairro || '');
     let sequencia = (dados.setor || ' ') + ' - ' + (dados.quadra || ' ') + ' - ' + (dados.lote || '  ');
     let instalacao = dados.matricula || '';
 
@@ -251,9 +251,9 @@ const ZebraPrint = (() => {
     add('LINE 2 89 100 89 0.2');
 
     add('T 0 2 4 80 DATA LEITURA ANTERIOR ');
-    add('T 7 2 5 83 ' + formatData(dados.leitura_anterior_data));
+    add('T 7 2 5 83 ' + formatData(dados.leitura_anterior_data || dados.data_leitura_ant));
     add('T 0 2 30 80 DATA LEITURA ATUAL ');
-    add('T 7 2 30 83 ' + formatData(dados.leitura_atual_data));
+    add('T 7 2 30 83 ' + formatData(dados.leitura_atual_data || dados.data_leitura));
     add('T 0 2 60 80 VENCIMENTO ');
     add('T 7 2 56 83 ' + formatData(dados.vencimento));
     add('T 0 2 80 80 VALOR A PAGAR');
