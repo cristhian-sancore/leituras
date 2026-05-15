@@ -1,11 +1,11 @@
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func as sqlfunc
 from app.database import get_db
 from app.models import Cliente, Leitura, Tarifa, Ocorrencia, Importacao, Empresa, Usuario, AuditLog
-from app.schemas import ClienteComLeitura, HistoricoItem, LeituraUpdate, StatsOut, OcorrenciaOut, TarifaOut
+from app.schemas import ClienteComLeitura, LeituraUpdate, StatsOut, OcorrenciaOut, TarifaOut
 from app.auth.deps import get_current_user
 from app.services.calculadora import calcular_consumo, calcular_conta, validar_consumo
 
@@ -59,28 +59,39 @@ async def salvar_leitura(
     tarifas_dict = await _get_tarifas_dict(db, imp_id, current_user.empresa_id)
 
     # Extrair tarifas por categoria (usar a categoria do cliente)
-    tarifas_agua = tarifas_dict.get(f"{cat}_agua") or tarifas_dict.get("residencial_agua") or []
-    tarifas_lixo = tarifas_dict.get(f"{cat}_lixo") or tarifas_dict.get("residencial_lixo") or []
+    tarifas_agua   = tarifas_dict.get(f"{cat}_agua")   or tarifas_dict.get("residencial_agua")   or []
+    tarifas_lixo   = tarifas_dict.get(f"{cat}_lixo")   or tarifas_dict.get("residencial_lixo")   or []
+    tarifas_esgoto = tarifas_dict.get(f"{cat}_esgoto") or tarifas_dict.get("residencial_esgoto") or []
 
     consumo_minimo = empresa_cfg.get('consumo_minimo_m3', 10)
     perc_esgoto    = empresa_cfg.get('percentual_esgoto', 70.0)
 
+    # Multiplicar consumo mínimo pelas economias do cliente
+    consumo_minimo_cliente = consumo_minimo * (cliente.economias or 1)
+
     # Calcular consumo — assinatura: (leitura_atual, leitura_anterior, ocorrencia, consumo_medio, consumo_minimo)
+    # IMPORTANTE: se leitura_atual for None, usamos leitura_anterior para evitar rollover acidental
+    leitura_para_calculo = body.leitura_atual if body.leitura_atual is not None else (cliente.leitura_anterior or 0)
+
     consumo = calcular_consumo(
-        leitura_atual=body.leitura_atual if body.leitura_atual is not None else 0,
+        leitura_atual=leitura_para_calculo,
         leitura_anterior=cliente.leitura_anterior or 0,
         ocorrencia=ocorr_data,
         consumo_medio=cliente.consumo_medio or 0,
-        consumo_minimo=consumo_minimo,
+        consumo_minimo=consumo_minimo_cliente,
     )
 
-    # Calcular conta — assinatura: (consumo, tarifas_agua, tarifas_lixo, percentual_esgoto, consumo_minimo, ...)
+    # Calcular conta
     resultado = calcular_conta(
         consumo=consumo,
         tarifas_agua=tarifas_agua,
         tarifas_lixo=tarifas_lixo,
+        tarifas_esgoto=tarifas_esgoto or None,
         percentual_esgoto=perc_esgoto,
-        consumo_minimo=consumo_minimo,
+        consumo_minimo=consumo_minimo_cliente,
+        tem_agua=cliente.tem_agua,
+        tem_esgoto=cliente.tem_esgoto,
+        tem_lixo=cliente.tem_lixo,
     )
 
     # validar_consumo retorna dict (não tuple)
@@ -107,7 +118,7 @@ async def salvar_leitura(
         leitura.latitude          = body.latitude
         leitura.longitude         = body.longitude
         leitura.leiturista_id     = current_user.id
-        leitura.data_leitura      = datetime.utcnow()
+        leitura.data_leitura      = datetime.now(timezone.utc)
     else:
         leitura = Leitura(
             cliente_id=cliente_id,
@@ -123,7 +134,7 @@ async def salvar_leitura(
             latitude=body.latitude,
             longitude=body.longitude,
             leiturista_id=current_user.id,
-            data_leitura=datetime.utcnow(),
+            data_leitura=datetime.now(timezone.utc),
         )
         db.add(leitura)
 
@@ -334,54 +345,18 @@ async def list_clientes_com_leituras(
         )
         leituras_map = {l.cliente_id: l for l in leitura_result.scalars().all()}
 
-    # Buscar histórico dos últimos 6 meses de importações anteriores por matricula
-    # Agrupa por matricula → busca leituras de importações anteriores ordenadas por data
-    matriculas = [c.matricula for c in clientes]
-    historico_map = {}
-    if matriculas:
-        # Busca as últimas 6 leituras de cada matrícula em importações desta empresa
-        hist_result = await db.execute(
-            select(Cliente.matricula, Leitura.consumo, Importacao.mes_referencia, Leitura.data_leitura)
-            .join(Leitura, Leitura.cliente_id == Cliente.id)
-            .join(Importacao, Importacao.id == Cliente.importacao_id)
-            .where(
-                Cliente.empresa_id == current_user.empresa_id,
-                Cliente.matricula.in_(matriculas),
-                Leitura.consumo.isnot(None),
-            )
-            .order_by(Cliente.matricula, Leitura.data_leitura.desc())
-        )
-        for row in hist_result.all():
-            mat, cons, mes_ref, data_leit = row
-            if mat not in historico_map:
-                historico_map[mat] = []
-            if len(historico_map[mat]) < 6:
-                label = mes_ref or (data_leit.strftime('%m/%Y') if data_leit else '')
-                historico_map[mat].append(HistoricoItem(
-                    mes=label,
-                    consumo=int(cons or 0),
-                    dias=30,
-                    media=round(float(cons or 0) / 30, 1),
-                ))
-
-    # Buscar analises de agua da importacao
-    analises_agua = []
-    if import_id:
-        imp_res = await db.execute(select(Importacao.analises_agua).where(Importacao.id == import_id))
-        analises_agua = imp_res.scalar() or []
-
-    # Buscar descricoes de ocorrencia
-    ocorrencias_map = {}
-    if import_id:
-        ocorr_res = await db.execute(select(Ocorrencia.codigo, Ocorrencia.descricao).where(Ocorrencia.importacao_id == import_id))
-        ocorrencias_map = {o.codigo: o.descricao for o in ocorr_res.all()}
-
     # Montar resposta
     items = []
     for c in clientes:
         leitura = leituras_map.get(c.id)
-        ocorr_desc = ocorrencias_map.get(leitura.ocorrencia_codigo) if leitura and leitura.ocorrencia_codigo else None
-        
+        # Calcular alertas persistentes para a listagem
+        alerta = None
+        mensagem = None
+        if leitura:
+            v = validar_consumo(leitura.consumo, c.consumo_medio or 0)
+            alerta = v.get('alerta')
+            mensagem = v.get('mensagem')
+
         items.append(ClienteComLeitura(
             id=c.id,
             matricula=c.matricula,
@@ -392,35 +367,31 @@ async def list_clientes_com_leituras(
             rua=c.rua,
             numero=c.numero,
             bairro=c.bairro,
+            cidade=c.cidade,
+            uf=c.uf,
             zona=c.zona,
             rota=c.rota,
             sequencia=c.sequencia,
-            cep=getattr(c, 'cep', None),
+            cep=c.cep,
             mes_ano_ref=c.mes_ano_ref,
             data_vencimento=c.data_vencimento,
             num_fatura=c.num_fatura,
-            data_leit_anterior=getattr(c, 'data_leit_anterior', None),
-            ocorr_anterior=getattr(c, 'ocorr_anterior', None),
-            hidrometro=c.hidrometro,
-            vazao=c.vazao if c.vazao else '1.0',
-            diametro=c.diametro if c.diametro else '1',
-            data_instalacao=c.data_instalacao,
-            endereco_entrega=getattr(c, 'endereco_entrega', None),
-            codigo_barras=c.codigo_barras,
-            mensagens_fatura=getattr(c, 'mensagens_fatura', []),
-            historico_consumo=getattr(c, 'historico_consumo', []),
-            analises_agua=analises_agua,
-            mensagem_1=None,
-            mensagem_2=None,
-            historico=historico_map.get(c.matricula, []),
             leitura_atual=leitura.leitura_atual if leitura else None,
             ocorrencia_codigo=leitura.ocorrencia_codigo if leitura else None,
-            ocorrencia_descricao=ocorr_desc,
             consumo=leitura.consumo if leitura else 0,
             valor_agua=float(leitura.valor_agua) if leitura and leitura.valor_agua else 0.0,
             valor_esgoto=float(leitura.valor_esgoto) if leitura and leitura.valor_esgoto else 0.0,
             valor_lixo=float(leitura.valor_lixo) if leitura and leitura.valor_lixo else 0.0,
             valor_total=float(leitura.valor_total) if leitura and leitura.valor_total else 0.0,
+            tem_agua=c.tem_agua,
+            tem_esgoto=c.tem_esgoto,
+            tem_lixo=c.tem_lixo,
+            num_hidrometro=c.num_hidrometro,
+            economias=c.economias,
+            quadra=c.quadra,
+            lote=c.lote,
+            alerta=alerta,
+            mensagem=mensagem,
         ))
 
     return items

@@ -78,14 +78,12 @@ class EmpresaConfigUpdate(BaseModel):
 class LayoutImpressaoCreate(BaseModel):
     nome: str = Field(..., min_length=2, max_length=100)
     conteudo_cpcl: str = Field(...)
-    estado_fabric: Optional[dict] = None
     tipo_impressora: str = Field(default="ZQ520")
 
 class LayoutImpressaoOut(BaseModel):
     id: int
     nome: str
     conteudo_cpcl: str
-    estado_fabric: Optional[dict] = None
     tipo_impressora: str
     created_at: datetime
     updated_at: datetime
@@ -146,10 +144,6 @@ class ImportacaoOut(BaseModel):
     total_clientes: int
     status: str
     mes_referencia: Optional[str] = None
-    desc_agua: Optional[str] = None
-    desc_esgoto: Optional[str] = None
-    desc_lixo: Optional[str] = "TAXA DE LIXO"
-    analises_agua: Optional[List[dict]] = None
 
     class Config:
         from_attributes = True
@@ -158,13 +152,6 @@ class ImportacaoOut(BaseModel):
 # ============================================
 # LEITURA
 # ============================================
-
-class HistoricoItem(BaseModel):
-    mes: str
-    consumo: int
-    dias: int = 30
-    media: float
-
 
 class ClienteComLeitura(BaseModel):
     id: int
@@ -176,41 +163,31 @@ class ClienteComLeitura(BaseModel):
     rua: Optional[str] = None
     numero: Optional[str] = None
     bairro: Optional[str] = None
-    zona: Optional[str] = None
+    cidade: Optional[str] = None
+    uf: Optional[str] = None
+    cep: Optional[str] = None
     rota: Optional[str] = None
     sequencia: Optional[str] = None
-    cep: Optional[str] = None
+    quadra: Optional[str] = None
+    lote: Optional[str] = None
+    num_hidrometro: Optional[str] = None
+    economias: int = 1
     mes_ano_ref: Optional[str] = None
     data_vencimento: Optional[str] = None
     num_fatura: Optional[str] = None
-    data_leit_anterior: Optional[str] = None
-    ocorr_anterior: Optional[str] = None
-    hidrometro: Optional[str] = None
-    vazao: Optional[str] = None
-    diametro: Optional[str] = None
-    data_instalacao: Optional[str] = None
-    endereco_entrega: Optional[str] = None
-    codigo_barras: Optional[str] = None
-    mensagem_1: Optional[str] = None
-    mensagem_2: Optional[str] = None
-    historico: List[HistoricoItem] = []
     # Dados da leitura (se existir)
     leitura_atual: Optional[int] = None
     ocorrencia_codigo: Optional[str] = None
-    ocorrencia_descricao: Optional[str] = None
     consumo: int = 0
     valor_agua: float = 0.0
     valor_esgoto: float = 0.0
     valor_lixo: float = 0.0
     valor_total: float = 0.0
-    hidrometro: Optional[str] = None
-    vazao: Optional[float] = None
-    diametro: Optional[str] = None
-    data_instalacao: Optional[str] = None
-    codigo_barras: Optional[str] = None
-    mensagens_fatura: Optional[list] = None
-    historico_consumo: Optional[list] = None
-    analises_agua: Optional[list] = None
+    tem_agua: bool = True
+    tem_esgoto: bool = True
+    tem_lixo: bool = True
+    alerta: Optional[str] = None
+    mensagem: Optional[str] = None
 
     class Config:
         from_attributes = True

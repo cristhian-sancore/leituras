@@ -37,6 +37,7 @@ def parse_rem(content: str) -> dict:
     ult_lim = {}
     ocorrencias = []
     clientes = []
+    analises_agua = []
     mensagens_por_mat = {}
     historico_por_mat = {}
 
@@ -128,6 +129,22 @@ def parse_rem(content: str) -> dict:
                 'tipo_acao': tipo_acao,
                 'consumo_fixo': consumo_fixo,
                 'desconsidera_leitura': desconsidera_leitura,
+            })
+
+        # ============================================
+        # A07 - Analise de Agua
+        # ============================================
+        if clean.startswith('A07'):
+            param = clean[9:34].strip()
+            unid = clean[34:49].strip()
+            vmp = clean[49:69].strip()
+            # valor esta no final
+            val = clean[89:104].strip() if len(clean) > 100 else clean[89:].strip()
+            analises_agua.append({
+                'parametro': param,
+                'unidade': unid,
+                'vmp': vmp,
+                'valor': val
             })
 
         # ============================================
@@ -258,4 +275,5 @@ def parse_rem(content: str) -> dict:
         'tarifas': tarifas_list,
         'ocorrencias': ocorrencias,
         'clientes': clientes,
+        'analises_agua': analises_agua,
     }

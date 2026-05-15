@@ -76,6 +76,7 @@ class Importacao(Base):
     desc_agua = Column(Text, nullable=True, default="FORNECIMENTO DE AGUA")
     desc_esgoto = Column(Text, nullable=True, default="ESGOTO")
     desc_lixo = Column(Text, nullable=True, default="TAXA DE LIXO")
+    analises_agua = Column(JSONB, nullable=True)
 
     __table_args__ = (
         Index("ix_importacao_empresa_status", "empresa_id", "status"),

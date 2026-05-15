@@ -178,12 +178,12 @@ const ZebraPrint = (() => {
 
       // Leituras
       '{DATA_LEITURA_ANT}':     formatData(dados.data_leit_anterior || dados.leitura_anterior_data || dados.data_leitura_ant),
-      '{DATA_LEITURA_ATU}':     formatData(dados.leitura_atual_data || dados.data_leitura),
+      '{DATA_LEITURA_ATU}':     formatData(now),
       '{LEIT_ANT}':             String(dados.leit_anterior || ' '),
-      '{LEIT_ATUAL}':           String(dados.leit_atual || ' '),
-      '{CONS_REAL}':            String(dados.consumo || ' '),
-      '{CONS_FATURADO}':        String(dados.consumo || ' '),
-      '{MEDIA}':                String(Math.round(parseFloat(dados.consumo || 0) / 6)),
+      '{LEIT_ATUAL}':           String(dados.leitura_atual || ' '),
+      '{CONS_REAL}':            String(dados.consumo || '0'),
+      '{CONS_FATURADO}':        String(dados.consumo || '0'),
+      '{MEDIA}':                String(dados.consumo_medio || '0'),
       
       // Hidrômetro
       '{NR_HIDROMETRO}':        dados.hidrometro || ' ',
@@ -192,15 +192,13 @@ const ZebraPrint = (() => {
       '{DATA_INSTALACAO}':      formatData(dados.data_instalacao) || ' ',
       
       // Valores
-      '{DATA_VENCIMENTO}':      formatData(dados.vencimento),
+      '{DATA_VENCIMENTO}':      formatData(dados.data_vencimento || dados.vencimento),
       '{VALOR_PAGAR}':          formatarValor(dados.valor_total),
       '{TOTAL_PAGAR}':          formatarValor(dados.valor_total),
       '{DIVIDA}':               'R$ ' + formatarValor(dados.valor_total),
       
       // Outros
-      '{OCORRENCIA}':           dados.ocorrencia_codigo || dados.ocorrencia || 'Normal',
-      '{CODIGO_BARRAS}':        dados.codigo_barras && dados.codigo_barras.trim().length === 44 ? dados.codigo_barras : codStr,
-      '{LINHA_DIGITAVEL}':      dados.codigo_barras && dados.codigo_barras.trim().length === 44 ? formatarLinhaDigitavel(dados.codigo_barras) : codStr,
+      '{OCORRENCIA}':           (dados.ocorrencia_codigo || '') + (dados.ocorrencia_descricao ? ' - ' + removerAcentos(dados.ocorrencia_descricao) : ''),
       '{DATA_EMISSAO}':         now.toLocaleDateString('pt-BR'),
       '{HORA_EMISSAO}':         hora,
 
@@ -210,23 +208,42 @@ const ZebraPrint = (() => {
 
       // Fallbacks em branco pro histórico (1 a 6)
       ...Array.from({length: 6}).reduce((acc, _, i) => {
-         acc[`{HIST_MES_${i+1}}`] = '';
-         acc[`{HIST_CONS_${i+1}}`] = '';
-         acc[`{HIST_DIAS_${i+1}}`] = '';
-         acc[`{HIST_MEDIA_${i+1}}`] = '';
+         acc[`{HIST_MES_${i+1}}`] = ' ';
+         acc[`{HIST_CONS_${i+1}}`] = ' ';
+         acc[`{HIST_DIAS_${i+1}}`] = ' ';
+         acc[`{HIST_MEDIA_${i+1}}`] = ' ';
+         return acc;
+      }, {}),
+
+      // Fallbacks para análise de água
+      ...Array.from({length: 8}).reduce((acc, _, i) => {
+         acc[`{ANALISE_PARAM_${i+1}}`] = ' ';
+         acc[`{ANALISE_UNID_${i+1}}`] = ' ';
+         acc[`{ANALISE_VMP_${i+1}}`]  = ' ';
+         acc[`{ANALISE_VAL_${i+1}}`]  = ' ';
          return acc;
       }, {})
     };
 
     // Preenche histórico se tiver
-    let histList = dados.historico_consumo || dados.historico;
-    if (histList && histList.length > 0) {
-      histList.forEach((h, i) => {
-        if(i < 6) {
-          map[`{HIST_MES_${i+1}}`] = h.mes_ano || h.mes || '';
-          map[`{HIST_CONS_${i+1}}`] = h.consumo || '0';
-          map[`{HIST_DIAS_${i+1}}`] = h.dias || '';
-          map[`{HIST_MEDIA_${i+1}}`] = h.media || '0';
+    let histList = (dados.historico_consumo && dados.historico_consumo.length > 0) ? dados.historico_consumo : (dados.historico || []);
+    histList.forEach((h, i) => {
+      if(i < 6) {
+        map[`{HIST_MES_${i+1}}`] = h.mes_ano || h.mes || ' ';
+        map[`{HIST_CONS_${i+1}}`] = String(h.consumo || '0');
+        map[`{HIST_DIAS_${i+1}}`] = String(h.dias || '30');
+        map[`{HIST_MEDIA_${i+1}}`] = String(h.media || '0');
+      }
+    });
+
+    // Preenche análises de água se tiver
+    if (dados.analises_agua && dados.analises_agua.length > 0) {
+      dados.analises_agua.forEach((a, i) => {
+        if (i < 8) {
+           map[`{ANALISE_PARAM_${i+1}}`] = removerAcentos(a.parametro || '').substring(0, 20);
+           map[`{ANALISE_UNID_${i+1}}`] = (a.unidade || '').substring(0, 10);
+           map[`{ANALISE_VMP_${i+1}}`]  = (a.vmp || '').substring(0, 15);
+           map[`{ANALISE_VAL_${i+1}}`]  = (a.valor || '').substring(0, 10);
         }
       });
     }
@@ -236,30 +253,30 @@ const ZebraPrint = (() => {
       map['{MENSAGEM_1}'] = `Constam ${dados.faturas_abertas} Faturas em Aberto.`;
     }
 
-    // --- LINHA DIGITAVEL FEBRABAN (Concessionárias - padrão FEBRABAN/NBR) ---
-    // Para código de barras iniciado com '8' (empresas/concessionárias):
-    // 44 dígitos: P.S.V.D VVVVVVVVVVV LLLLLLLLLL LLLLLLLLLL LLLLL
-    //   P = Produto (8)
-    //   S = Segmento (1 dígito)
-    //   V = Tipo de valor real (6=real, 7=IGPM)
-    //   D = DV geral (Módulo 10)
-    //   VVVVVVVVVVV = Valor (11 dígitos)
-    //   Ls = Campo livre (25 dígitos)
-    //
-    // Linha Digitável (5 campos):
-    //   Campo1: pos 3-12 + DV mod10    (10 dígitos)   → XXXXX.XXXXD
-    //   Campo2: pos 13-22 + DV mod10   (10 dígitos)   → XXXXX.XXXXXD
-    //   Campo3: pos 23-32 + DV mod10   (10 dígitos)   → XXXXX.XXXXXD
-    //   Campo4: pos 4 (DV geral)       (1 dígito)
-    //   Campo5: pos 5-44               (40 dígitos) — valor+campo livre
+    // --- LOGICA DE CODIGO DE BARRAS / LINHA DIGITAVEL ---
+    let rawBarcode = (dados.codigo_barras || '').replace(/\D/g, '');
+    
+    if (rawBarcode.length === 44) {
+        map['{CODIGO_BARRAS}'] = rawBarcode;
+        // Se for 44 dígitos, formatar a linha digitável (Padrão Concessionária/FEBRABAN se começar com 8)
+        if (rawBarcode[0] === '8') {
+            map['{LINHA_DIGITAVEL}'] = formatarLinhaDigitavelConcessionaria(rawBarcode);
+        } else {
+            map['{LINHA_DIGITAVEL}'] = rawBarcode; 
+        }
+    } else {
+        // Fallback: usar matrícula
+        let codFallback = (dados.matricula || '0').replace(/\D/g, '');
+        if (codFallback.length % 2 !== 0) codFallback = '0' + codFallback;
+        map['{CODIGO_BARRAS}'] = codFallback;
+        map['{LINHA_DIGITAVEL}'] = codFallback;
+    }
 
-    let rawBarcode = dados.codigo_barras || '';
+    return map;
+  }
 
-    // Limpar: manter só dígitos
-    rawBarcode = rawBarcode.replace(/\D/g, '');
-
-    if (rawBarcode.length === 44 && rawBarcode[0] === '8') {
-      // Concessionária / empresa: calcular DV Módulo 10
+  function formatarLinhaDigitavelConcessionaria(cb) {
+      if (!cb || cb.length !== 44) return cb;
       const mod10 = (s) => {
         let soma = 0, peso = 2;
         for (let i = s.length - 1; i >= 0; i--) {
@@ -272,51 +289,22 @@ const ZebraPrint = (() => {
         return r === 0 ? 0 : 10 - r;
       };
 
-      const c1 = rawBarcode.substring(2, 12);   // pos 3-12 (índices 2-11)
-      const c2 = rawBarcode.substring(12, 22);  // pos 13-22
-      const c3 = rawBarcode.substring(22, 32);  // pos 23-32
-      const c4 = rawBarcode[3];                 // DV geral (pos 4, índice 3)
-      const c5 = rawBarcode.substring(4, 44);   // valor+campo livre (pos 5-44)
+      const c1 = cb.substring(0, 11);
+      const c2 = cb.substring(11, 22);
+      const c3 = cb.substring(22, 33);
+      const c4 = cb.substring(33, 44);
 
-      const dv1 = mod10(c1);
-      const dv2 = mod10(c2);
-      const dv3 = mod10(c3);
-
-      // Formatar com pontos conforme FEBRABAN
-      const f1 = c1.substring(0, 5) + '.' + c1.substring(5) + dv1;
-      const f2 = c2.substring(0, 5) + '.' + c2.substring(5) + dv2;
-      const f3 = c3.substring(0, 5) + '.' + c3.substring(5) + dv3;
-
-      map['{LINHA_DIGITAVEL}'] = `${f1} ${f2} ${f3} ${c4} ${c5}`;
-      map['{CODIGO_BARRAS}'] = rawBarcode;
-
-    } else if (rawBarcode.length === 44) {
-      // Boleto bancário padrão: manter exibição simples
-      map['{LINHA_DIGITAVEL}'] = rawBarcode;
-      map['{CODIGO_BARRAS}'] = rawBarcode;
-    } else if (rawBarcode.length > 0) {
-      // Código parcial ou outro formato: usar como está
-      map['{LINHA_DIGITAVEL}'] = rawBarcode;
-      map['{CODIGO_BARRAS}'] = rawBarcode.length % 2 === 0 ? rawBarcode : '0' + rawBarcode;
-    } else {
-      // Fallback: usar matrícula como I2OF5
-      map['{LINHA_DIGITAVEL}'] = codStr;
-      map['{CODIGO_BARRAS}'] = codStr;
-    }
-
-    return map;
+      return `${c1}-${mod10(c1)} ${c2}-${mod10(c2)} ${c3}-${mod10(c3)} ${c4}-${mod10(c4)}`;
   }
 
   function aplicarVariaveis(cpcl, map) {
     for (const [key, val] of Object.entries(map)) {
-      cpcl = cpcl.split(key).join(val);
+      cpcl = cpcl.split(key).join(String(val || ' '));
     }
     
-    // Forçar a instrução JOURNAL caso falte (evita o problema da impressora puxar papel infinitamente)
     if (!cpcl.includes('JOURNAL')) {
         cpcl = cpcl.replace(/(!\s.*\r?\n)/, '$1JOURNAL\r\n');
     }
-    
     return cpcl;
   }
 
@@ -446,41 +434,41 @@ const ZebraPrint = (() => {
       'T 7 0 64 154 REALIZADAS',
       'T 7 0 85 151 V. MEDIO',
       'T 7 0 85 154 DETECTADO',
-      'T 7 0 8 158 Cloro ',
-      'T 7 0 28 158 mg/L ',
-      'T 7 0 40 158 0,2 a 2 ',
+      'T 7 0 8 158 {ANALISE_PARAM_1}',
+      'T 7 0 28 158 {ANALISE_UNID_1}',
+      'T 7 0 40 158 {ANALISE_VMP_1}',
       'T 7 0 65 158 1 ',
-      'T 7 0 85 158 1,3 ',
-      'T 7 0 8 161 Ph ',
-      'T 7 0 28 161 - ',
-      'T 7 0 40 161 6,0 a 9,5 ',
+      'T 7 0 85 158 {ANALISE_VAL_1}',
+      'T 7 0 8 161 {ANALISE_PARAM_2}',
+      'T 7 0 28 161 {ANALISE_UNID_2}',
+      'T 7 0 40 161 {ANALISE_VMP_2}',
       'T 7 0 65 161 1 ',
-      'T 7 0 85 161 7,2 ',
-      'T 7 0 8 164 Fluoreto ',
-      'T 7 0 28 164 mg/L ',
-      'T 7 0 40 164 1,5 ',
+      'T 7 0 85 161 {ANALISE_VAL_2}',
+      'T 7 0 8 164 {ANALISE_PARAM_3}',
+      'T 7 0 28 164 {ANALISE_UNID_3}',
+      'T 7 0 40 164 {ANALISE_VMP_3}',
       'T 7 0 65 164 1 ',
-      'T 7 0 85 164 0,6 ',
-      'T 7 0 8 167 Cor ',
-      'T 7 0 28 167 uH ',
-      'T 7 0 40 167 15 ',
+      'T 7 0 85 164 {ANALISE_VAL_3}',
+      'T 7 0 8 167 {ANALISE_PARAM_4}',
+      'T 7 0 28 167 {ANALISE_UNID_4}',
+      'T 7 0 40 167 {ANALISE_VMP_4}',
       'T 7 0 65 167 1 ',
-      'T 7 0 85 167 2 ',
-      'T 7 0 8 170 Turbidez ',
-      'T 7 0 28 170 uT ',
-      'T 7 0 40 170 5 ',
+      'T 7 0 85 167 {ANALISE_VAL_4}',
+      'T 7 0 8 170 {ANALISE_PARAM_5}',
+      'T 7 0 28 170 {ANALISE_UNID_5}',
+      'T 7 0 40 170 {ANALISE_VMP_5}',
       'T 7 0 65 170 1 ',
-      'T 7 0 85 170 0,5 ',
-      'T 7 0 6 173 Colif. fecais ',
-      'T 7 0 28 173 - ',
-      'T 7 0 40 173 Ausencia ',
+      'T 7 0 85 170 {ANALISE_VAL_5}',
+      'T 7 0 6 173 {ANALISE_PARAM_6}',
+      'T 7 0 28 173 {ANALISE_UNID_6}',
+      'T 7 0 40 173 {ANALISE_VMP_6}',
       'T 7 0 65 173 1 ',
-      'T 7 0 85 173 Ausente ',
-      'T 7 0 6 176 Colif. totais ',
-      'T 7 0 28 176 - ',
-      'T 7 0 40 176 Ausencia ',
+      'T 7 0 85 173 {ANALISE_VAL_6}',
+      'T 7 0 6 176 {ANALISE_PARAM_7}',
+      'T 7 0 28 176 {ANALISE_UNID_7}',
+      'T 7 0 40 176 {ANALISE_VMP_7}',
       'T 7 0 65 176 1 ',
-      'T 7 0 85 176 Ausente ',
+      'T 7 0 85 176 {ANALISE_VAL_7}',
       'LINE 2 180 100 180 0.2',
       'T 7 0 3 181 FAVOR AUTENTICAR NO VERSO',
       'T 5 0 68 181 EMISSAO: {DATA_EMISSAO}',
@@ -512,7 +500,7 @@ const ZebraPrint = (() => {
       'LINE 2 216 100 216 0.2',
       'CENTER',
       'T 5 0 0 218 {LINHA_DIGITAVEL}',
-      'B I2OF5 0.245 25 8 0 222 {CODIGO_BARRAS}',
+      'B I2OF5 2 1 50 10 218 {CODIGO_BARRAS}',
       'FORM',
       'PRINT'
     ].join('\r\n');
