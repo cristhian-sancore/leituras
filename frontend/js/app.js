@@ -1001,6 +1001,9 @@ async function abrirImpressao(clienteId) {
             desc_agua:          imp.desc_agua || 'FORNEC. E ABASTEC. DE AGUA',
             desc_esgoto:        imp.desc_esgoto || 'ESGOTO',
             desc_lixo:          imp.desc_lixo || 'TAXA DE COLETA DE LIXO',
+            mensagem_1:         c.mensagem_1 || '',
+            mensagem_2:         c.mensagem_2 || '',
+            historico:          c.historico || [],
             tem_notificacao:    c.tem_notificacao || false,
         };
         try {

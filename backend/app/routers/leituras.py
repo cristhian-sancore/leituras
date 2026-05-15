@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func as sqlfunc
 from app.database import get_db
 from app.models import Cliente, Leitura, Tarifa, Ocorrencia, Importacao, Empresa, Usuario, AuditLog
-from app.schemas import ClienteComLeitura, LeituraUpdate, StatsOut, OcorrenciaOut, TarifaOut
+from app.schemas import ClienteComLeitura, HistoricoItem, LeituraUpdate, StatsOut, OcorrenciaOut, TarifaOut
 from app.auth.deps import get_current_user
 from app.services.calculadora import calcular_consumo, calcular_conta, validar_consumo
 
@@ -334,6 +334,36 @@ async def list_clientes_com_leituras(
         )
         leituras_map = {l.cliente_id: l for l in leitura_result.scalars().all()}
 
+    # Buscar histórico dos últimos 6 meses de importações anteriores por matricula
+    # Agrupa por matricula → busca leituras de importações anteriores ordenadas por data
+    matriculas = [c.matricula for c in clientes]
+    historico_map = {}
+    if matriculas:
+        # Busca as últimas 6 leituras de cada matrícula em importações desta empresa
+        hist_result = await db.execute(
+            select(Cliente.matricula, Leitura.consumo, Importacao.mes_referencia, Leitura.data_leitura)
+            .join(Leitura, Leitura.cliente_id == Cliente.id)
+            .join(Importacao, Importacao.id == Cliente.importacao_id)
+            .where(
+                Cliente.empresa_id == current_user.empresa_id,
+                Cliente.matricula.in_(matriculas),
+                Leitura.consumo.isnot(None),
+            )
+            .order_by(Cliente.matricula, Leitura.data_leitura.desc())
+        )
+        for row in hist_result.all():
+            mat, cons, mes_ref, data_leit = row
+            if mat not in historico_map:
+                historico_map[mat] = []
+            if len(historico_map[mat]) < 6:
+                label = mes_ref or (data_leit.strftime('%m/%Y') if data_leit else '')
+                historico_map[mat].append(HistoricoItem(
+                    mes=label,
+                    consumo=int(cons or 0),
+                    dias=30,
+                    media=round(float(cons or 0) / 30, 1),
+                ))
+
     # Montar resposta
     items = []
     for c in clientes:
@@ -363,6 +393,9 @@ async def list_clientes_com_leituras(
             data_instalacao=getattr(c, 'data_instalacao', None),
             endereco_entrega=getattr(c, 'endereco_entrega', None),
             codigo_barras=getattr(c, 'codigo_barras', None),
+            mensagem_1=None,
+            mensagem_2=None,
+            historico=historico_map.get(c.matricula, []),
             leitura_atual=leitura.leitura_atual if leitura else None,
             ocorrencia_codigo=leitura.ocorrencia_codigo if leitura else None,
             consumo=leitura.consumo if leitura else 0,

@@ -204,55 +204,72 @@ const ZebraPrint = (() => {
       map['{MENSAGEM_1}'] = `Constam ${dados.faturas_abertas} Faturas em Aberto.`;
     }
 
-    // --- LINHA DIGITAVEL FEBRABAN ---
-    let rawBarcode = dados.codigo_barras || codStr;
-    if (rawBarcode.length === 44) {
-      // Cálculo Módulo 10 ou 11
-      const isMod10 = rawBarcode[2] === '6' || rawBarcode[2] === '7';
-      
-      const calcDv = (bloco) => {
-        if (isMod10) {
-          let soma = 0;
-          let peso = 2;
-          for (let i = bloco.length - 1; i >= 0; i--) {
-            let mult = parseInt(bloco[i]) * peso;
-            if (mult > 9) mult = Math.floor(mult / 10) + (mult % 10);
-            soma += mult;
-            peso = peso === 2 ? 1 : 2;
-          }
-          let resto = soma % 10;
-          let dv = 10 - resto;
-          return dv === 10 ? 0 : dv;
-        } else {
-          let soma = 0;
-          let peso = 2;
-          for (let i = bloco.length - 1; i >= 0; i--) {
-            soma += parseInt(bloco[i]) * peso;
-            peso++;
-            if (peso > 9) peso = 2;
-          }
-          let resto = soma % 11;
-          let dv = 11 - resto;
-          if (dv === 10 || dv === 11) return 0;
-          return dv;
+    // --- LINHA DIGITAVEL FEBRABAN (Concessionárias - padrão FEBRABAN/NBR) ---
+    // Para código de barras iniciado com '8' (empresas/concessionárias):
+    // 44 dígitos: P.S.V.D VVVVVVVVVVV LLLLLLLLLL LLLLLLLLLL LLLLL
+    //   P = Produto (8)
+    //   S = Segmento (1 dígito)
+    //   V = Tipo de valor real (6=real, 7=IGPM)
+    //   D = DV geral (Módulo 10)
+    //   VVVVVVVVVVV = Valor (11 dígitos)
+    //   Ls = Campo livre (25 dígitos)
+    //
+    // Linha Digitável (5 campos):
+    //   Campo1: pos 3-12 + DV mod10    (10 dígitos)   → XXXXX.XXXXD
+    //   Campo2: pos 13-22 + DV mod10   (10 dígitos)   → XXXXX.XXXXXD
+    //   Campo3: pos 23-32 + DV mod10   (10 dígitos)   → XXXXX.XXXXXD
+    //   Campo4: pos 4 (DV geral)       (1 dígito)
+    //   Campo5: pos 5-44               (40 dígitos) — valor+campo livre
+
+    let rawBarcode = dados.codigo_barras || '';
+
+    // Limpar: manter só dígitos
+    rawBarcode = rawBarcode.replace(/\D/g, '');
+
+    if (rawBarcode.length === 44 && rawBarcode[0] === '8') {
+      // Concessionária / empresa: calcular DV Módulo 10
+      const mod10 = (s) => {
+        let soma = 0, peso = 2;
+        for (let i = s.length - 1; i >= 0; i--) {
+          let v = parseInt(s[i]) * peso;
+          if (v > 9) v = Math.floor(v / 10) + (v % 10);
+          soma += v;
+          peso = peso === 2 ? 1 : 2;
         }
+        const r = soma % 10;
+        return r === 0 ? 0 : 10 - r;
       };
 
-      const b1 = rawBarcode.substring(0, 11);
-      const b2 = rawBarcode.substring(11, 22);
-      const b3 = rawBarcode.substring(22, 33);
-      const b4 = rawBarcode.substring(33, 44);
-      
-      const dv1 = calcDv(b1);
-      const dv2 = calcDv(b2);
-      const dv3 = calcDv(b3);
-      const dv4 = calcDv(b4);
-      
-      map['{LINHA_DIGITAVEL}'] = `${b1}-${dv1} ${b2}-${dv2} ${b3}-${dv3} ${b4}-${dv4}`;
+      const c1 = rawBarcode.substring(2, 12);   // pos 3-12 (índices 2-11)
+      const c2 = rawBarcode.substring(12, 22);  // pos 13-22
+      const c3 = rawBarcode.substring(22, 32);  // pos 23-32
+      const c4 = rawBarcode[3];                 // DV geral (pos 4, índice 3)
+      const c5 = rawBarcode.substring(4, 44);   // valor+campo livre (pos 5-44)
+
+      const dv1 = mod10(c1);
+      const dv2 = mod10(c2);
+      const dv3 = mod10(c3);
+
+      // Formatar com pontos conforme FEBRABAN
+      const f1 = c1.substring(0, 5) + '.' + c1.substring(5) + dv1;
+      const f2 = c2.substring(0, 5) + '.' + c2.substring(5) + dv2;
+      const f3 = c3.substring(0, 5) + '.' + c3.substring(5) + dv3;
+
+      map['{LINHA_DIGITAVEL}'] = `${f1} ${f2} ${f3} ${c4} ${c5}`;
       map['{CODIGO_BARRAS}'] = rawBarcode;
-    } else {
+
+    } else if (rawBarcode.length === 44) {
+      // Boleto bancário padrão: manter exibição simples
       map['{LINHA_DIGITAVEL}'] = rawBarcode;
       map['{CODIGO_BARRAS}'] = rawBarcode;
+    } else if (rawBarcode.length > 0) {
+      // Código parcial ou outro formato: usar como está
+      map['{LINHA_DIGITAVEL}'] = rawBarcode;
+      map['{CODIGO_BARRAS}'] = rawBarcode.length % 2 === 0 ? rawBarcode : '0' + rawBarcode;
+    } else {
+      // Fallback: usar matrícula como I2OF5
+      map['{LINHA_DIGITAVEL}'] = codStr;
+      map['{CODIGO_BARRAS}'] = codStr;
     }
 
     return map;

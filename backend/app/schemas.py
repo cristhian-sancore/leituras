@@ -156,6 +156,13 @@ class ImportacaoOut(BaseModel):
 # LEITURA
 # ============================================
 
+class HistoricoItem(BaseModel):
+    mes: str
+    consumo: int
+    dias: int = 30
+    media: float
+
+
 class ClienteComLeitura(BaseModel):
     id: int
     matricula: str
@@ -181,6 +188,9 @@ class ClienteComLeitura(BaseModel):
     data_instalacao: Optional[str] = None
     endereco_entrega: Optional[str] = None
     codigo_barras: Optional[str] = None
+    mensagem_1: Optional[str] = None
+    mensagem_2: Optional[str] = None
+    historico: List[HistoricoItem] = []
     # Dados da leitura (se existir)
     leitura_atual: Optional[int] = None
     ocorrencia_codigo: Optional[str] = None
