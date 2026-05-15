@@ -309,11 +309,8 @@ const ZebraPrint = (() => {
     for (const [key, val] of Object.entries(map)) {
       cpcl = cpcl.split(key).join(String(val || ' '));
     }
-    
-    if (!cpcl.includes('JOURNAL')) {
-        cpcl = cpcl.replace(/(!\s.*\r?\n)/, '$1JOURNAL\r\n');
-    }
-    return cpcl;
+    // Remove acentos de TODO o código final (útil para layouts customizados com acento)
+    return removerAcentos(cpcl);
   }
 
   // ── Layout genérico (fallback sem customização) ────────
@@ -508,7 +505,7 @@ const ZebraPrint = (() => {
       'LINE 2 226 100 226 0.2',
       'LEFT',
       'T 0 0 10 227 {LINHA_DIGITAVEL}',
-      'B I2OF5 0.245 25 12 232 {CODIGO_BARRAS}',
+      'B I2OF5 0.245 25 10 235 {CODIGO_BARRAS}',
       'FORM',
       'PRINT'
     ].join('\r\n');
