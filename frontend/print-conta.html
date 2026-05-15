@@ -244,25 +244,27 @@ function drawCpcl(cpclText, el) {
       el.appendChild(div);
     }
 
-    // BARCODE: B <type> ... <x_mm> <y_mm> <data>
-    else if (line.startsWith('B ') || line.includes('{CODIGO_BARRAS}')) {
-      const p = line.split(' ');
-      const x = parseFloat(p[4] || p[5] || 10) * SX;
-      const y = parseFloat(p[5] || p[6] || 220) * SY;
-      const data = (p[6] || p[7] || dadosImpressao.codigo_barras || '').trim();
+    // BARCODE: B <type> <width> <height> <x> <y> <data>
+    else if (line.startsWith('B ')) {
+      const p = line.split(/\s+/);
+      if (p.length < 6) return;
+
+      const x = parseFloat(p[4]) * SX;
+      const y = parseFloat(p[5]) * SY;
+      const data = (p[6] || dadosImpressao.codigo_barras || '').trim();
 
       const container = document.createElement('div');
       Object.assign(container.style, {
         position: 'absolute', left: x + 'px', top: y + 'px',
         display: 'flex', alignItems: 'flex-end', height: '45px',
-        background: 'white', padding: '5px', border: '1px solid #eee',
-        zIndex: 100, minWidth: '200px'
+        background: 'white', padding: '5px', border: '1px solid #ddd',
+        zIndex: 1000, minWidth: '250px'
       });
       
       // Desenha barras pretas para o preview
-      for (let i = 0; i < 60; i++) {
+      for (let i = 0; i < 70; i++) {
         const bar = document.createElement('div');
-        bar.style.width = (i % 4 === 0 ? '3px' : '1px');
+        bar.style.width = (i % 5 === 0 ? '3px' : '1px');
         bar.style.height = '100%';
         bar.style.background = 'black';
         bar.style.marginRight = '1px';
@@ -270,12 +272,13 @@ function drawCpcl(cpclText, el) {
       }
       
       const label = document.createElement('div');
-      label.textContent = data.replace(/[^0-9]/g, '');
+      label.textContent = data.replace(/[^0-9-]/g, '');
       label.style.position = 'absolute';
       label.style.bottom = '-14px';
       label.style.left = '5px';
       label.style.fontSize = '9px';
       label.style.fontWeight = 'bold';
+      label.style.color = 'black';
       container.appendChild(label);
       
       el.appendChild(container);

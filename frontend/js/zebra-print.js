@@ -252,7 +252,7 @@ const ZebraPrint = (() => {
            map[`{ANALISE_UNID_${i+1}}`] = (a.unidade || '').substring(0, 10);
            map[`{ANALISE_VMP_${i+1}}`]  = (a.vmp || '').substring(0, 15);
            map[`{ANALISE_VAL_${i+1}}`]  = (a.valor || '').substring(0, 10);
-        }
+         }
       });
     }
 
@@ -508,7 +508,7 @@ const ZebraPrint = (() => {
       'LINE 2 226 100 226 0.2',
       'LEFT',
       'T 0 0 10 227 {LINHA_DIGITAVEL}',
-      'B I2OF5 0.2 25 12 232 {CODIGO_BARRAS}',
+      'B I2OF5 1 25 12 232 {CODIGO_BARRAS}',
       'FORM',
       'PRINT'
     ].join('\r\n');
