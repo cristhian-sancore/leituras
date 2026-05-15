@@ -11,12 +11,17 @@
   <style>
     .var-item {
       cursor: pointer;
-      padding: 4px;
-      border-bottom: 1px solid #1e293b;
-      transition: background 0.2s;
+      padding: 4px 6px;
+      background: #1e293b;
+      border-radius: 4px;
+      border: 1px solid #334155;
+      transition: all 0.2s;
+      display: inline-block;
+      white-space: nowrap;
     }
     .var-item:hover {
-      background: #334155;
+      background: #38bdf8;
+      color: #0f172a;
     }
   </style>
 </head>
@@ -80,7 +85,7 @@
       <button class="btn btn-success" id="downloadBtn">Baixar .cpcl</button>
       <hr class="sep">
       <div class="section-title">Variáveis (Clique para copiar)</div>
-      <div style="max-height: 220px; overflow-y: auto; font-size: 11px; background: #0f172a; padding: 8px; border-radius: 4px; border: 1px solid #334155;">
+      <div style="display: flex; flex-wrap: wrap; gap: 4px; max-height: 350px; overflow-y: auto; font-size: 11px; background: #0f172a; padding: 8px; border-radius: 4px; border: 1px solid #334155;">
         <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{NOME_COMPROMISSARIO}</div>
         <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{ENDERECO_LOGRADOURO}</div>
         <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{ENDERECO_BAIRRO}</div>
