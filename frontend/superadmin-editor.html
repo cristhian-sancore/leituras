@@ -8,6 +8,17 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/fetch/1.1.0/fetch.min.js"></script>
   <!-- Fabric.js CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+  <style>
+    .var-item {
+      cursor: pointer;
+      padding: 4px;
+      border-bottom: 1px solid #1e293b;
+      transition: background 0.2s;
+    }
+    .var-item:hover {
+      background: #334155;
+    }
+  </style>
 </head>
 <body>
   <header class="topbar">
@@ -67,6 +78,52 @@
       <button class="btn btn-primary" id="exportBtn" style="margin-top:8px;">Gerar CPCL</button>
       <button class="btn btn-secondary" id="copyBtn">Copiar CPCL</button>
       <button class="btn btn-success" id="downloadBtn">Baixar .cpcl</button>
+      <hr class="sep">
+      <div class="section-title">Variáveis (Clique para copiar)</div>
+      <div style="max-height: 220px; overflow-y: auto; font-size: 11px; background: #0f172a; padding: 8px; border-radius: 4px; border: 1px solid #334155;">
+        <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{NOME_COMPROMISSARIO}</div>
+        <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{ENDERECO_LOGRADOURO}</div>
+        <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{ENDERECO_BAIRRO}</div>
+        <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{CEP}</div>
+        <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{ROTA}</div>
+        <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{SEQUENCIA}</div>
+        <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{LIGACAO}</div>
+        <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{ROTEIRO}</div>
+        <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{REFERENCIA}</div>
+        <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{NR_GUIA}</div>
+        <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{CATEGORIA}</div>
+        <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{LANCAMENTO_DESC_1}</div>
+        <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{LANCAMENTO_VAL_1}</div>
+        <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{LANCAMENTO_DESC_2}</div>
+        <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{LANCAMENTO_VAL_2}</div>
+        <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{LANCAMENTO_DESC_3}</div>
+        <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{LANCAMENTO_VAL_3}</div>
+        <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{DATA_LEITURA_ANT}</div>
+        <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{DATA_LEITURA_ATU}</div>
+        <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{LEIT_ANT}</div>
+        <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{LEIT_ATUAL}</div>
+        <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{CONS_REAL}</div>
+        <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{CONS_FATURADO}</div>
+        <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{MEDIA}</div>
+        <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{NR_HIDROMETRO}</div>
+        <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{VAZAO}</div>
+        <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{DIAMETRO}</div>
+        <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{DATA_INSTALACAO}</div>
+        <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{DATA_VENCIMENTO}</div>
+        <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{VALOR_PAGAR}</div>
+        <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{TOTAL_PAGAR}</div>
+        <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{OCORRENCIA}</div>
+        <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{CODIGO_BARRAS}</div>
+        <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{LINHA_DIGITAVEL}</div>
+        <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{DATA_EMISSAO}</div>
+        <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{HORA_EMISSAO}</div>
+        <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{MENSAGEM_1}</div>
+        <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{MENSAGEM_2}</div>
+        <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{HIST_MES_1}</div>
+        <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{HIST_CONS_1}</div>
+        <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{HIST_DIAS_1}</div>
+        <div class="var-item" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copiado!')">{HIST_MEDIA_1}</div>
+      </div>
     </aside>
 
     <!-- Canvas central -->
