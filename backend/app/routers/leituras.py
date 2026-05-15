@@ -366,14 +366,14 @@ async def list_clientes_com_leituras(
 
     # Buscar analises de agua da importacao
     analises_agua = []
-    if import_id:
-        imp_res = await db.execute(select(Importacao.analises_agua).where(Importacao.id == import_id))
+    if imp_id:
+        imp_res = await db.execute(select(Importacao.analises_agua).where(Importacao.id == imp_id))
         analises_agua = imp_res.scalar() or []
 
     # Buscar descricoes de ocorrencia
     ocorrencias_map = {}
-    if import_id:
-        ocorr_res = await db.execute(select(Ocorrencia.codigo, Ocorrencia.descricao).where(Ocorrencia.importacao_id == import_id))
+    if imp_id:
+        ocorr_res = await db.execute(select(Ocorrencia.codigo, Ocorrencia.descricao).where(Ocorrencia.importacao_id == imp_id))
         ocorrencias_map = {o.codigo: o.descricao for o in ocorr_res.all()}
 
     # Montar resposta
