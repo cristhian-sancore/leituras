@@ -84,9 +84,8 @@ const ZebraPrint = (() => {
   // ── Mapa completo de variáveis ─────────────────────────
   function removerAcentos(str) {
     if(!str) return '';
-    // Strip accents and ANY newlines/carriage returns that could break CPCL
-    let limpo = str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    return limpo.replace(/\r?\n|\r/g, ' ');
+    // Strip accents but KEEP newlines (essential for CPCL)
+    return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   }
 
   function formatarValor(val) {
