@@ -24,6 +24,14 @@ async def run_migrations(conn):
         # Flags de servico por cliente: SO AGUA = sem esgoto; sem A12 lixo = sem lixo
         "ALTER TABLE clientes ADD COLUMN IF NOT EXISTS tem_esgoto BOOLEAN NOT NULL DEFAULT true",
         "ALTER TABLE clientes ADD COLUMN IF NOT EXISTS tem_lixo BOOLEAN NOT NULL DEFAULT true",
+        # Campos de metadados para impressao
+        "ALTER TABLE clientes ADD COLUMN IF NOT EXISTS hidrometro TEXT",
+        "ALTER TABLE clientes ADD COLUMN IF NOT EXISTS vazao TEXT",
+        "ALTER TABLE clientes ADD COLUMN IF NOT EXISTS diametro TEXT",
+        "ALTER TABLE clientes ADD COLUMN IF NOT EXISTS data_instalacao TEXT",
+        "ALTER TABLE clientes ADD COLUMN IF NOT EXISTS endereco_entrega TEXT",
+        "ALTER TABLE clientes ADD COLUMN IF NOT EXISTS cep TEXT",
+        "ALTER TABLE clientes ADD COLUMN IF NOT EXISTS codigo_barras VARCHAR(44)",
         # Superadmin nao tem empresa: tornar empresa_id nullable
         "ALTER TABLE usuarios ALTER COLUMN empresa_id DROP NOT NULL",
         # Audit log do superadmin: empresa_id pode ser null

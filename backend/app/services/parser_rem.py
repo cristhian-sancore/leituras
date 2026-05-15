@@ -152,6 +152,13 @@ def parse_rem(content: str) -> dict:
                 data_vencimento = line[486:496] if len(line) > 496 else ''
                 mes_ano_ref = line[496:503] if len(line) > 503 else ''
                 data_leit_anterior = line[503:513] if len(line) > 513 else ''
+                hidrometro = line[64:76].strip() if len(line) > 76 else ''
+                cep = line[314:324].strip() if len(line) > 324 else ''
+                vazao = line[523:533].strip() if len(line) > 533 else ''
+                diametro = line[533:543].strip() if len(line) > 543 else ''
+                data_instalacao = line[553:563].strip() if len(line) > 563 else ''
+                endereco_entrega = line[1052:1102].strip() if len(line) > 1102 else ''
+                codigo_barras = line[436:480].strip() if len(line) > 480 else ''
 
                 # -------------------------------------------------------
                 # FLAGS DE SERVICO por cliente
@@ -191,6 +198,13 @@ def parse_rem(content: str) -> dict:
                 'ocorr_anterior': ocorr_anterior,
                 'tem_esgoto': tem_esgoto,
                 'tem_lixo': tem_lixo,
+                'hidrometro': hidrometro,
+                'cep': cep,
+                'vazao': vazao,
+                'diametro': diametro,
+                'data_instalacao': data_instalacao,
+                'endereco_entrega': endereco_entrega,
+                'codigo_barras': codigo_barras,
             })
 
     # Converter tarifas_raw em lista plana

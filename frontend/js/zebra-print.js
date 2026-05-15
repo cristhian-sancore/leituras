@@ -84,7 +84,9 @@ const ZebraPrint = (() => {
   // ── Mapa completo de variáveis ─────────────────────────
   function removerAcentos(str) {
     if(!str) return '';
-    return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    // Strip accents and ANY newlines/carriage returns that could break CPCL
+    let limpo = str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    return limpo.replace(/\r?\n|\r/g, ' ');
   }
 
   function formatarValor(val) {
@@ -107,19 +109,32 @@ const ZebraPrint = (() => {
     let codStr = (dados.matricula || '000000').replace(/\D/g, '');
     if (codStr.length % 2 !== 0) codStr = '0' + codStr; // I2OF5 exige numeração par
 
-    let enderecoLimpo = removerAcentos(dados.endereco || '') + ', ' + (dados.numero || '') + ', ' + removerAcentos(dados.bairro || '');
+    let enderecoLimpo = removerAcentos(dados.endereco || '') + ', ' + (dados.numero || '');
+    let bairroLimpo = removerAcentos(dados.bairro || '');
+    
+    // Quebra de linha de endereco muito longo
+    let end1 = enderecoLimpo;
+    let endBairro = bairroLimpo;
+    
+    if (enderecoLimpo.length > 40) {
+        let splitIdx = enderecoLimpo.lastIndexOf(' ', 40);
+        if (splitIdx === -1 || splitIdx < 20) splitIdx = 40;
+        end1 = enderecoLimpo.substring(0, splitIdx);
+        let end2 = enderecoLimpo.substring(splitIdx).trim();
+        endBairro = end2 + " - " + bairroLimpo;
+    }
 
     const map = {
       '{NOME_COMPROMISSARIO}':  removerAcentos(dados.nome || ''),
-      '{ENDERECO_LOGRADOURO}':  enderecoLimpo,
-      '{ENDERECO_BAIRRO}':      enderecoLimpo,
+      '{ENDERECO_LOGRADOURO}':  end1,
+      '{ENDERECO_BAIRRO}':      endBairro.substring(0, 42),
       '{CEP}':                  dados.cep || ' ',
       '{ROTA}':                 dados.rota || '',
       '{SEQUENCIA}':            (dados.setor || ' ') + ' - ' + (dados.quadra || ' ') + ' - ' + (dados.lote || '  '),
       '{LIGACAO}':              dados.matricula || '',
       '{ROTEIRO}':              dados.roteiro || '',
       '{REFERENCIA}':           dados.referencia || dados.mes_ref || '',
-      '{NR_GUIA}':              dados.nosso_numero || dados.matricula || '',
+      '{NR_GUIA}':              dados.num_fatura || dados.nosso_numero || dados.matricula || '',
       '{CATEGORIA}':            dados.categoria || '',
       
       // Lançamentos e Valores
@@ -131,7 +146,7 @@ const ZebraPrint = (() => {
       '{LANCAMENTO_VAL_3}':     parseFloat(dados.valor_lixo||0) > 0 ? formatarValor(dados.valor_lixo) : '',
 
       // Leituras
-      '{DATA_LEITURA_ANT}':     formatData(dados.leitura_anterior_data || dados.data_leitura_ant),
+      '{DATA_LEITURA_ANT}':     formatData(dados.data_leit_anterior || dados.leitura_anterior_data || dados.data_leitura_ant),
       '{DATA_LEITURA_ATU}':     formatData(dados.leitura_atual_data || dados.data_leitura),
       '{LEIT_ANT}':             String(dados.leit_anterior || ' '),
       '{LEIT_ATUAL}':           String(dados.leit_atual || ' '),
@@ -141,9 +156,9 @@ const ZebraPrint = (() => {
       
       // Hidrômetro
       '{NR_HIDROMETRO}':        dados.hidrometro || ' ',
-      '{VAZAO}':                ' ',
-      '{DIAMETRO}':             ' ',
-      '{DATA_INSTALACAO}':      ' ',
+      '{VAZAO}':                dados.vazao || ' ',
+      '{DIAMETRO}':             dados.diametro || ' ',
+      '{DATA_INSTALACAO}':      formatData(dados.data_instalacao) || ' ',
       
       // Valores
       '{DATA_VENCIMENTO}':      formatData(dados.vencimento),
@@ -189,6 +204,57 @@ const ZebraPrint = (() => {
       map['{MENSAGEM_1}'] = `Constam ${dados.faturas_abertas} Faturas em Aberto.`;
     }
 
+    // --- LINHA DIGITAVEL FEBRABAN ---
+    let rawBarcode = dados.codigo_barras || codStr;
+    if (rawBarcode.length === 44) {
+      // Cálculo Módulo 10 ou 11
+      const isMod10 = rawBarcode[2] === '6' || rawBarcode[2] === '7';
+      
+      const calcDv = (bloco) => {
+        if (isMod10) {
+          let soma = 0;
+          let peso = 2;
+          for (let i = bloco.length - 1; i >= 0; i--) {
+            let mult = parseInt(bloco[i]) * peso;
+            if (mult > 9) mult = Math.floor(mult / 10) + (mult % 10);
+            soma += mult;
+            peso = peso === 2 ? 1 : 2;
+          }
+          let resto = soma % 10;
+          let dv = 10 - resto;
+          return dv === 10 ? 0 : dv;
+        } else {
+          let soma = 0;
+          let peso = 2;
+          for (let i = bloco.length - 1; i >= 0; i--) {
+            soma += parseInt(bloco[i]) * peso;
+            peso++;
+            if (peso > 9) peso = 2;
+          }
+          let resto = soma % 11;
+          let dv = 11 - resto;
+          if (dv === 10 || dv === 11) return 0;
+          return dv;
+        }
+      };
+
+      const b1 = rawBarcode.substring(0, 11);
+      const b2 = rawBarcode.substring(11, 22);
+      const b3 = rawBarcode.substring(22, 33);
+      const b4 = rawBarcode.substring(33, 44);
+      
+      const dv1 = calcDv(b1);
+      const dv2 = calcDv(b2);
+      const dv3 = calcDv(b3);
+      const dv4 = calcDv(b4);
+      
+      map['{LINHA_DIGITAVEL}'] = `${b1}-${dv1} ${b2}-${dv2} ${b3}-${dv3} ${b4}-${dv4}`;
+      map['{CODIGO_BARRAS}'] = rawBarcode;
+    } else {
+      map['{LINHA_DIGITAVEL}'] = rawBarcode;
+      map['{CODIGO_BARRAS}'] = rawBarcode;
+    }
+
     return map;
   }
 
@@ -225,7 +291,7 @@ const ZebraPrint = (() => {
       'T 7 0 3 16 {NOME_COMPROMISSARIO}',
       'T 7 0 3 19 {ENDERECO_LOGRADOURO}',
       'T 7 0 3 22 CEP: {CEP}, Rota: {ROTA}',
-      'T 7 0 3 25 END. ENT: {ENDERECO_BAIRRO}',
+      'T 7 0 3 25 BAIRRO: {ENDERECO_BAIRRO}',
       'T 7 0 3 28 Sequencia anterior: {SEQUENCIA}',
       'T 7 0 3 31 LIGACAO: {LIGACAO}',
       'T 7 0 3 34 ROTEIRO: {ROTEIRO}',
@@ -285,7 +351,7 @@ const ZebraPrint = (() => {
       'LINE 2 110 100 110 0.2',
       'T 7 0 4 107 OCORRENCIA: {OCORRENCIA}',
       'LINE 44 110 44 144 0.2',
-      'T 7 0 4 110 ULTIMOS 6 MESES',
+      'T 7 0 4 110 DADOS DOS ULTIMOS 6 MESES',
       'LINE 2 114 44 114 0.2',
       'T 7 0 4 114 MES',
       'T 7 0 18 114 CONSUMO',
@@ -327,45 +393,75 @@ const ZebraPrint = (() => {
       'T 7 0 10 152 PARAMETRO',
       'T 7 0 28 152 UNIDADE',
       'T 7 0 47 152 VMP',
-      'T 7 0 60 151 ANALISES',
+      'T 7 0 60 151 TOTAL DE ANALISES',
       'T 7 0 64 154 REALIZADAS',
-      'T 7 0 87 151 V. MEDIO',
+      'T 7 0 87 151 VALOR MEDIO',
       'T 7 0 87 154 DETECTADO',
       'T 7 0 8 158 Cloro ',
       'T 7 0 28 158 mg/L ',
       'T 7 0 40 158 0,2 a 2 ',
       'T 7 0 65 158 1 ',
       'T 7 0 85 158 1,3 ',
-      'LINE 2 157 100 157 0.2',
-      'T 7 0 3 180 FAVOR AUTENTICAR NO VERSO - DEVOLVER AO USUARIO',
-      'T 7 0 76 180 EMISSAO: {DATA_EMISSAO} {HORA_EMISSAO}',
-      'LINE 2 182 100 182 0.2',
-      'LINE 2 182 2 236 0.2',
-      'LINE 100 182 100 236 0.2',
-      'LINE 2 210 100 210 0.2',
-      'T 7 0 3 184 {NOME_COMPROMISSARIO}',
-      'T 7 0 3 187 {ENDERECO_LOGRADOURO}',
-      'T 7 0 3 190 CEP: {CEP}, Rota: {ROTA}',
-      'T 7 0 3 193 END. ENT: {ENDERECO_BAIRRO}',
-      'T 7 0 3 196 Sequencia anterior: {SEQUENCIA}',
-      'T 7 0 78 184 MES/ANO: {REFERENCIA}',
-      'LINE 76 187 100 187 0.2',
-      'T 7 0 78 188 NR. GUIA ',
-      'T 7 0 78 190 {NR_GUIA}',
-      'LINE 76 193 100 193 0.2',
-      'T 7 0 78 194 CATEGORIA/QTDE ',
-      'T 7 0 82 196 {CATEGORIA}',
-      'T 7 0 12 201 LIGACAO ',
-      'T 7 0 12 204 {LIGACAO}',
-      'LINE 35 199 35 210 0.2',
-      'T 7 0 47 201 VENCIMENTO ',
-      'T 7 0 47 204 {DATA_VENCIMENTO}',
-      'T 7 0 80 201 VALOR A PAGAR ',
-      'T 7 0 82 204 R$ {VALOR_PAGAR}',
-      'LINE 76 182 76 210 0.2',
-      'LINE 2 236 100 236 0.2',
+      'T 7 0 8 161 Ph ',
+      'T 7 0 28 161 - ',
+      'T 7 0 40 161 6,0 a 9,5 ',
+      'T 7 0 65 161 1 ',
+      'T 7 0 85 161 7,2 ',
+      'T 7 0 8 164 Fluoreto ',
+      'T 7 0 28 164 mg/L ',
+      'T 7 0 40 164 1,5 ',
+      'T 7 0 65 164 1 ',
+      'T 7 0 85 164 0,6 ',
+      'T 7 0 8 167 Cor ',
+      'T 7 0 28 167 uH ',
+      'T 7 0 40 167 15 ',
+      'T 7 0 65 167 1 ',
+      'T 7 0 85 167 2 ',
+      'T 7 0 8 170 Turbidez ',
+      'T 7 0 28 170 uT ',
+      'T 7 0 40 170 5 ',
+      'T 7 0 65 170 1 ',
+      'T 7 0 85 170 0,5 ',
+      'T 7 0 6 173 Colif. fecais ',
+      'T 7 0 28 173 - ',
+      'T 7 0 40 173 Ausencia ',
+      'T 7 0 65 173 1 ',
+      'T 7 0 85 173 Ausente ',
+      'T 7 0 6 176 Colif. totais ',
+      'T 7 0 28 176 - ',
+      'T 7 0 40 176 Ausencia ',
+      'T 7 0 65 176 1 ',
+      'T 7 0 85 176 Ausente ',
+      'LINE 2 180 100 180 0.2',
+      'T 7 0 3 181 FAVOR AUTENTICAR NO VERSO - DEVOLVER AO USUARIO',
+      'T 7 0 76 181 EMISSAO: {DATA_EMISSAO} {HORA_EMISSAO}',
+      'LINE 2 184 100 184 0.2',
+      'LINE 2 184 2 214 0.2',
+      'LINE 100 184 100 214 0.2',
+      'LINE 2 201 100 201 0.2',
+      'T 7 0 3 185 {NOME_COMPROMISSARIO}',
+      'T 7 0 3 188 {ENDERECO_LOGRADOURO}',
+      'T 7 0 3 191 CEP: {CEP}, Rota: {ROTA}',
+      'T 7 0 3 194 END. ENT: {ENDERECO_BAIRRO}',
+      'T 7 0 3 197 Sequencia anterior: {SEQUENCIA}',
+      'T 7 0 78 185 MES/ANO: {REFERENCIA}',
+      'LINE 76 188 100 188 0.2',
+      'T 7 0 78 189 NR. GUIA ',
+      'T 7 0 78 192 {NR_GUIA}',
+      'LINE 76 195 100 195 0.2',
+      'T 7 0 78 196 CATEGORIA/QTDE ',
+      'T 7 0 82 199 {CATEGORIA}',
+      'T 7 0 12 202 LIGACAO ',
+      'T 7 0 12 205 {LIGACAO}',
+      'LINE 35 201 35 214 0.2',
+      'T 7 0 47 202 VENCIMENTO ',
+      'T 7 0 47 205 {DATA_VENCIMENTO}',
+      'T 7 0 80 202 VALOR A PAGAR ',
+      'T 7 0 82 205 R$ {VALOR_PAGAR}',
+      'LINE 76 184 76 214 0.2',
+      'LINE 2 214 100 214 0.2',
       'CENTER',
-      'T 5 0 0 215 {LINHA_DIGITAVEL}',
+      'T 5 0 0 216 {LINHA_DIGITAVEL}',
       'B I2OF5 0.245 25 8 0 220 {CODIGO_BARRAS}',
       'FORM',
       'PRINT'

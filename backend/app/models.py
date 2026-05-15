@@ -155,6 +155,15 @@ class Cliente(Base):
     tem_esgoto = Column(Boolean, default=True, nullable=False, server_default='true')
     tem_lixo   = Column(Boolean, default=True, nullable=False, server_default='true')
 
+    # Novos campos de metadados e impressão
+    hidrometro = Column(Text, nullable=True)
+    vazao = Column(Text, nullable=True)
+    diametro = Column(Text, nullable=True)
+    data_instalacao = Column(Text, nullable=True)
+    endereco_entrega = Column(Text, nullable=True)
+    cep = Column(Text, nullable=True)
+    codigo_barras = Column(String(44), nullable=True)
+
     __table_args__ = (
         Index("ix_cliente_importacao", "importacao_id"),
         Index("ix_cliente_empresa", "empresa_id"),

@@ -150,6 +150,14 @@ function lerParams() {
     desc_agua:    p.get('desc_agua') || 'FORNEC. E ABASTEC. DE AGUA',
     desc_esgoto:  p.get('desc_esgoto')|| 'ESGOTO',
     desc_lixo:    p.get('desc_lixo')  || 'TARIFA DE COLETA DE LIXO',
+    data_leit_anterior: p.get('data_leit_anterior') || '',
+    ocorr_anterior: p.get('ocorr_anterior') || '',
+    hidrometro:   p.get('hidrometro') || '',
+    vazao:        p.get('vazao') || '',
+    diametro:     p.get('diametro') || '',
+    data_instalacao: p.get('data_instalacao') || '',
+    endereco_entrega: p.get('endereco_entrega') || '',
+    codigo_barras: p.get('codigo_barras') || '',
   };
 }
 
@@ -248,14 +256,28 @@ function drawCpcl(cpclText, el) {
   el.style.minHeight = (maxY + 20) + 'px';
 }
 
+// ── Utilitário anti-XSS ──────────────────────────────────
+function escapeHTML(str) {
+  if (!str) return '';
+  return String(str).replace(/[&<>'"]/g, 
+    tag => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      "'": '&#39;',
+      '"': '&quot;'
+    }[tag] || tag)
+  );
+}
+
 // ── Renderiza ambas as páginas ───────────────────────────
 function renderPreview(d) {
-  // Info cliente no painel esquerdo
+  // Info cliente no painel esquerdo (Seguro contra XSS)
   document.getElementById('client-info').innerHTML =
-    `<strong>${d.nome || '—'}</strong><br>` +
-    `Mat. <strong>${d.matricula}</strong><br>` +
-    `Ref: ${d.mes_ref} | Consumo: ${d.consumo} m³<br>` +
-    `<span style="font-size:1.1em;color:#34d399;font-weight:900">${fmtR(d.valor_total)}</span>`;
+    `<strong>${escapeHTML(d.nome) || '—'}</strong><br>` +
+    `Mat. <strong>${escapeHTML(d.matricula)}</strong><br>` +
+    `Ref: ${escapeHTML(d.mes_ref)} | Consumo: ${escapeHTML(d.consumo)} m³<br>` +
+    `<span style="font-size:1.1em;color:#34d399;font-weight:900">${escapeHTML(fmtR(d.valor_total))}</span>`;
 
   // Página 1: Fatura
   const cpclFatura = ZebraPrint.gerarCPCL(d);

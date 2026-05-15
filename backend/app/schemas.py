@@ -173,6 +173,14 @@ class ClienteComLeitura(BaseModel):
     mes_ano_ref: Optional[str] = None
     data_vencimento: Optional[str] = None
     num_fatura: Optional[str] = None
+    data_leit_anterior: Optional[str] = None
+    ocorr_anterior: Optional[str] = None
+    hidrometro: Optional[str] = None
+    vazao: Optional[str] = None
+    diametro: Optional[str] = None
+    data_instalacao: Optional[str] = None
+    endereco_entrega: Optional[str] = None
+    codigo_barras: Optional[str] = None
     # Dados da leitura (se existir)
     leitura_atual: Optional[int] = None
     ocorrencia_codigo: Optional[str] = None
