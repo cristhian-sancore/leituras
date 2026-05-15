@@ -129,7 +129,12 @@ function generateCPCL(){
   let cpcl = `! 0 ${DOTS_W} ${DOTS_W} ${hDots} 1\r\nIN-MILLIMETERS\r\nCOUNTRY LATIN9\r\n`;
   // percorre objetos na ordem de criação (stack)
   canvas.getObjects().forEach(obj=>{
-    if(obj.type==='i-text'){
+    if(obj.cpclType === 'barcode'){
+      const x = mapCanvasToDots(obj.left);
+      const y = mapCanvasToDots(obj.top);
+      // B I2OF5 0.245 25 8 0 222 {CODIGO_BARRAS}
+      cpcl += `B I2OF5 0.245 25 8 ${x} ${y} ${obj.barcodeData}\r\n`;
+    }else if(obj.type==='i-text'){
       const x = mapCanvasToDots(obj.left);
       const y = mapCanvasToDots(obj.top);
       const txt = obj.text.replace(/\r?\n/g,' ');
@@ -309,7 +314,9 @@ function parseCpclToCanvas(cpcl) {
           fontFamily: 'Inter',
           fontSize: 14,
           fill: '#555',
-          fontWeight: 'bold'
+          fontWeight: 'bold',
+          cpclType: 'barcode',
+          barcodeData: parts.slice(7).join(' ') || '{CODIGO_BARRAS}'
         });
         canvas.add(txtObj);
       }
