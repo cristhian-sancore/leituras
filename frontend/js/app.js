@@ -961,99 +961,64 @@ async function abrirImpressao(clienteId) {
     const total = document.getElementById(`tot-${clienteId}`)?.textContent?.replace(/[^0-9,]/g,'').replace(',','.') || c.valor_total || '0';
     const ocorr = document.getElementById(`ocorr-${clienteId}`)?.value || c.ocorrencia_codigo || '';
 
-    // Se estiver conectado via Bluetooth global, imprime direto!
+    // Salva dados completos no sessionStorage para a janela de impressão ler (evita limite de URL)
+    const dados = {
+        matricula:          c.matricula || clienteId,
+        mes_ref:            imp.mes_referencia || c.mes_ano_ref || '',
+        referencia:         imp.mes_referencia || c.mes_ano_ref || '',
+        data_leitura:       new Date().toLocaleDateString('pt-BR'),
+        consumo:            consumo,
+        valor_total:        total,
+        ocorrencia:         ocorr,
+        ocorrencia_codigo:  ocorr,
+        ocorrencia_descricao: c.ocorrencia_descricao || '',
+        leiturista:         user?.nome || '',
+        nome:               c.nome || '',
+        endereco:           c.rua || '',
+        numero:             c.numero || '',
+        bairro:             c.bairro || '',
+        rota:               c.rota || '',
+        setor:              c.sequencia || '',
+        quadra:             '',
+        lote:               '',
+        leit_anterior:      c.leitura_anterior || '0',
+        leit_atual:         leitAtual,
+        categoria:          c.categoria || '',
+        valor_agua:         c.valor_agua || '0',
+        valor_esgoto:       c.valor_esgoto || '0',
+        valor_lixo:         c.valor_lixo || '0',
+        cep:                c.cep || '',
+        vencimento:         c.data_vencimento || '',
+        num_fatura:         c.num_fatura || '',
+        nosso_numero:       c.num_fatura || c.matricula || '',
+        data_leit_anterior: c.data_leit_anterior || '',
+        ocorr_anterior:     c.ocorr_anterior || '',
+        hidrometro:         c.hidrometro || '',
+        vazao:              c.vazao || '',
+        diametro:           c.diametro || '',
+        data_instalacao:    c.data_instalacao || '',
+        endereco_entrega:   c.endereco_entrega || '',
+        codigo_barras:      c.codigo_barras || '',
+        desc_agua:          imp.desc_agua || 'FORNEC. E ABASTEC. DE AGUA',
+        desc_esgoto:        imp.desc_esgoto || 'ESGOTO',
+        desc_lixo:          imp.desc_lixo || 'TAXA DE COLETA DE LIXO',
+        mensagens_fatura:   c.mensagens_fatura || [],
+        historico_consumo:  c.historico_consumo || c.historico || [],
+        tem_notificacao:    c.tem_notificacao || false,
+    };
+
     if (ZebraPrint.isConnected()) {
-        const dados = {
-            matricula:          c.matricula || clienteId,
-            mes_ref:            imp.mes_referencia || c.mes_ano_ref || '',
-            referencia:         imp.mes_referencia || c.mes_ano_ref || '',
-            data_leitura:       new Date().toLocaleDateString('pt-BR'),
-            consumo:            consumo,
-            valor_total:        total,
-            ocorrencia:         ocorr,
-            leiturista:         user?.nome || '',
-            nome:               c.nome || '',
-            endereco:           c.rua || '',
-            numero:             c.numero || '',
-            bairro:             c.bairro || '',
-            rota:               c.rota || '',
-            setor:              c.sequencia || '',
-            quadra:             '',
-            lote:               '',
-            leit_anterior:      c.leitura_anterior || '0',
-            leit_atual:         leitAtual,
-            categoria:          c.categoria || '',
-            valor_agua:         c.valor_agua || '0',
-            valor_esgoto:       c.valor_esgoto || '0',
-            valor_lixo:         c.valor_lixo || '0',
-            cep:                c.cep || '',
-            vencimento:         c.data_vencimento || '',
-            num_fatura:         c.num_fatura || '',
-            nosso_numero:       c.num_fatura || c.matricula || '',
-            data_leit_anterior: c.data_leit_anterior || '',
-            ocorr_anterior:     c.ocorr_anterior || '',
-            hidrometro:         c.hidrometro || '',
-            vazao:              c.vazao || '',
-            diametro:           c.diametro || '',
-            data_instalacao:    c.data_instalacao || '',
-            endereco_entrega:   c.endereco_entrega || '',
-            codigo_barras:      c.codigo_barras || '',
-            desc_agua:          imp.desc_agua || 'FORNEC. E ABASTEC. DE AGUA',
-            desc_esgoto:        imp.desc_esgoto || 'ESGOTO',
-            desc_lixo:          imp.desc_lixo || 'TAXA DE COLETA DE LIXO',
-            mensagem_1:         c.mensagem_1 || '',
-            mensagem_2:         c.mensagem_2 || '',
-            historico:          c.historico || [],
-            tem_notificacao:    c.tem_notificacao || false,
-        };
         try {
             await ZebraPrint.imprimirConta(dados);
             showToast('🖨️ Fatura impressa!');
         } catch (e) {
             showToast('Erro ao imprimir: ' + e.message, 'error');
         }
-        return; // Sai sem abrir janela
+        return;
     }
 
-    // Fallback: Abre a janela separada caso não esteja conectado globalmente
-    // Montar URL com parâmetros completos
-    const params = new URLSearchParams({
-        mat: c.matricula || clienteId,
-        mes: imp.mes_referencia || c.mes_ano_ref || '',
-        data: new Date().toLocaleDateString('pt-BR'),
-        cons: consumo,
-        total: total,
-        ocorr: ocorr,
-        leit: user?.nome || '',
-        nome: c.nome || '',
-        end: (c.rua || '') + (c.numero ? ', ' + c.numero : ''),
-        bairro: c.bairro || '',
-        rota: c.rota || '',
-        setor: c.sequencia || '',
-        ant: c.leitura_anterior || '0',
-        atu: leitAtual,
-        cat: c.categoria || '',
-        agua: c.valor_agua || '0',
-        esgoto: c.valor_esgoto || '0',
-        lixo: c.valor_lixo || '0',
-        cep: c.cep || '',
-        venc: c.data_vencimento || '',
-        fatura: c.num_fatura || '',
-        data_leit_anterior: c.data_leit_anterior || '',
-        ocorr_anterior: c.ocorr_anterior || '',
-        hidrometro: c.hidrometro || '',
-        vazao: c.vazao || '',
-        diametro: c.diametro || '',
-        data_instalacao: c.data_instalacao || '',
-        endereco_entrega: c.endereco_entrega || '',
-        codigo_barras: c.codigo_barras || '',
-        tem_notif: c.tem_notificacao || false,
-        desc_agua: imp.desc_agua || '',
-        desc_esgoto: imp.desc_esgoto || '',
-        desc_lixo: imp.desc_lixo || '',
-    });
-
-    window.open(`/print-conta?${params}`, '_blank', 'width=900,height=700');
+    sessionStorage.setItem('saemi_print_data', JSON.stringify(dados));
+    window.open('/print-conta', '_blank', 'width=900,height=700');
 }
 
 async function desativarUsuario(id) {

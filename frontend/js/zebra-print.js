@@ -177,12 +177,12 @@ const ZebraPrint = (() => {
       '{CATEGORIA}':            dados.categoria || '',
       
       // Lançamentos e Valores
-      '{LANCAMENTO_DESC_1}':    parseFloat(dados.valor_agua||0) > 0 ? (dados.desc_agua || 'FORNEC. E ABASTEC. DE AGUA') : '',
-      '{LANCAMENTO_VAL_1}':     parseFloat(dados.valor_agua||0) > 0 ? formatarValor(dados.valor_agua) : '',
-      '{LANCAMENTO_DESC_2}':    parseFloat(dados.valor_esgoto||0) > 0 ? (dados.desc_esgoto || 'ESGOTO') : '',
-      '{LANCAMENTO_VAL_2}':     parseFloat(dados.valor_esgoto||0) > 0 ? formatarValor(dados.valor_esgoto) : '',
-      '{LANCAMENTO_DESC_3}':    parseFloat(dados.valor_lixo||0) > 0 ? (dados.desc_lixo || 'TARIFA DE COLETA DE LIXO') : '',
-      '{LANCAMENTO_VAL_3}':     parseFloat(dados.valor_lixo||0) > 0 ? formatarValor(dados.valor_lixo) : '',
+      '{LANCAMENTO_DESC_1}':    (dados.valor_agua > 0 || !dados.valor_esgoto) ? (dados.desc_agua || 'AGUA') : '',
+      '{LANCAMENTO_VAL_1}':     formatarValor(dados.valor_agua || dados.valor_total),
+      '{LANCAMENTO_DESC_2}':    dados.valor_esgoto > 0 ? (dados.desc_esgoto || 'ESGOTO') : '',
+      '{LANCAMENTO_VAL_2}':     dados.valor_esgoto > 0 ? formatarValor(dados.valor_esgoto) : '',
+      '{LANCAMENTO_DESC_3}':    dados.valor_lixo > 0 ? (dados.desc_lixo || 'TAXA DE LIXO') : '',
+      '{LANCAMENTO_VAL_3}':     dados.valor_lixo > 0 ? formatarValor(dados.valor_lixo) : '',
 
       // Leituras
       '{DATA_LEITURA_ANT}':     formatData(dados.data_leit_anterior || dados.leitura_anterior_data || dados.data_leitura_ant),
@@ -211,8 +211,8 @@ const ZebraPrint = (() => {
       '{HORA_EMISSAO}':         hora,
 
       // Mensagens dinâmicas do Backend
-      '{MENSAGEM_1}':           (dados.mensagens_fatura && dados.mensagens_fatura[0]) || dados.mensagem_1 || '',
-      '{MENSAGEM_2}':           (dados.mensagens_fatura && dados.mensagens_fatura[1]) || dados.mensagem_2 || '',
+      '{MENSAGEM_1}':           removerAcentos((dados.mensagens_fatura && dados.mensagens_fatura[0]) || dados.mensagem_1 || '').substring(0, 48),
+      '{MENSAGEM_2}':           removerAcentos((dados.mensagens_fatura && dados.mensagens_fatura[1]) || dados.mensagem_2 || '').substring(0, 48),
 
       // Fallbacks em branco pro histórico (1 a 6)
       ...Array.from({length: 6}).reduce((acc, _, i) => {
@@ -256,8 +256,8 @@ const ZebraPrint = (() => {
       });
     }
 
-    // Se houver contas em aberto, gerar mensagem automaticamente se o backend não enviou
-    if (dados.faturas_abertas > 0 && !map['{MENSAGEM_1}']) {
+    // Se houver contas em aberto, gerar mensagem automaticamente
+    if (dados.faturas_abertas > 0 && (!map['{MENSAGEM_1}'] || map['{MENSAGEM_1}'].trim() === '')) {
       map['{MENSAGEM_1}'] = `Constam ${dados.faturas_abertas} Faturas em Aberto.`;
     }
 

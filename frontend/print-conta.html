@@ -119,8 +119,18 @@ body{background:#0f172a;color:#e2e8f0;font-family:'Inter',sans-serif;margin:0}
 <script>
 let dadosImpressao = null;
 
-// ── Lê dados da URL ──────────────────────────────────────
+// ── Lê dados da URL ou SessionStorage ────────────────────
 function lerParams() {
+  const stored = sessionStorage.getItem('saemi_print_data');
+  if (stored) {
+    try {
+      const parsed = JSON.parse(stored);
+      // Opcional: limpar após ler para não sobrar lixo
+      // sessionStorage.removeItem('saemi_print_data');
+      return parsed;
+    } catch(e) { console.error('Erro ao ler sessionStorage', e); }
+  }
+
   const p = new URLSearchParams(location.search);
   return {
     empresa_nome: p.get('empresa')   || 'SAEMI',
@@ -158,6 +168,8 @@ function lerParams() {
     data_instalacao: p.get('data_instalacao') || '',
     endereco_entrega: p.get('endereco_entrega') || '',
     codigo_barras: p.get('codigo_barras') || '',
+    historico_consumo: [],
+    mensagens_fatura: []
   };
 }
 
@@ -243,10 +255,11 @@ function drawCpcl(cpclText, el) {
         const div = document.createElement('div');
         Object.assign(div.style, {
           position: 'absolute', left: x + 'px', top: y + 'px',
-          fontFamily: "'Courier New', monospace", fontSize: '14px',
-          letterSpacing: '2px', color: '#111'
+          fontFamily: "'Courier New', monospace", fontSize: '10px',
+          letterSpacing: '1px', color: '#111', backgroundColor: '#eee',
+          padding: '2px 4px', border: '1px dashed #ccc'
         });
-        div.textContent = '|||||||||||||||||||||||||';
+        div.textContent = '[BARCODE: ' + (p[7] || '') + ']';
         el.appendChild(div);
       }
     }
