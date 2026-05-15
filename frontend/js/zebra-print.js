@@ -185,16 +185,16 @@ const ZebraPrint = (() => {
       '{LANCAMENTO_VAL_3}':     dados.valor_lixo > 0 ? formatarValor(dados.valor_lixo) : '',
 
       // Leituras
-      '{DATA_LEITURA_ANT}':     formatData(dados.data_leit_anterior || dados.leitura_anterior_data || dados.data_leitura_ant),
+      '{DATA_LEITURA_ANT}':     formatData(dados.data_leit_anterior || dados.leitura_anterior_data || ''),
       '{DATA_LEITURA_ATU}':     formatData(now),
-      '{LEIT_ANT}':             String(dados.leit_anterior || ' '),
-      '{LEIT_ATUAL}':           String(dados.leitura_atual || ' '),
+      '{LEIT_ANT}':             String(dados.leitura_anterior || dados.leit_anterior || '0'),
+      '{LEIT_ATUAL}':           String(dados.leitura_atual || dados.leit_atual || '0'),
       '{CONS_REAL}':            String(dados.consumo || '0'),
       '{CONS_FATURADO}':        String(dados.consumo || '0'),
       '{MEDIA}':                String(dados.consumo_medio || '0'),
       
       // Hidrômetro
-      '{NR_HIDROMETRO}':        dados.hidrometro || ' ',
+      '{NR_HIDROMETRO}':        dados.hidrometro || dados.nr_hidrometro || ' ',
       '{VAZAO}':                dados.vazao || '1.0',
       '{DIAMETRO}':             dados.diametro || '1',
       '{DATA_INSTALACAO}':      formatData(dados.data_instalacao) || ' ',
@@ -506,9 +506,9 @@ const ZebraPrint = (() => {
       'T 7 0 82 207 R$ {VALOR_PAGAR}',
       'LINE 76 186 76 216 0.2',
       'LINE 2 216 100 216 0.2',
-      'CENTER',
-      'T 5 0 0 218 {LINHA_DIGITAVEL}',
-      'B I2OF5 2 1 50 10 218 {CODIGO_BARRAS}',
+      'LEFT',
+      'T 0 0 10 216 {LINHA_DIGITAVEL}',
+      'B I2OF5 1 2 40 10 221 {CODIGO_BARRAS}',
       'FORM',
       'PRINT'
     ].join('\r\n');
