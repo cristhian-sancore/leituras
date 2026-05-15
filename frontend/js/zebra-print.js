@@ -95,11 +95,19 @@ const ZebraPrint = (() => {
 
   function formatData(data) {
     if (!data) return '';
-    if (data.indexOf('-') > 0) {
-      let p = data.split('-');
+    
+    // Se for objeto Date
+    if (data instanceof Date) {
+      return data.toLocaleDateString('pt-BR');
+    }
+
+    // Se for string no formato YYYY-MM-DD ou DD/MM/YYYY
+    const s = String(data);
+    if (s.indexOf('-') > 0) {
+      let p = s.split('-');
       if (p.length === 3) return p[2] + '/' + p[1] + '/' + p[0];
     }
-    return data;
+    return s;
   }
 
   function modulo10(bloco) {
