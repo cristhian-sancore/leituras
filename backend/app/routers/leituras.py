@@ -403,6 +403,13 @@ async def list_clientes_com_leituras(
             valor_esgoto=float(leitura.valor_esgoto) if leitura and leitura.valor_esgoto else 0.0,
             valor_lixo=float(leitura.valor_lixo) if leitura and leitura.valor_lixo else 0.0,
             valor_total=float(leitura.valor_total) if leitura and leitura.valor_total else 0.0,
+            hidrometro=c.hidrometro,
+            vazao=float(c.vazao) if c.vazao else 1.0,
+            diametro=c.diametro if c.diametro else '1',
+            data_instalacao=c.data_instalacao,
+            codigo_barras=c.codigo_barras,
+            mensagens_fatura=c.mensagens_fatura,
+            historico_consumo=c.historico_consumo,
         ))
 
     return items

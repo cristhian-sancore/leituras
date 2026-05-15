@@ -102,6 +102,37 @@ const ZebraPrint = (() => {
     return data;
   }
 
+  function modulo10(bloco) {
+      let soma = 0;
+      let peso = 2;
+      for (let i = bloco.length - 1; i >= 0; i--) {
+          let num = parseInt(bloco.charAt(i), 10);
+          let mult = num * peso;
+          if (mult > 9) {
+              mult = Math.floor(mult / 10) + (mult % 10);
+          }
+          soma += mult;
+          peso = peso === 2 ? 1 : 2;
+      }
+      let resto = soma % 10;
+      let dv = 10 - resto;
+      if (dv === 10) return 0;
+      return dv;
+  }
+
+  function formatarLinhaDigitavel(cb) {
+      if (!cb || cb.length !== 44) return cb;
+      let b1 = cb.substring(0, 11);
+      let d1 = modulo10(b1);
+      let b2 = cb.substring(11, 22);
+      let d2 = modulo10(b2);
+      let b3 = cb.substring(22, 33);
+      let d3 = modulo10(b3);
+      let b4 = cb.substring(33, 44);
+      let d4 = modulo10(b4);
+      return `${b1}-${d1} ${b2}-${d2} ${b3}-${d3} ${b4}-${d4}`;
+  }
+
   function buildMap(dados) {
     const now  = new Date();
     const hora = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -156,8 +187,8 @@ const ZebraPrint = (() => {
       
       // Hidrômetro
       '{NR_HIDROMETRO}':        dados.hidrometro || ' ',
-      '{VAZAO}':                dados.vazao || ' ',
-      '{DIAMETRO}':             dados.diametro || ' ',
+      '{VAZAO}':                dados.vazao || '1.0',
+      '{DIAMETRO}':             dados.diametro || '1',
       '{DATA_INSTALACAO}':      formatData(dados.data_instalacao) || ' ',
       
       // Valores
@@ -167,15 +198,15 @@ const ZebraPrint = (() => {
       '{DIVIDA}':               'R$ ' + formatarValor(dados.valor_total),
       
       // Outros
-      '{OCORRENCIA}':           dados.ocorrencia || 'Normal',
-      '{CODIGO_BARRAS}':        codStr,
-      '{LINHA_DIGITAVEL}':      codStr,
+      '{OCORRENCIA}':           dados.ocorrencia_codigo || dados.ocorrencia || 'Normal',
+      '{CODIGO_BARRAS}':        dados.codigo_barras && dados.codigo_barras.trim().length === 44 ? dados.codigo_barras : codStr,
+      '{LINHA_DIGITAVEL}':      dados.codigo_barras && dados.codigo_barras.trim().length === 44 ? formatarLinhaDigitavel(dados.codigo_barras) : codStr,
       '{DATA_EMISSAO}':         now.toLocaleDateString('pt-BR'),
       '{HORA_EMISSAO}':         hora,
 
       // Mensagens dinâmicas do Backend
-      '{MENSAGEM_1}':           dados.mensagem_1 || '',
-      '{MENSAGEM_2}':           dados.mensagem_2 || '',
+      '{MENSAGEM_1}':           (dados.mensagens_fatura && dados.mensagens_fatura[0]) || dados.mensagem_1 || '',
+      '{MENSAGEM_2}':           (dados.mensagens_fatura && dados.mensagens_fatura[1]) || dados.mensagem_2 || '',
 
       // Fallbacks em branco pro histórico (1 a 6)
       ...Array.from({length: 6}).reduce((acc, _, i) => {
@@ -188,11 +219,12 @@ const ZebraPrint = (() => {
     };
 
     // Preenche histórico se tiver
-    if (dados.historico && dados.historico.length > 0) {
-      dados.historico.forEach((h, i) => {
+    let histList = dados.historico_consumo || dados.historico;
+    if (histList && histList.length > 0) {
+      histList.forEach((h, i) => {
         if(i < 6) {
-          map[`{HIST_MES_${i+1}}`] = h.mes || '';
-          map[`{HIST_CONS_${i+1}}`] = h.consumo || '';
+          map[`{HIST_MES_${i+1}}`] = h.mes_ano || h.mes || '';
+          map[`{HIST_CONS_${i+1}}`] = h.consumo || '0';
           map[`{HIST_DIAS_${i+1}}`] = h.dias || '';
           map[`{HIST_MEDIA_${i+1}}`] = h.media || '0';
         }

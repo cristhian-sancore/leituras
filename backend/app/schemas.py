@@ -78,12 +78,14 @@ class EmpresaConfigUpdate(BaseModel):
 class LayoutImpressaoCreate(BaseModel):
     nome: str = Field(..., min_length=2, max_length=100)
     conteudo_cpcl: str = Field(...)
+    estado_fabric: Optional[dict] = None
     tipo_impressora: str = Field(default="ZQ520")
 
 class LayoutImpressaoOut(BaseModel):
     id: int
     nome: str
     conteudo_cpcl: str
+    estado_fabric: Optional[dict] = None
     tipo_impressora: str
     created_at: datetime
     updated_at: datetime
@@ -199,6 +201,13 @@ class ClienteComLeitura(BaseModel):
     valor_esgoto: float = 0.0
     valor_lixo: float = 0.0
     valor_total: float = 0.0
+    hidrometro: Optional[str] = None
+    vazao: Optional[float] = None
+    diametro: Optional[str] = None
+    data_instalacao: Optional[str] = None
+    codigo_barras: Optional[str] = None
+    mensagens_fatura: Optional[list] = None
+    historico_consumo: Optional[list] = None
 
     class Config:
         from_attributes = True

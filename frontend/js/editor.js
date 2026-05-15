@@ -6,12 +6,14 @@ const DOTS_H = 1200;              // altura em dots no cabeçalho
 const SCALE_X = 8;                // 1 mm = 8px no canvas
 const SCALE_Y = 8;                // 1 mm = 8px no canvas
 
-// Inicializa Fabric.js
 const canvas = new fabric.Canvas('cvs', {
   backgroundColor: '#fff',
   selection: true,
   preserveObjectStacking: true,
 });
+
+// Custom properties to be preserved in JSON
+const CUSTOM_PROPS = ['cpclFont', 'selectable', 'evented', 'id', 'isBarcode', 'barcodeData'];
 
 /*** UTILIDADES ***/
 const $ = selector => document.querySelector(selector);
@@ -64,6 +66,20 @@ document.querySelectorAll('.tool-btn').forEach(btn=>{
         strokeWidth:1,
       });
       canvas.add(line).setActiveObject(line);
+    }else if(tool === 'addBarcode'){
+      const rect = new fabric.Rect({
+        left:x,
+        top:y,
+        width:320,
+        height:40,
+        fill:'transparent',
+        stroke:'#333',
+        strokeWidth:1,
+        strokeDashArray: [4, 4],
+        isBarcode: true,
+        barcodeData: '{CODIGO_BARRAS}'
+      });
+      canvas.add(rect).setActiveObject(rect);
     }
     
     showToast('Adicionado!');
@@ -79,11 +95,15 @@ function loadProperties(obj){
     $('#fontFamily').value = obj.cpclFont || (obj.fontSize > 14 ? '7' : '5');
     $('#fontSize').value   = Math.round(obj.fontSize);
     $('#fontColor').value  = obj.fill;
+    $('#textContent').value = obj.text;
+    $('#textContent').parentElement.style.display = 'block';
   }else{
     // para retângulo/linha, apenas cor de preenchimento ou traço
     $('#fontFamily').value = '5';
     $('#fontSize').value   = 12;
     $('#fontColor').value  = obj.stroke || '#000';
+    $('#textContent').value = '';
+    $('#textContent').parentElement.style.display = 'none';
   }
 }
 canvas.on('selection:created', () => loadProperties(canvas.getActiveObject()));
@@ -110,14 +130,84 @@ $('#applyProps').addEventListener('click',()=>{
   const font = $('#fontFamily').value;
   const size = parseInt($('#fontSize').value,10);
   const color = $('#fontColor').value;
+  
   if(obj.type==='i-text'){
-    obj.set({fontFamily:'Inter', fontSize:size, fill:color, cpclFont:font});
+    obj.set({
+      fontFamily:'Inter', 
+      fontSize:size, 
+      fill:color, 
+      cpclFont:font,
+      text: $('#textContent').value
+    });
   }else if(obj.type==='rect' || obj.type==='line'){
     obj.set({stroke:color});
   }
   canvas.renderAll();
   generateCPCL();
 });
+
+// Ações rápidas: Deletar e Duplicar
+$('#deleteObj').addEventListener('click', () => {
+  const obj = canvas.getActiveObject();
+  if (obj) {
+    canvas.remove(obj);
+    canvas.discardActiveObject();
+    canvas.renderAll();
+    generateCPCL();
+  }
+});
+
+$('#duplicateObj').addEventListener('click', () => {
+  const obj = canvas.getActiveObject();
+  if (obj) {
+    obj.clone((cloned) => {
+      cloned.set({
+        left: obj.left + 10,
+        top: obj.top + 10
+      });
+      canvas.add(cloned);
+      canvas.setActiveObject(cloned);
+      generateCPCL();
+    }, CUSTOM_PROPS);
+  }
+});
+
+// Atalho Delete teclado
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    const active = canvas.getActiveObject();
+    if (active && !active.isEditing) {
+      canvas.remove(active);
+      canvas.discardActiveObject();
+      canvas.renderAll();
+      generateCPCL();
+    }
+  }
+});
+
+// Força a inclusão de propriedades customizadas no JSON
+canvas.includeDefaultValues = false;
+
+function getCanvasJSON() {
+  return canvas.toJSON(CUSTOM_PROPS);
+}
+
+function loadCanvasJSON(json) {
+  if (!json) return;
+  isImporting = true;
+  canvas.loadFromJSON(json, () => {
+    // Re-draw grid after loading
+    const objs = canvas.getObjects();
+    objs.filter(o => o.stroke === '#e5e7eb').forEach(o => canvas.remove(o));
+    drawGrid();
+    canvas.renderAll();
+    isImporting = false;
+    generateCPCL();
+  });
+}
+
+window.getCanvasJSON = getCanvasJSON;
+window.loadCanvasJSON = loadCanvasJSON;
 
 /*** GERAÇÃO DO CPCL ***/
 let isImporting = false;
@@ -144,9 +234,14 @@ function generateCPCL(){
     }else if(obj.type==='rect'){
       const x0 = mapCanvasToDots(obj.left);
       const y0 = mapCanvasToDots(obj.top);
-      const x1 = mapCanvasToDots(obj.left + obj.width);
-      const y1 = mapCanvasToDots(obj.top + obj.height);
-      cpcl += `LINE ${x0} ${y0} ${x1} ${y1} 0.2\r\n`;
+      if (obj.isBarcode) {
+        // B I2OF5 0.245 25 8 0 <x> <y> <data>
+        cpcl += `B I2OF5 0.245 25 8 0 ${x0} ${y0} ${obj.barcodeData || '{CODIGO_BARRAS}'}\r\n`;
+      } else {
+        const x1 = mapCanvasToDots(obj.left + obj.width);
+        const y1 = mapCanvasToDots(obj.top + obj.height);
+        cpcl += `LINE ${x0} ${y0} ${x1} ${y1} 0.2\r\n`;
+      }
     }else if(obj.type==='line'){
       if(obj.stroke === '#e5e7eb') return; // ignora o grid
       const x0 = mapCanvasToDots(obj.left);
@@ -242,6 +337,7 @@ function loadNotificacaoCpcl(){
 }
 
 function parseCpclToCanvas(cpcl) {
+  if (!cpcl) return;
   isImporting = true;
   canvas.clear();
   canvas.backgroundColor = '#fff';
@@ -304,7 +400,9 @@ function parseCpclToCanvas(cpcl) {
           fill: 'transparent',
           stroke: '#333',
           strokeWidth: 1,
-          strokeDashArray: [4, 4]
+          strokeDashArray: [4, 4],
+          isBarcode: true,
+          barcodeData: parts.slice(7).join(' ')
         });
         canvas.add(rectObj);
         

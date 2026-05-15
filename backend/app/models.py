@@ -12,7 +12,8 @@ class LayoutImpressao(Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     nome = Column(Text, nullable=False, unique=True)
-    conteudo_cpcl = Column(Text, nullable=False) # JSON gerado pelo canvas ou string CPCL raw
+    conteudo_cpcl = Column(Text, nullable=False) # string CPCL raw
+    estado_fabric = Column(JSONB, nullable=True) # JSON do Fabric.js para persistência sem perdas
     tipo_impressora = Column(Text, nullable=False, default="ZQ520")
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
@@ -162,7 +163,9 @@ class Cliente(Base):
     data_instalacao = Column(Text, nullable=True)
     endereco_entrega = Column(Text, nullable=True)
     cep = Column(Text, nullable=True)
-    codigo_barras = Column(String(44), nullable=True)
+    codigo_barras = Column(Text, nullable=True)
+    mensagens_fatura = Column(JSONB, nullable=True)
+    historico_consumo = Column(JSONB, nullable=True)
 
     __table_args__ = (
         Index("ix_cliente_importacao", "importacao_id"),

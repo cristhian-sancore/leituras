@@ -419,7 +419,12 @@ async def criar_layout(
     if exist.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Já existe um layout com este nome")
     
-    novo = LayoutImpressao(nome=data.nome, conteudo_cpcl=data.conteudo_cpcl, tipo_impressora=data.tipo_impressora)
+    novo = LayoutImpressao(
+        nome=data.nome, 
+        conteudo_cpcl=data.conteudo_cpcl, 
+        estado_fabric=data.estado_fabric,
+        tipo_impressora=data.tipo_impressora
+    )
     db.add(novo)
     await db.commit()
     await db.refresh(novo)
@@ -444,6 +449,7 @@ async def editar_layout(
             
     layout.nome = data.nome
     layout.conteudo_cpcl = data.conteudo_cpcl
+    layout.estado_fabric = data.estado_fabric
     layout.tipo_impressora = data.tipo_impressora
     await db.commit()
     await db.refresh(layout)

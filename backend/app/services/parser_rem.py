@@ -37,6 +37,8 @@ def parse_rem(content: str) -> dict:
     ult_lim = {}
     ocorrencias = []
     clientes = []
+    mensagens_por_mat = {}
+    historico_por_mat = {}
 
     # -----------------------------------------------------------
     # PRE-PROCESSAMENTO: coletar A12 (taxas extras) por matricula
@@ -206,6 +208,37 @@ def parse_rem(content: str) -> dict:
                 'endereco_entrega': endereco_entrega,
                 'codigo_barras': codigo_barras,
             })
+
+        # ============================================
+        # A13 - Mensagens da Fatura
+        # ============================================
+        if clean.startswith('A13'):
+            mat = line[3:18].strip()
+            msg = line[22:].strip()
+            if msg:
+                if mat not in mensagens_por_mat:
+                    mensagens_por_mat[mat] = []
+                mensagens_por_mat[mat].append(msg)
+
+        # ============================================
+        # A14 - Historico de Consumo
+        # ============================================
+        if clean.startswith('A14'):
+            mat = line[3:18].strip()
+            mes_ano = line[20:27].strip()
+            try:
+                consumo = int(line[40:49])
+            except ValueError:
+                consumo = 0
+            if mat not in historico_por_mat:
+                historico_por_mat[mat] = []
+            historico_por_mat[mat].append({'mes_ano': mes_ano, 'consumo': consumo})
+
+    # Anexar mensagens e historico aos clientes
+    for c in clientes:
+        mat = c['matricula']
+        c['mensagens_fatura'] = mensagens_por_mat.get(mat, [])
+        c['historico_consumo'] = historico_por_mat.get(mat, [])
 
     # Converter tarifas_raw em lista plana
     tarifas_list = []

@@ -48,6 +48,7 @@
       <button class="tool-btn" data-tool="addText">Adicionar Texto</button>
       <button class="tool-btn" data-tool="addRect">Retângulo</button>
       <button class="tool-btn" data-tool="addLine">Linha</button>
+      <button class="tool-btn" data-tool="addBarcode">Cód. de Barras</button>
       <hr class="sep">
       <div class="section-title">Papel da Impressora</div>
       <div class="prop-panel">
@@ -60,21 +61,30 @@
         <button class="btn btn-primary" id="applyPaperSize" style="width:100%">Ajustar Tela</button>
       </div>
       <hr class="sep">
-      <div class="section-title">Propriedades</div>
       <div id="propPanel" class="prop-panel hidden">
-        <label>Fonte
-          <select id="fontFamily">
-            <option value="5">Normal (5)</option>
-            <option value="7">Grande (7)</option>
-          </select>
+        <label>Texto/Conteúdo
+          <input type="text" id="textContent" placeholder="Conteúdo do texto">
         </label>
-        <label>Tamanho (px)
-          <input type="number" id="fontSize" min="8" max="36" step="1" value="12">
-        </label>
-        <label>Cor
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <label>Fonte CPCL
+            <select id="fontFamily">
+              <option value="5">Normal (5)</option>
+              <option value="7">Grande (7)</option>
+              <option value="0">Pequena (0)</option>
+            </select>
+          </label>
+          <label>Tam. Visual (px)
+            <input type="number" id="fontSize" min="8" max="120" step="1" value="14">
+          </label>
+        </div>
+        <label>Cor do Elemento
           <input type="color" id="fontColor" value="#000000">
         </label>
-        <button class="btn btn-primary" id="applyProps">Aplicar</button>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px;">
+          <button class="btn btn-secondary btn-sm" id="duplicateObj">Copiar</button>
+          <button class="btn btn-danger btn-sm" id="deleteObj">Remover</button>
+        </div>
+        <button class="btn btn-primary" id="applyProps" style="width:100%; margin-top: 10px;">Aplicar Alterações</button>
       </div>
       <hr class="sep">
       <div class="section-title">Ações</div>
@@ -171,8 +181,11 @@
             // Parse and load CPCL into canvas (we need a way to deserialize, but actually the editor ONLY exports CPCL.
             // Wait, the editor imports CPCL via the import button logic!
             document.getElementById('cpclRaw').textContent = layout.conteudo_cpcl;
-            // The editor.js parser logic can be triggered to draw it!
-            if (typeof window.parseCpclToCanvas === 'function') {
+            
+            // Prioritize loading from JSON state for pixel-perfect persistence
+            if (layout.estado_fabric && typeof window.loadCanvasJSON === 'function') {
+                window.loadCanvasJSON(layout.estado_fabric);
+            } else if (typeof window.parseCpclToCanvas === 'function') {
                 window.parseCpclToCanvas(layout.conteudo_cpcl);
             }
           }
@@ -190,7 +203,9 @@
           if(typeof window.generateCPCL === 'function') {
               window.generateCPCL();
           }
+          // Get both CPCL and JSON state
           const cpcl = document.getElementById('cpclRaw').textContent;
+          const fabricJSON = typeof window.getCanvasJSON === 'function' ? window.getCanvasJSON() : null;
           
           if(cpcl === "—" || cpcl.trim() === "") {
               alert("Gere o CPCL primeiro!");
@@ -207,7 +222,12 @@
                       'Content-Type': 'application/json',
                       'Authorization': `Bearer ${token}`
                   },
-                  body: JSON.stringify({ nome: nome, conteudo_cpcl: cpcl, tipo_impressora: tipo })
+                  body: JSON.stringify({ 
+                      nome: nome, 
+                      conteudo_cpcl: cpcl, 
+                      estado_fabric: fabricJSON,
+                      tipo_impressora: tipo 
+                  })
               });
               
               if(res.ok) {
