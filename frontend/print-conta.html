@@ -244,14 +244,16 @@ function drawCpcl(cpclText, el) {
       el.appendChild(div);
     }
 
-    // BARCODE: B <type> <width> <height> <x> <y> <data>
+    // BARCODE: B <type> <width> [ratio] <height> <x> <y> <data>
     else if (line.startsWith('B ')) {
       const p = line.split(/\s+/);
       if (p.length < 6) return;
 
-      const x = parseFloat(p[4]) * SX;
-      const y = parseFloat(p[5]) * SY;
-      const data = (p[6] || dadosImpressao.codigo_barras || '').trim();
+      // Se tiver 8 ou mais partes (B, TIPO, W, R, H, X, Y, DATA), os índices mudam
+      const isLong = p.length >= 8;
+      const x = parseFloat(isLong ? p[5] : p[4]) * SX;
+      const y = parseFloat(isLong ? p[6] : p[5]) * SY;
+      const data = (p[isLong ? 7 : 6] || dadosImpressao.codigo_barras || '').trim();
 
       const container = document.createElement('div');
       Object.assign(container.style, {
