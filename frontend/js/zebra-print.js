@@ -178,13 +178,13 @@ const ZebraPrint = (() => {
       '{NR_GUIA}':              dados.num_fatura || dados.nosso_numero || dados.matricula || '',
       '{CATEGORIA}':            dados.categoria || '',
       
-      // Lançamentos e Valores
-      '{LANCAMENTO_DESC_1}':    (dados.valor_agua > 0 || !dados.valor_esgoto) ? (dados.desc_agua || 'AGUA') : '',
-      '{LANCAMENTO_VAL_1}':     formatarValor(dados.valor_agua || dados.valor_total),
-      '{LANCAMENTO_DESC_2}':    dados.valor_esgoto > 0 ? (dados.desc_esgoto || 'ESGOTO') : '',
-      '{LANCAMENTO_VAL_2}':     dados.valor_esgoto > 0 ? formatarValor(dados.valor_esgoto) : '',
-      '{LANCAMENTO_DESC_3}':    dados.valor_lixo > 0 ? (dados.desc_lixo || 'TAXA DE LIXO') : '',
-      '{LANCAMENTO_VAL_3}':     dados.valor_lixo > 0 ? formatarValor(dados.valor_lixo) : '',
+      // Lançamentos e Valores — parseFloat garante comparação numérica (valores podem vir como string do DOM)
+      '{LANCAMENTO_DESC_1}':    dados.desc_agua || 'FORNECIMENTO DE AGUA',
+      '{LANCAMENTO_VAL_1}':     formatarValor(dados.valor_agua || dados.valor_total || 0),
+      '{LANCAMENTO_DESC_2}':    parseFloat(dados.valor_esgoto || 0) > 0 ? (dados.desc_esgoto || 'ESGOTO') : '',
+      '{LANCAMENTO_VAL_2}':     parseFloat(dados.valor_esgoto || 0) > 0 ? formatarValor(dados.valor_esgoto) : '',
+      '{LANCAMENTO_DESC_3}':    parseFloat(dados.valor_lixo || 0) > 0 ? (dados.desc_lixo || 'TAXA DE LIXO') : '',
+      '{LANCAMENTO_VAL_3}':     parseFloat(dados.valor_lixo || 0) > 0 ? formatarValor(dados.valor_lixo) : '',
 
       // Leituras
       '{DATA_LEITURA_ANT}':     formatData(dados.data_leit_anterior || dados.leitura_anterior_data || ''),
