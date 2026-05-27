@@ -215,7 +215,7 @@ async def list_todas_empresas(
             id=empresa.id, nome=empresa.nome, cnpj=empresa.cnpj, slug=empresa.slug,
             ativa=empresa.ativa, plano=empresa.plano, max_leituristas=empresa.max_leituristas,
             created_at=empresa.created_at,
-            percentual_esgoto=float(empresa.percentual_esgoto or 70),
+            percentual_esgoto=float(empresa.percentual_esgoto) if empresa.percentual_esgoto is not None else 70.0,
             consumo_minimo_m3=int(empresa.consumo_minimo_m3 or 10),
             layout_impressao_id=empresa.layout_impressao_id,
             total_usuarios=total_u,
