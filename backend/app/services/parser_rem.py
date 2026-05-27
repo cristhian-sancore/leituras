@@ -62,7 +62,12 @@ def parse_rem(content: str) -> dict:
             if 'LIXO' in descricao_a12:
                 matriculas_com_lixo.add(mat_a12)
                 if desc_lixo == 'TAXA DE LIXO': # Pega o primeiro como padrao
-                    desc_lixo = clean[20:70].strip()
+                    raw_desc = clean[20:70].strip()
+                    # Remove prefixo numerico (ex: "005TAXA DE LIXO*" -> "TAXA DE LIXO")
+                    import re
+                    raw_desc = re.sub(r'^\d+', '', raw_desc).strip().rstrip('*').strip()
+                    if raw_desc:
+                        desc_lixo = raw_desc
 
     for line in lines:
         clean = line.strip()
@@ -193,11 +198,16 @@ def parse_rem(content: str) -> dict:
                 # Posicoes 75-107 contem status + descricao do tipo servico:
                 #   "SO AGUA"        => apenas agua, SEM esgoto
                 #   "AGUA E ESGOTO"  => agua E esgoto
+                #   "SO ESGOTO"      => apenas esgoto, SEM agua
                 #   "ESGOTO"         => tem esgoto
-                # Se o texto contem "ESGOTO" => tem_esgoto = True.
                 # -------------------------------------------------------
                 descricao_servico = line[75:107].upper() if len(line) > 107 else ''
                 tem_esgoto = 'ESGOTO' in descricao_servico
+                # Agua: presente se descricao contém 'AGUA', ou se nao tem descricao (padrao)
+                if descricao_servico.strip():
+                    tem_agua = 'AGUA' in descricao_servico
+                else:
+                    tem_agua = True  # padrao: tem agua
 
                 # Lixo: indicado por A12 com 'LIXO' para esta matricula
                 tem_lixo = matricula in matriculas_com_lixo
@@ -226,6 +236,7 @@ def parse_rem(content: str) -> dict:
                 'ocorr_anterior': ocorr_anterior,
                 'tem_esgoto': tem_esgoto,
                 'tem_lixo': tem_lixo,
+                'tem_agua': tem_agua,
                 'hidrometro': hidrometro,
                 'cep': cep,
                 'vazao': vazao,

@@ -178,10 +178,10 @@ const ZebraPrint = (() => {
       '{NR_GUIA}':              dados.num_fatura || dados.nosso_numero || dados.matricula || '',
       '{CATEGORIA}':            dados.categoria || '',
       
-      // Lançamentos e Valores — respeita flags tem_esgoto/tem_lixo do .REM por instalação
-      // Agua: sempre aparece (toda instalação tem água)
-      '{LANCAMENTO_DESC_1}':    dados.desc_agua || 'FORNECIMENTO DE AGUA',
-      '{LANCAMENTO_VAL_1}':     formatarValor(dados.valor_agua || dados.valor_total || 0),
+      // Lançamentos e Valores — respeita flags tem_agua/tem_esgoto/tem_lixo do .REM por instalação
+      // Agua: só aparece se a instalação tem agua
+      '{LANCAMENTO_DESC_1}':    dados.tem_agua !== false ? (dados.desc_agua || 'FORNECIMENTO DE AGUA') : '',
+      '{LANCAMENTO_VAL_1}':     dados.tem_agua !== false ? formatarValor(dados.valor_agua || dados.valor_total || 0) : '',
       // Esgoto: só aparece se a instalação tem esgoto (tem_esgoto do .REM)
       '{LANCAMENTO_DESC_2}':    dados.tem_esgoto !== false ? (dados.desc_esgoto || 'ESGOTO') : '',
       '{LANCAMENTO_VAL_2}':     dados.tem_esgoto !== false ? formatarValor(dados.valor_esgoto || 0) : '',

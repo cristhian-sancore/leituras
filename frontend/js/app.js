@@ -1005,6 +1005,7 @@ async function abrirImpressao(clienteId) {
         desc_agua:          imp.desc_agua || 'FORNEC. E ABASTEC. DE AGUA',
         desc_esgoto:        imp.desc_esgoto || 'ESGOTO',
         desc_lixo:          imp.desc_lixo || 'TAXA DE COLETA DE LIXO',
+        tem_agua:           c.tem_agua !== undefined ? c.tem_agua : true,
         tem_esgoto:         c.tem_esgoto !== undefined ? c.tem_esgoto : true,
         tem_lixo:           c.tem_lixo !== undefined ? c.tem_lixo : true,
         mensagens_fatura:   c.mensagens_fatura || [],
