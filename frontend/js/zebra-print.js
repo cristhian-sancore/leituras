@@ -320,6 +320,13 @@ const ZebraPrint = (() => {
       cpcl = cpcl.split(key).join(String(val || ' '));
     }
     
+    // Remove linhas de texto "CODIGO DE BARRAS" que o editor antigo inseria por engano
+    cpcl = cpcl.split(/\r?\n/).filter(line => {
+      const trimmed = line.trim().toUpperCase();
+      if (trimmed.startsWith('T ') && trimmed.includes('CODIGO DE BARRAS')) return false;
+      return true;
+    }).join('\r\n');
+    
     // Garante JOURNAL se não tiver (evita que a impressora puxe papel sem parar)
     if (!cpcl.includes('JOURNAL')) {
         cpcl = cpcl.replace(/(!\s.*\r?\n)/, '$1JOURNAL\r\n');

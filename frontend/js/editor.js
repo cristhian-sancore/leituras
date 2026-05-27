@@ -13,7 +13,7 @@ const canvas = new fabric.Canvas('cvs', {
 });
 
 // Custom properties to be preserved in JSON
-const CUSTOM_PROPS = ['cpclFont', 'selectable', 'evented', 'id', 'isBarcode', 'barcodeData'];
+const CUSTOM_PROPS = ['cpclFont', 'selectable', 'evented', 'id', 'isBarcode', 'barcodeData', 'cpclSkip'];
 
 /*** UTILIDADES ***/
 const $ = selector => document.querySelector(selector);
@@ -219,6 +219,7 @@ function generateCPCL(){
   let cpcl = `! 0 ${DOTS_W} ${DOTS_W} ${hDots} 1\r\nIN-MILLIMETERS\r\nCOUNTRY LATIN9\r\n`;
   // percorre objetos na ordem de criação (stack)
   canvas.getObjects().forEach(obj=>{
+    if(obj.cpclSkip) return; // labels decorativos do editor — ignorar
     if(obj.cpclType === 'barcode'){
       // B I2OF5 <largura_barra> <ratio> <altura_barras> <x> <y> <dados>
       cpcl += `B I2OF5 0.245 25 8 ${x} ${y} ${obj.barcodeData}\r\n`;
@@ -416,6 +417,7 @@ function parseCpclToCanvas(cpcl) {
           fontWeight: 'bold',
           selectable: false,
           evented: false,
+          cpclSkip: true,
         });
         canvas.add(txtObj);
       }
