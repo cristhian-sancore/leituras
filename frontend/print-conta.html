@@ -34,12 +34,12 @@ body{background:#0f172a;color:#e2e8f0;font-family:'Inter',sans-serif;margin:0}
 .page-label::before{content:'';flex:1;height:1px;background:rgba(255,255,255,0.1)}
 .page-label::after{content:'';flex:1;height:1px;background:rgba(255,255,255,0.1)}
 
-/* Cupom - simula papel 80mm */
+/* Cupom - simula papel 100mm x 235mm (ZQ520/ZQ521) */
 .receipt-wrap{display:flex;justify-content:center}
 .receipt{
   background:white;color:#111;
-  width:104mm;        /* Papel ZQ521 = 104mm */
-  min-height:200px;
+  width:100mm;        /* Papel real = 100mm de largura */
+  min-height:235mm;   /* Papel real = 235mm de altura (23,5cm) */
   padding:0;          /* sem padding - o CPCL posiciona tudo */
   font-family:'Courier New',monospace;
   font-size:11px;line-height:1.4;
