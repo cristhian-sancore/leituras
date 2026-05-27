@@ -54,6 +54,9 @@ const ZebraPrint = (() => {
   // ── Envio BLE em chunks ────────────────────────────────
   async function sendData(dataStr) {
     if (!isConnected()) throw new Error('Impressora nao conectada');
+    // Trim para nao enviar bytes vazios apos PRINT
+    dataStr = dataStr.trim() + '\r\n';
+    console.log('[ZebraPrint] Enviando CPCL (' + dataStr.length + ' chars):\n', dataStr);
     const data = new TextEncoder().encode(dataStr);
     const CHUNK = 512;
     for (let i = 0; i < data.length; i += CHUNK) {
@@ -321,22 +324,17 @@ const ZebraPrint = (() => {
     }
     
     // Remove linhas de texto "CODIGO DE BARRAS" que o editor antigo inseria por engano
-    // Remove linhas vazias consecutivas e FORM/PRINT duplicados
     let lines = cpcl.split(/\r?\n/).filter(line => {
       const trimmed = line.trim().toUpperCase();
       if (trimmed.startsWith('T ') && trimmed.includes('CODIGO DE BARRAS')) return false;
       return true;
     });
     
-    // Garante apenas UM par FORM+PRINT no final (remove duplicados que causam pagina em branco)
-    let formCount = 0;
-    let printCount = 0;
-    lines = lines.filter(line => {
-      const t = line.trim().toUpperCase();
-      if (t === 'FORM') { formCount++; return formCount <= 1; }
-      if (t === 'PRINT') { printCount++; return printCount <= 1; }
-      return true;
-    });
+    // Trunca tudo APOS o primeiro PRINT (evita pagina em branco)
+    const printIdx = lines.findIndex(l => l.trim().toUpperCase() === 'PRINT');
+    if (printIdx >= 0) {
+      lines = lines.slice(0, printIdx + 1);
+    }
     
     cpcl = lines.join('\r\n');
     
