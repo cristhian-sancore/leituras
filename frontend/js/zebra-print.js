@@ -321,11 +321,24 @@ const ZebraPrint = (() => {
     }
     
     // Remove linhas de texto "CODIGO DE BARRAS" que o editor antigo inseria por engano
-    cpcl = cpcl.split(/\r?\n/).filter(line => {
+    // Remove linhas vazias consecutivas e FORM/PRINT duplicados
+    let lines = cpcl.split(/\r?\n/).filter(line => {
       const trimmed = line.trim().toUpperCase();
       if (trimmed.startsWith('T ') && trimmed.includes('CODIGO DE BARRAS')) return false;
       return true;
-    }).join('\r\n');
+    });
+    
+    // Garante apenas UM par FORM+PRINT no final (remove duplicados que causam pagina em branco)
+    let formCount = 0;
+    let printCount = 0;
+    lines = lines.filter(line => {
+      const t = line.trim().toUpperCase();
+      if (t === 'FORM') { formCount++; return formCount <= 1; }
+      if (t === 'PRINT') { printCount++; return printCount <= 1; }
+      return true;
+    });
+    
+    cpcl = lines.join('\r\n');
     
     // Garante JOURNAL se não tiver (evita que a impressora puxe papel sem parar)
     if (!cpcl.includes('JOURNAL')) {
