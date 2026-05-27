@@ -177,7 +177,16 @@ def parse_rem(content: str) -> dict:
                 diametro = line[533:543].strip() if len(line) > 543 else ''
                 data_instalacao = line[553:563].strip() if len(line) > 563 else ''
                 endereco_entrega = line[1052:1102].strip() if len(line) > 1102 else ''
+                # Codigo de barras: posicao padrao 436-480 (44 digitos)
                 codigo_barras = line[436:480].strip() if len(line) > 480 else ''
+                # Limpa caracteres nao-numericos (espaco, letras, etc)
+                codigo_barras = ''.join(c for c in codigo_barras if c.isdigit())
+                # Se veio vazio na posicao padrao, tenta posicao alternativa (480-524)
+                if not codigo_barras and len(line) > 524:
+                    alt_barras = line[480:524].strip()
+                    alt_barras = ''.join(c for c in alt_barras if c.isdigit())
+                    if len(alt_barras) >= 20:
+                        codigo_barras = alt_barras
 
                 # -------------------------------------------------------
                 # FLAGS DE SERVICO por cliente

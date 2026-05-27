@@ -261,22 +261,33 @@ const ZebraPrint = (() => {
     }
 
     // --- LOGICA DE CODIGO DE BARRAS / LINHA DIGITAVEL ---
-    let rawBarcode = (dados.codigo_barras || '').replace(/\D/g, '');
+    let rawBarcode = (dados.codigo_barras || '').replace(/\D/g, '').trim();
     
-    if (rawBarcode.length === 44) {
+    console.log('[ZebraPrint] codigo_barras bruto:', JSON.stringify(dados.codigo_barras), '=> limpo:', rawBarcode, '(len=' + rawBarcode.length + ')');
+    
+    if (rawBarcode.length >= 20) {
+        // Código de barras válido (44 = FEBRABAN/Concessionária, ou outro padrão)
+        // I2OF5 EXIGE número par de dígitos — garantir com zero-padding
+        if (rawBarcode.length % 2 !== 0) rawBarcode = '0' + rawBarcode;
         map['{CODIGO_BARRAS}'] = rawBarcode;
-        // Se for 44 dígitos, formatar a linha digitável (Padrão Concessionária/FEBRABAN se começar com 8)
-        if (rawBarcode[0] === '8') {
+        // Formatar linha digitável
+        if (rawBarcode.length === 44 && rawBarcode[0] === '8') {
             map['{LINHA_DIGITAVEL}'] = formatarLinhaDigitavelConcessionaria(rawBarcode);
+        } else if (rawBarcode.length === 44) {
+            map['{LINHA_DIGITAVEL}'] = formatarLinhaDigitavel(rawBarcode);
         } else {
             map['{LINHA_DIGITAVEL}'] = rawBarcode; 
         }
     } else {
-        // Fallback: usar matrícula
-        let codFallback = (dados.matricula || '0').replace(/\D/g, '');
+        // Fallback: gerar código baseado na matrícula + num_fatura
+        let codFallback = (dados.num_fatura || dados.nosso_numero || dados.matricula || '0').replace(/\D/g, '');
+        // Garantir mínimo de 8 dígitos para o código de barras ser legível
+        if (codFallback.length < 8) codFallback = codFallback.padStart(8, '0');
+        // I2OF5 EXIGE número par de dígitos
         if (codFallback.length % 2 !== 0) codFallback = '0' + codFallback;
         map['{CODIGO_BARRAS}'] = codFallback;
         map['{LINHA_DIGITAVEL}'] = codFallback;
+        console.warn('[ZebraPrint] Codigo de barras vazio/curto, usando fallback:', codFallback);
     }
 
     return map;
@@ -319,7 +330,7 @@ const ZebraPrint = (() => {
   // ── Layout genérico (fallback sem customização) ────────
   function layoutGenerico(dados) {
     return [
-      '! 0 200 200 250 1',
+      '! 0 200 200 270 1',
       'JOURNAL',
       'IN-MILLIMETERS',
       'COUNTRY LATIN9',
