@@ -81,6 +81,8 @@ async def salvar_leitura(
         tarifas_lixo=tarifas_lixo,
         percentual_esgoto=perc_esgoto,
         consumo_minimo=consumo_minimo,
+        tem_esgoto=cliente.tem_esgoto,
+        tem_lixo=cliente.tem_lixo,
     )
 
     # validar_consumo retorna dict (não tuple)
