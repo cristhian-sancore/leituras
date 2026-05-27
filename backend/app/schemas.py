@@ -193,6 +193,9 @@ class ClienteComLeitura(BaseModel):
     codigo_barras: Optional[str] = None
     mensagem_1: Optional[str] = None
     mensagem_2: Optional[str] = None
+    # Flags de servico do .REM (quais servicos esta instalacao possui)
+    tem_esgoto: bool = True
+    tem_lixo: bool = True
     historico: List[HistoricoItem] = []
     # Dados da leitura (se existir)
     leitura_atual: Optional[int] = None

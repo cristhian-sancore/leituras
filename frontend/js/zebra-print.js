@@ -178,13 +178,16 @@ const ZebraPrint = (() => {
       '{NR_GUIA}':              dados.num_fatura || dados.nosso_numero || dados.matricula || '',
       '{CATEGORIA}':            dados.categoria || '',
       
-      // Lançamentos e Valores — parseFloat garante comparação numérica (valores podem vir como string do DOM)
+      // Lançamentos e Valores — respeita flags tem_esgoto/tem_lixo do .REM por instalação
+      // Agua: sempre aparece (toda instalação tem água)
       '{LANCAMENTO_DESC_1}':    dados.desc_agua || 'FORNECIMENTO DE AGUA',
       '{LANCAMENTO_VAL_1}':     formatarValor(dados.valor_agua || dados.valor_total || 0),
-      '{LANCAMENTO_DESC_2}':    parseFloat(dados.valor_esgoto || 0) > 0 ? (dados.desc_esgoto || 'ESGOTO') : '',
-      '{LANCAMENTO_VAL_2}':     parseFloat(dados.valor_esgoto || 0) > 0 ? formatarValor(dados.valor_esgoto) : '',
-      '{LANCAMENTO_DESC_3}':    parseFloat(dados.valor_lixo || 0) > 0 ? (dados.desc_lixo || 'TAXA DE LIXO') : '',
-      '{LANCAMENTO_VAL_3}':     parseFloat(dados.valor_lixo || 0) > 0 ? formatarValor(dados.valor_lixo) : '',
+      // Esgoto: só aparece se a instalação tem esgoto (tem_esgoto do .REM)
+      '{LANCAMENTO_DESC_2}':    dados.tem_esgoto !== false ? (dados.desc_esgoto || 'ESGOTO') : '',
+      '{LANCAMENTO_VAL_2}':     dados.tem_esgoto !== false ? formatarValor(dados.valor_esgoto || 0) : '',
+      // Lixo: só aparece se a instalação tem lixo (tem_lixo do .REM)
+      '{LANCAMENTO_DESC_3}':    dados.tem_lixo !== false ? (dados.desc_lixo || 'TAXA DE LIXO') : '',
+      '{LANCAMENTO_VAL_3}':     dados.tem_lixo !== false ? formatarValor(dados.valor_lixo || 0) : '',
 
       // Leituras
       '{DATA_LEITURA_ANT}':     formatData(dados.data_leit_anterior || dados.leitura_anterior_data || ''),

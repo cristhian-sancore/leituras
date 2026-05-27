@@ -407,6 +407,8 @@ async def list_clientes_com_leituras(
             data_instalacao=c.data_instalacao,
             endereco_entrega=getattr(c, 'endereco_entrega', None),
             codigo_barras=c.codigo_barras,
+            tem_esgoto=c.tem_esgoto,
+            tem_lixo=c.tem_lixo,
             mensagens_fatura=getattr(c, 'mensagens_fatura', []),
             historico_consumo=getattr(c, 'historico_consumo', []),
             analises_agua=analises_agua,
