@@ -147,8 +147,8 @@ async def _get_empresa_config(db: AsyncSession, empresa_id: int) -> dict:
     if not empresa:
         return {'percentual_esgoto': 70.0, 'consumo_minimo_m3': 10}
     return {
-        'percentual_esgoto': float(empresa.percentual_esgoto or 70),
-        'consumo_minimo_m3': int(empresa.consumo_minimo_m3 or 10),
+        'percentual_esgoto': float(empresa.percentual_esgoto) if empresa.percentual_esgoto is not None else 70.0,
+        'consumo_minimo_m3': int(empresa.consumo_minimo_m3) if empresa.consumo_minimo_m3 is not None else 10,
     }
 
 
