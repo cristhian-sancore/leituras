@@ -220,9 +220,7 @@ function generateCPCL(){
   // percorre objetos na ordem de criação (stack)
   canvas.getObjects().forEach(obj=>{
     if(obj.cpclType === 'barcode'){
-      const x = mapCanvasToDots(obj.left);
-      const y = mapCanvasToDots(obj.top);
-      // B I2OF5 0.245 25 8 0 222 {CODIGO_BARRAS}
+      // B I2OF5 <largura_barra> <ratio> <altura_barras> <x> <y> <dados>
       cpcl += `B I2OF5 0.245 25 8 ${x} ${y} ${obj.barcodeData}\r\n`;
     }else if(obj.type==='i-text'){
       const x = mapCanvasToDots(obj.left);
@@ -235,8 +233,8 @@ function generateCPCL(){
       const x0 = mapCanvasToDots(obj.left);
       const y0 = mapCanvasToDots(obj.top);
       if (obj.isBarcode) {
-        // B I2OF5 0.245 25 8 0 <x> <y> <data>
-        cpcl += `B I2OF5 0.245 25 8 0 ${x0} ${y0} ${obj.barcodeData || '{CODIGO_BARRAS}'}\r\n`;
+        // B I2OF5 <largura_barra> <ratio> <altura_barras> <x> <y> <dados>
+        cpcl += `B I2OF5 0.245 25 8 ${x0} ${y0} ${obj.barcodeData || '{CODIGO_BARRAS}'}\r\n`;
       } else {
         const x1 = mapCanvasToDots(obj.left + obj.width);
         const y1 = mapCanvasToDots(obj.top + obj.height);
@@ -388,13 +386,16 @@ function parseCpclToCanvas(cpcl) {
     else if (line.startsWith('B ')) {
       // Código de Barras (exemplo B I2OF5 0.245 25 8 0 212 data)
       const parts = line.split(' ');
-      if (parts.length > 7) {
-        const x = parseFloat(parts[5]) * SCALE_X;
-        const y = parseFloat(parts[6]) * SCALE_Y;
+      if (parts.length >= 7) {
+        // B I2OF5 <largura> <ratio> <altura> <x> <y> <dados>
+        // parts: [B, I2OF5, 0.245, 25, 8, X, Y, DADOS...]
+        const barcodeX = parseFloat(parts[5]) * SCALE_X;
+        const barcodeY = parseFloat(parts[6]) * SCALE_Y;
+        const barcodeData = parts.slice(7).join(' ') || '{CODIGO_BARRAS}';
         
         const rectObj = new fabric.Rect({
-          left: x,
-          top: y,
+          left: barcodeX,
+          top: barcodeY,
           width: 320,
           height: 40,
           fill: 'transparent',
@@ -402,19 +403,19 @@ function parseCpclToCanvas(cpcl) {
           strokeWidth: 1,
           strokeDashArray: [4, 4],
           isBarcode: true,
-          barcodeData: parts.slice(7).join(' ')
+          barcodeData: barcodeData
         });
         canvas.add(rectObj);
         
-        const txtObj = new fabric.IText('[CÓDIGO DE BARRAS]', {
-          left: x + 10,
-          top: y + 12,
+        const txtObj = new fabric.IText('[CODIGO DE BARRAS]', {
+          left: barcodeX + 10,
+          top: barcodeY + 12,
           fontFamily: 'Inter',
           fontSize: 14,
           fill: '#555',
           fontWeight: 'bold',
-          cpclType: 'barcode',
-          barcodeData: parts.slice(7).join(' ') || '{CODIGO_BARRAS}'
+          selectable: false,
+          evented: false,
         });
         canvas.add(txtObj);
       }

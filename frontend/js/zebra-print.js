@@ -518,8 +518,8 @@ const ZebraPrint = (() => {
       'LINE 76 196 76 226 0.2',
       'LINE 2 226 100 226 0.2',
       'LEFT',
-      'T 0 0 10 227 {LINHA_DIGITAVEL}',
-      'B I2OF5 0.245 25 8 10 235 {CODIGO_BARRAS}',
+      'T 0 0 5 227 {LINHA_DIGITAVEL}',
+      'B I2OF5 0.245 25 8 5 235 {CODIGO_BARRAS}',
       'FORM',
       'PRINT'
     ].join('\r\n');
