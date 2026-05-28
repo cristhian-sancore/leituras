@@ -54,8 +54,17 @@ const ZebraPrint = (() => {
   // ── Envio BLE em chunks ────────────────────────────────
   async function sendData(dataStr) {
     if (!isConnected()) throw new Error('Impressora nao conectada');
-    // Trim para nao enviar bytes vazios apos PRINT
-    dataStr = dataStr.trim() + '\r\n';
+    // Garante que termina exatamente com PRINT\r\n sem nada depois
+    // (bytes extras apos PRINT causam pagina em branco na Zebra)
+    dataStr = dataStr.trimEnd();
+    if (!dataStr.endsWith('PRINT')) {
+      // Se por algum motivo nao terminou em PRINT, garante
+      const printPos = dataStr.lastIndexOf('PRINT');
+      if (printPos >= 0) {
+        dataStr = dataStr.substring(0, printPos + 5);
+      }
+    }
+    dataStr = dataStr + '\r\n';
     console.log('[ZebraPrint] Enviando CPCL (' + dataStr.length + ' chars):\n', dataStr);
     const data = new TextEncoder().encode(dataStr);
     const CHUNK = 512;
@@ -334,25 +343,43 @@ const ZebraPrint = (() => {
     });
     
     // Trunca tudo APOS o primeiro PRINT (evita pagina em branco)
+    // Usa .toUpperCase().trim() para pegar 'PRINT', 'print', 'PRINT\r', 'PRINT ', etc.
     const printIdx = lines.findIndex(l => l.trim().toUpperCase() === 'PRINT');
     if (printIdx >= 0) {
       lines = lines.slice(0, printIdx + 1);
+      // Normaliza a linha do PRINT para nao ter espacos/CR residuais
+      lines[printIdx] = 'PRINT';
+    } else {
+      // Se nao achou PRINT, adiciona antes do final (FORM deve vir antes)
+      console.warn('[ZebraPrint] PRINT nao encontrado no CPCL — adicionando ao final');
+      const formIdx = lines.findIndex(l => l.trim().toUpperCase() === 'FORM');
+      if (formIdx >= 0) {
+        lines.splice(formIdx + 1, 0, 'PRINT');
+      } else {
+        lines.push('FORM');
+        lines.push('PRINT');
+      }
     }
     
     cpcl = lines.join('\r\n');
     
-    // Garante JOURNAL se não tiver (evita que a impressora puxe papel sem parar)
-    if (!cpcl.includes('JOURNAL')) {
-        cpcl = cpcl.replace(/(!\s.*\r?\n)/, '$1JOURNAL\r\n');
+    // NOTA: JOURNAL NAO deve ser usado na ZQ520/ZQ521 (causa impressao continua/pagina em branco)
+    // O app Java oficial (Fiorilli) nunca usa JOURNAL nessas impressoras.
+    // A ZQ520/ZQ521 usa apenas o cabecalho "! 0 200 200 230 1" com parametro de copias.
+    // Se o layout customizado tiver JOURNAL (de configuracao antiga), remover.
+    if (cpcl.includes('JOURNAL')) {
+      cpcl = cpcl.split('\r\nJOURNAL\r\n').join('\r\n');
+      cpcl = cpcl.split('\nJOURNAL\n').join('\n');
+      cpcl = cpcl.replace(/^JOURNAL\r?\n/m, '');
+      console.warn('[ZebraPrint] JOURNAL removido do CPCL — nao compativel com ZQ520/ZQ521');
     }
     return removerAcentos(cpcl);
   }
 
-  // ── Layout genérico (fallback sem customização) ────────
+  // ── Layout genérico (fallback sem customização) ────────────────
   function layoutGenerico(dados) {
     return [
-      '! 0 200 200 235 1',
-      'JOURNAL',
+      '! 0 200 200 230 1',
       'IN-MILLIMETERS',
       'COUNTRY LATIN9',
       'LINE 2 15 100 15 0.2',
@@ -561,12 +588,16 @@ const ZebraPrint = (() => {
   // ── Imprimir conta + notificacao ──────────────────────
   async function imprimirConta(dados) {
     // Pagina 1: Fatura
-    await sendData(gerarCPCL(dados));
+    const cpclFatura = gerarCPCL(dados);
+    console.log('[ZebraPrint] CPCL Fatura final:\n', cpclFatura);
+    await sendData(cpclFatura);
 
     // Pagina 2: Notificacao (somente se houver layout e flag)
     const cpclNotif = gerarCPCLNotificacao(dados);
     if (cpclNotif && dados.tem_notificacao) {
-      await new Promise(r => setTimeout(r, 1200));
+      // Aguarda impressao e ejecao do papel (ZQ520/ZQ521 pode demorar ate 2.5s)
+      await new Promise(r => setTimeout(r, 2500));
+      console.log('[ZebraPrint] CPCL Notificacao final:\n', cpclNotif);
       await sendData(cpclNotif);
     }
     return true;
