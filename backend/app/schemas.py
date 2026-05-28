@@ -186,7 +186,7 @@ class ClienteComLeitura(BaseModel):
     data_leit_anterior: Optional[str] = None
     ocorr_anterior: Optional[str] = None
     hidrometro: Optional[str] = None
-    vazao: Optional[str] = None
+    vazao: Optional[str] = None         # Text no banco (ex: '1.0'), não float
     diametro: Optional[str] = None
     data_instalacao: Optional[str] = None
     endereco_entrega: Optional[str] = None
@@ -207,11 +207,6 @@ class ClienteComLeitura(BaseModel):
     valor_esgoto: float = 0.0
     valor_lixo: float = 0.0
     valor_total: float = 0.0
-    hidrometro: Optional[str] = None
-    vazao: Optional[float] = None
-    diametro: Optional[str] = None
-    data_instalacao: Optional[str] = None
-    codigo_barras: Optional[str] = None
     mensagens_fatura: Optional[list] = None
     historico_consumo: Optional[list] = None
     analises_agua: Optional[list] = None

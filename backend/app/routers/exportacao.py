@@ -31,6 +31,12 @@ async def gerar_ret(
     if not imp:
         raise HTTPException(status_code=404, detail="Importação não encontrada")
 
+    # Buscar consumo_minimo da empresa
+    from app.models import Empresa as EmpresaModel
+    emp_res = await db.execute(select(EmpresaModel).where(EmpresaModel.id == current_user.empresa_id))
+    empresa = emp_res.scalar_one_or_none()
+    consumo_minimo = int(empresa.consumo_minimo_m3) if empresa and empresa.consumo_minimo_m3 else 10
+
     # Buscar clientes com leituras
     result = await db.execute(
         select(Cliente).where(
@@ -105,7 +111,7 @@ async def gerar_ret(
                 },
             })
 
-    conteudo = gerar_arquivo_ret(clientes_leituras, codigo_normal=codigo_normal)
+    conteudo = gerar_arquivo_ret(clientes_leituras, codigo_normal=codigo_normal, consumo_minimo=consumo_minimo)
 
     # Registrar exportação
     agora = datetime.now()

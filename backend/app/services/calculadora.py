@@ -35,11 +35,14 @@ def calcular_por_faixas(consumo: int, faixas: List[dict], consumo_minimo: int = 
     # Excedente acima do consumo mínimo
     if consumo > consumo_minimo:
         excedente = consumo - consumo_minimo
-        for i, faixa in enumerate(faixas_exc):
+        # Garantir ordenação correta por limite_metros (ascendente)
+        # para que o cálculo progressivo funcione independente da ordem do banco
+        faixas_exc_ord = sorted(faixas_exc, key=lambda f: float(f.get('limite_metros', 0) or 0))
+        for i, faixa in enumerate(faixas_exc_ord):
             preco = float(faixa.get('preco_metro', 0) or 0)
             limite_atual = float(faixa.get('limite_metros', 0) or 0)
-            if i + 1 < len(faixas_exc):
-                prox_limite = float(faixas_exc[i + 1].get('limite_metros', 999999) or 999999)
+            if i + 1 < len(faixas_exc_ord):
+                prox_limite = float(faixas_exc_ord[i + 1].get('limite_metros', 999999) or 999999)
             else:
                 prox_limite = 999999
             tamanho_faixa = prox_limite - limite_atual

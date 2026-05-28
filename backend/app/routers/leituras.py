@@ -1,3 +1,4 @@
+import logging
 from typing import List, Optional
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -8,6 +9,8 @@ from app.models import Cliente, Leitura, Tarifa, Ocorrencia, Importacao, Empresa
 from app.schemas import ClienteComLeitura, HistoricoItem, LeituraUpdate, StatsOut, OcorrenciaOut, TarifaOut
 from app.auth.deps import get_current_user
 from app.services.calculadora import calcular_consumo, calcular_conta, validar_consumo
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/leituras", tags=["Leituras"])
 
@@ -35,7 +38,7 @@ async def salvar_leitura(
         raise HTTPException(status_code=404, detail="Cliente não encontrado")
 
     imp_id = cliente.importacao_id
-    cat = (cliente.categoria or "residencial").lower()
+    cat = (cliente.categoria or "residencial").strip().lower()
 
     # Buscar dados da ocorrência
     ocorr_data = {}
@@ -58,9 +61,28 @@ async def salvar_leitura(
     empresa_cfg = await _get_empresa_config(db, current_user.empresa_id)
     tarifas_dict = await _get_tarifas_dict(db, imp_id, current_user.empresa_id)
 
-    # Extrair tarifas por categoria (usar a categoria do cliente)
-    tarifas_agua = tarifas_dict.get(f"{cat}_agua") or tarifas_dict.get("residencial_agua") or []
-    tarifas_lixo = tarifas_dict.get(f"{cat}_lixo") or tarifas_dict.get("residencial_lixo") or []
+    # Extrair tarifas pela categoria exata do cliente (sem fallback silencioso)
+    # Se a categoria não tiver tarifa cadastrada, retorna lista vazia e loga aviso
+    tarifas_agua = tarifas_dict.get(f"{cat}_agua") or []
+    tarifas_lixo = tarifas_dict.get(f"{cat}_lixo") or []
+
+    # Fallback para residencial SOMENTE quando a categoria simplesmente não existe
+    # no arquivo (não deve mascarar erros de mismatch de case)
+    if not tarifas_agua and cat != "residencial":
+        tarifas_agua_fb = tarifas_dict.get("residencial_agua") or []
+        if tarifas_agua_fb:
+            logger.warning(
+                f"Cliente {cliente_id}: categoria '{cat}' sem tarifa de agua — usando residencial como fallback"
+            )
+            tarifas_agua = tarifas_agua_fb
+
+    if not tarifas_lixo and cat != "residencial":
+        tarifas_lixo_fb = tarifas_dict.get("residencial_lixo") or []
+        if tarifas_lixo_fb:
+            logger.warning(
+                f"Cliente {cliente_id}: categoria '{cat}' sem tarifa de lixo — usando residencial como fallback"
+            )
+            tarifas_lixo = tarifas_lixo_fb
 
     consumo_minimo = empresa_cfg.get('consumo_minimo_m3', 10)
     perc_esgoto    = empresa_cfg.get('percentual_esgoto', 70.0)
@@ -157,7 +179,7 @@ async def _get_empresa_config(db: AsyncSession, empresa_id: int) -> dict:
 
 
 async def _get_tarifas_dict(db: AsyncSession, imp_id: int, empresa_id: int) -> dict:
-    """Busca tarifas e organiza por categoria."""
+    """Busca tarifas e organiza por categoria (chaves normalizadas para lowercase)."""
     result = await db.execute(
         select(Tarifa).where(
             Tarifa.importacao_id == imp_id,
@@ -167,7 +189,11 @@ async def _get_tarifas_dict(db: AsyncSession, imp_id: int, empresa_id: int) -> d
     tarifas = result.scalars().all()
     tarifas_dict = {}
     for t in tarifas:
-        key = f"{t.categoria}_{t.servico}"
+        # Normalizar para lowercase para evitar mismatch de case
+        # (ex: "Residencial_agua" vs "residencial_agua")
+        cat_norm  = (t.categoria or "").strip().lower()
+        serv_norm = (t.servico   or "").strip().lower()
+        key = f"{cat_norm}_{serv_norm}"
         if key not in tarifas_dict:
             tarifas_dict[key] = []
         tarifas_dict[key].append({

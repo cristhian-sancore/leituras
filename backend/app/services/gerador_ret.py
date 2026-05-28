@@ -18,6 +18,7 @@ def gerar_linha_d01(
     data_coleta: str,
     hora_coleta: str,
     codigo_normal: str = '0000',
+    consumo_minimo: int = 10,
 ) -> str:
     """
     Gera uma linha D01 do arquivo .RET.
@@ -28,6 +29,7 @@ def gerar_linha_d01(
         data_coleta: string DD/MM/YYYY
         hora_coleta: string HH:MM:SS
         codigo_normal: string representando o código da ocorrência normal
+        consumo_minimo: m³ mínimos da empresa (padrão 10)
     
     Returns:
         String com a linha D01 formatada
@@ -40,7 +42,7 @@ def gerar_linha_d01(
     ocorrencia = leitura.get('ocorrencia_codigo', '') or codigo_normal
     if ocorrencia == '0000':
         ocorrencia = codigo_normal
-    consumo_faturado = max(consumo, 10)
+    consumo_faturado = max(consumo, consumo_minimo)
 
     l = ''
     l += 'D01'                                                          # 01: pos 1, tam 3
@@ -106,6 +108,7 @@ def gerar_linha_d01(
 def gerar_arquivo_ret(
     clientes_leituras: List[dict],
     codigo_normal: str = '0000',
+    consumo_minimo: int = 10,
 ) -> str:
     """
     Gera o conteúdo completo do arquivo .RET.
@@ -113,6 +116,7 @@ def gerar_arquivo_ret(
     Args:
         clientes_leituras: lista de dicts, cada um com 'cliente' e 'leitura'
         codigo_normal: código correspondente à ocorrência normal da remessa
+        consumo_minimo: m³ mínimos configurados na empresa (padrão 10)
     
     Returns:
         Conteúdo do arquivo .RET como string
@@ -135,7 +139,7 @@ def gerar_arquivo_ret(
         # 1. Tem leitura numérica digitada, OU
         # 2. Tem ocorrência especial registrada (impedimento, hidrômetro com problema, etc.)
         if tem_leitura or tem_ocorrencia_especial:
-            line = gerar_linha_d01(cliente, leitura, data_coleta, hora_coleta, codigo_normal=codigo_normal)
+            line = gerar_linha_d01(cliente, leitura, data_coleta, hora_coleta, codigo_normal=codigo_normal, consumo_minimo=consumo_minimo)
             lines.append(line)
 
     return '\r\n'.join(lines)
