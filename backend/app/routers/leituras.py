@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func as sqlfunc
 from app.database import get_db
 from app.models import Cliente, Leitura, Tarifa, Ocorrencia, Importacao, Empresa, Usuario, AuditLog
-from app.schemas import ClienteComLeitura, HistoricoItem, LeituraUpdate, StatsOut, OcorrenciaOut, TarifaOut
+from app.schemas import ClienteComLeitura, HistoricoItem, LeituraUpdate, StatsOut, OcorrenciaOut, TarifaOut, SyncBatchRequest, SyncResponse
 from app.auth.deps import get_current_user
 from app.services.calculadora import calcular_consumo, calcular_conta, validar_consumo
 
@@ -164,7 +164,222 @@ async def salvar_leitura(
         "mensagem": mensagem,
     }
 
+@router.post("/sync", response_model=SyncResponse)
+async def sincronizar_leituras_lote(
+    body: SyncBatchRequest,
+    current_user: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Sincroniza um lote de leituras feitas offline pelo APK."""
+    role = (current_user.role or "").lower()
+    if role not in ("leiturista", "supervisor", "admin", "superadmin"):
+        raise HTTPException(status_code=403, detail="Sem permissão para sincronizar leituras")
 
+    recebidas = len(body.leituras)
+    processadas = 0
+    erros = 0
+    detalhes = []
+
+    if recebidas == 0:
+        return SyncResponse(recebidas=0, processadas=0, erros=0, detalhes=["Nenhuma leitura enviada"])
+
+    # Carregar configurações da empresa
+    empresa_cfg = await _get_empresa_config(db, current_user.empresa_id)
+    consumo_minimo = empresa_cfg.get('consumo_minimo_m3', 10)
+    perc_esgoto = empresa_cfg.get('percentual_esgoto', 70.0)
+
+    for item in body.leituras:
+        try:
+            # Buscar cliente
+            res_c = await db.execute(
+                select(Cliente).where(
+                    Cliente.id == item.cliente_id,
+                    Cliente.empresa_id == current_user.empresa_id,
+                )
+            )
+            cliente = res_c.scalar_one_or_none()
+            
+            if not cliente:
+                erros += 1
+                detalhes.append(f"Cliente {item.cliente_id} não encontrado")
+                continue
+
+            imp_id = cliente.importacao_id
+            cat = (cliente.categoria or "residencial").strip().lower()
+
+            # Buscar ocorrência
+            ocorr_data = {}
+            if item.ocorrencia_codigo and item.ocorrencia_codigo != "0000":
+                ocr = await db.execute(
+                    select(Ocorrencia).where(
+                        Ocorrencia.codigo == item.ocorrencia_codigo,
+                        Ocorrencia.importacao_id == imp_id,
+                        Ocorrencia.empresa_id == current_user.empresa_id,
+                    )
+                )
+                o = ocr.scalar_one_or_none()
+                if o:
+                    ocorr_data = {
+                        'tipo_acao': o.tipo_acao,
+                        'consumo_fixo': o.consumo_fixo,
+                        'desconsidera_leitura': o.desconsidera_leitura,
+                    }
+
+            tarifas_dict = await _get_tarifas_dict(db, imp_id, current_user.empresa_id)
+            tarifas_agua = tarifas_dict.get(f"{cat}_agua") or []
+            tarifas_lixo = tarifas_dict.get(f"{cat}_lixo") or []
+
+            if not tarifas_agua and cat != "residencial":
+                tarifas_agua_fb = tarifas_dict.get("residencial_agua") or []
+                if tarifas_agua_fb:
+                    logger.warning(f"[SYNC] Cliente {item.cliente_id}: categoria '{cat}' sem tarifa de agua — fallback")
+                    tarifas_agua = tarifas_agua_fb
+
+            if not tarifas_lixo and cat != "residencial":
+                tarifas_lixo_fb = tarifas_dict.get("residencial_lixo") or []
+                if tarifas_lixo_fb:
+                    logger.warning(f"[SYNC] Cliente {item.cliente_id}: categoria '{cat}' sem tarifa de lixo — fallback")
+                    tarifas_lixo = tarifas_lixo_fb
+
+            consumo = calcular_consumo(
+                leitura_atual=item.leitura_atual if item.leitura_atual is not None else 0,
+                leitura_anterior=cliente.leitura_anterior or 0,
+                ocorrencia=ocorr_data,
+                consumo_medio=cliente.consumo_medio or 0,
+                consumo_minimo=consumo_minimo,
+            )
+
+            resultado = calcular_conta(
+                consumo=consumo,
+                tarifas_agua=tarifas_agua,
+                tarifas_lixo=tarifas_lixo,
+                percentual_esgoto=perc_esgoto,
+                consumo_minimo=consumo_minimo,
+                tem_agua=cliente.tem_agua,
+                tem_esgoto=cliente.tem_esgoto,
+                tem_lixo=cliente.tem_lixo,
+            )
+
+            # Buscar se já existe leitura para atualizar ou criar nova
+            res_l = await db.execute(
+                select(Leitura).where(
+                    Leitura.cliente_id == cliente.id,
+                    Leitura.importacao_id == imp_id,
+                )
+            )
+            leitura = res_l.scalar_one_or_none()
+
+            # Parse do timestamp ou usa UTC agora
+            data_leit = datetime.utcnow()
+            if item.timestamp:
+                try:
+                    # Tenta converter string ISO. O Python 3.7+ suporta fromisoformat, mas precisa estar bem formatado.
+                    # Fallback simples para utcnow.
+                    # Um parser mais seguro poderia usar dateutil, mas para manter clean usaremos fromisoformat.
+                    # Se falhar, captura a exception e usa utcnow
+                    data_leit = datetime.fromisoformat(item.timestamp.replace('Z', '+00:00')).replace(tzinfo=None)
+                except Exception:
+                    pass
+
+            if leitura:
+                leitura.leitura_atual = item.leitura_atual
+                leitura.ocorrencia_codigo = item.ocorrencia_codigo
+                leitura.consumo = consumo
+                leitura.valor_agua = resultado.get("valor_agua", 0)
+                leitura.valor_esgoto = resultado.get("valor_esgoto", 0)
+                leitura.valor_lixo = resultado.get("valor_lixo", 0)
+                leitura.valor_total = resultado.get("valor_total", 0)
+                leitura.latitude = item.latitude
+                leitura.longitude = item.longitude
+                leitura.leiturista_id = current_user.id
+                leitura.data_leitura = data_leit
+            else:
+                leitura = Leitura(
+                    empresa_id=current_user.empresa_id,
+                    importacao_id=imp_id,
+                    cliente_id=cliente.id,
+                    leitura_atual=item.leitura_atual,
+                    ocorrencia_codigo=item.ocorrencia_codigo,
+                    consumo=consumo,
+                    valor_agua=resultado.get("valor_agua", 0),
+                    valor_esgoto=resultado.get("valor_esgoto", 0),
+                    valor_lixo=resultado.get("valor_lixo", 0),
+                    valor_total=resultado.get("valor_total", 0),
+                    latitude=item.latitude,
+                    longitude=item.longitude,
+                    leiturista_id=current_user.id,
+                    data_leitura=data_leit,
+                )
+                db.add(leitura)
+            
+            processadas += 1
+
+        except Exception as e:
+            logger.error(f"Erro ao processar leitura cliente {item.cliente_id}: {str(e)}")
+            erros += 1
+            detalhes.append(f"Erro cliente {item.cliente_id}: {str(e)}")
+
+    if processadas > 0:
+        await db.commit()
+
+    return SyncResponse(
+        recebidas=recebidas,
+        processadas=processadas,
+        erros=erros,
+        detalhes=detalhes if erros > 0 else None
+    )
+
+@router.get("/{imp_id}/carga_offline")
+async def get_carga_offline(
+    imp_id: int,
+    current_user: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Retorna o pacote completo de dados para o APK funcionar offline (Rotas, Tarifas, Ocorrências, Layout)."""
+    # 1. Configurações e Layout
+    empresa_cfg = await _get_empresa_config(db, current_user.empresa_id)
+    
+    # Buscar layout
+    res_layout = await db.execute(select(Empresa.layout_cpcl, Empresa.layout_cpcl_notificacao).where(Empresa.id == current_user.empresa_id))
+    layout_row = res_layout.first()
+    layout_cpcl = layout_row[0] if layout_row else None
+
+    config = {
+        'percentual_esgoto': empresa_cfg.get('percentual_esgoto', 70.0),
+        'consumo_minimo': empresa_cfg.get('consumo_minimo_m3', 10),
+        'layout_cpcl': layout_cpcl
+    }
+
+    # 2. Ocorrências
+    ocorrencias_dict = await _get_ocorrencias_dict(db, imp_id, current_user.empresa_id)
+
+    # 3. Tarifas
+    tarifas_dict = await _get_tarifas_dict(db, imp_id, current_user.empresa_id)
+
+    # 4. Clientes (usando a função existente para aproveitar a lógica de distribuição de rotas e histórico)
+    # A list_clientes_com_leituras já filtra os clientes pela rota do leiturista
+    # ATENÇÃO: precisamos simular os params, ou chamar a lógica interna.
+    # Como não podemos awaitar uma rota do fastapi perfeitamente, extraimos a logica de listagem ou chamamos a func:
+    try:
+        clientes_raw = await list_clientes_com_leituras(
+            imp_id=imp_id,
+            busca=None,
+            page=1,
+            limit=5000, # Limite alto para garantir que desça a rota inteira
+            current_user=current_user,
+            db=db
+        )
+        # Converter para dicts para serializar
+        clientes = [c.model_dump() for c in clientes_raw]
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Erro ao gerar carga de clientes: {str(e)}")
+
+    return {
+        "config": config,
+        "ocorrencias": ocorrencias_dict,
+        "tarifas": tarifas_dict,
+        "clientes": clientes
+    }
 
 async def _get_empresa_config(db: AsyncSession, empresa_id: int) -> dict:
     """Busca configurações da empresa (% esgoto, consumo mínimo)."""

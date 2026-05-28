@@ -230,6 +230,28 @@ class LeituraBatch(BaseModel):
     cliente_ids: List[int]
 
 
+# ============================================
+# SYNC APK OFFLINE
+# ============================================
+
+class SyncLeituraItem(BaseModel):
+    cliente_id: int
+    leitura_atual: Optional[int] = None
+    ocorrencia_codigo: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    timestamp: Optional[str] = None
+
+class SyncBatchRequest(BaseModel):
+    leituras: List[SyncLeituraItem]
+
+class SyncResponse(BaseModel):
+    recebidas: int
+    processadas: int
+    erros: int
+    detalhes: Optional[List[str]] = None
+
+
 class StatsOut(BaseModel):
     total_clientes: int = 0
     leituras_realizadas: int = 0
