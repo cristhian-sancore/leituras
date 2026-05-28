@@ -37,6 +37,10 @@ async def run_migrations(conn):
         "ALTER TABLE clientes ADD COLUMN IF NOT EXISTS vencimento_notificacao TEXT",
         "ALTER TABLE clientes ADD COLUMN IF NOT EXISTS valor_notificacao NUMERIC(12,2) DEFAULT 0",
         "ALTER TABLE clientes ADD COLUMN IF NOT EXISTS codigo_barras_notificacao TEXT",
+        "ALTER TABLE clientes ADD COLUMN IF NOT EXISTS lote TEXT",
+        "ALTER TABLE clientes ADD COLUMN IF NOT EXISTS quadra TEXT",
+        "ALTER TABLE clientes ADD COLUMN IF NOT EXISTS codigo_baixa TEXT",
+        "ALTER TABLE clientes ADD COLUMN IF NOT EXISTS debitos_notificacao JSONB",
         # Superadmin nao tem empresa: tornar empresa_id nullable
         "ALTER TABLE usuarios ALTER COLUMN empresa_id DROP NOT NULL",
         # Audit log do superadmin: empresa_id pode ser null

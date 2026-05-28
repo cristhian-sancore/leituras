@@ -170,6 +170,10 @@ class Cliente(Base):
     vencimento_notificacao = Column(Text, nullable=True)
     valor_notificacao = Column(Numeric(12, 2), default=0)
     codigo_barras_notificacao = Column(Text, nullable=True)
+    lote = Column(Text, nullable=True)
+    quadra = Column(Text, nullable=True)
+    codigo_baixa = Column(Text, nullable=True)
+    debitos_notificacao = Column(JSONB, nullable=True)
     mensagens_fatura = Column(JSONB, nullable=True)
     historico_consumo = Column(JSONB, nullable=True)
 

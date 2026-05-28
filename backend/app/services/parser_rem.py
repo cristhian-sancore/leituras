@@ -101,6 +101,34 @@ def parse_rem(content: str) -> dict:
                     'codigo_barras_notificacao': cod_barras_notif
                 }
 
+    # -----------------------------------------------------------
+    # PRE-PROCESSAMENTO: coletar A18 (detalhes de debito) por matricula
+    # -----------------------------------------------------------
+    debitos_por_mat = {}
+    for line in lines:
+        clean = line.strip()
+        if clean.startswith('A18') and len(clean) >= 48:
+            mat_a18 = line[3:18].strip()
+            mes_ano = line[18:25].strip()
+            venc_deb = line[25:35].strip()
+            val_raw = line[35:47].strip()
+            try:
+                if '.' in val_raw:
+                    val_deb = float(val_raw)
+                else:
+                    val_deb = float(val_raw) / 100.0 if val_raw else 0.0
+            except ValueError:
+                val_deb = 0.0
+            
+            if mat_a18 not in debitos_por_mat:
+                debitos_por_mat[mat_a18] = []
+            
+            debitos_por_mat[mat_a18].append({
+                'mes_ano': mes_ano,
+                'vencimento': venc_deb,
+                'valor': val_deb
+            })
+
     for line in lines:
         clean = line.strip()
         if not clean:
@@ -252,6 +280,17 @@ def parse_rem(content: str) -> dict:
                     'codigo_barras_notificacao': None
                 })
 
+                # Extração de quadra, lote e codigo_baixa
+                quadra = line[32:35].strip() if len(line) > 35 else ''
+                lote = line[37:40].strip() if len(line) > 40 else ''
+                codigo_baixa = line[401:416].strip() if len(line) > 416 else ''
+                if len(line) > 1321:
+                    alt_baixa = line[1291:1321].strip()
+                    if alt_baixa:
+                        codigo_baixa = alt_baixa
+                
+                debitos_notif = debitos_por_mat.get(matricula, [])
+
             except (ValueError, IndexError):
                 continue
 
@@ -288,6 +327,10 @@ def parse_rem(content: str) -> dict:
                 'vencimento_notificacao': notif['vencimento_notificacao'],
                 'valor_notificacao': notif['valor_notificacao'],
                 'codigo_barras_notificacao': notif['codigo_barras_notificacao'],
+                'lote': lote,
+                'quadra': quadra,
+                'codigo_baixa': codigo_baixa,
+                'debitos_notificacao': debitos_notif,
             })
 
         # ============================================

@@ -180,6 +180,10 @@ const ZebraPrint = (() => {
       '{ENDERECO_BAIRRO}':      endBairro.substring(0, 42),
       '{CEP}':                  dados.cep || ' ',
       '{ROTA}':                 dados.rota || '',
+      '{LOTE}':                 dados.lote || ' ',
+      '{QUADRA}':               dados.quadra || ' ',
+      '{COD_LIGACAO}':          dados.matricula || '',
+      '{COD_BAIXA}':            dados.codigo_baixa || dados.matricula || '',
       '{SEQUENCIA}':            (dados.setor || ' ') + ' - ' + (dados.quadra || ' ') + ' - ' + (dados.lote || '  '),
       '{LIGACAO}':              dados.matricula || '',
       '{ROTEIRO}':              dados.roteiro || '',
@@ -241,6 +245,14 @@ const ZebraPrint = (() => {
          return acc;
       }, {}),
 
+      // Fallbacks em branco para os débitos (1 a 6) da tabela de comunicado
+      ...Array.from({length: 6}).reduce((acc, _, i) => {
+         acc[`{MES_ANO_${i+1}}`] = ' ';
+         acc[`{VENCIMENTO_${i+1}}`] = ' ';
+         acc[`{VALOR_${i+1}}`] = ' ';
+         return acc;
+      }, {}),
+
       // Fallbacks para análise de água
       ...Array.from({length: 8}).reduce((acc, _, i) => {
          acc[`{ANALISE_PARAM_${i+1}}`] = ' ';
@@ -259,6 +271,16 @@ const ZebraPrint = (() => {
         map[`{HIST_CONS_${i+1}}`] = String(h.consumo || '0');
         map[`{HIST_DIAS_${i+1}}`] = String(h.dias || '30');
         map[`{HIST_MEDIA_${i+1}}`] = String(h.media || '0');
+      }
+    });
+
+    // Preenche débitos anteriores se tiver
+    let debitosList = dados.debitos_notificacao || [];
+    debitosList.forEach((d, i) => {
+      if(i < 6) {
+        map[`{MES_ANO_${i+1}}`] = d.mes_ano || ' ';
+        map[`{VENCIMENTO_${i+1}}`] = formatData(d.vencimento) || ' ';
+        map[`{VALOR_${i+1}}`] = formatarValor(d.valor) || ' ';
       }
     });
 

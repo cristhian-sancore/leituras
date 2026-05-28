@@ -196,6 +196,10 @@ class ClienteComLeitura(BaseModel):
     vencimento_notificacao: Optional[str] = None
     valor_notificacao: float = 0.0
     codigo_barras_notificacao: Optional[str] = None
+    lote: Optional[str] = None
+    quadra: Optional[str] = None
+    codigo_baixa: Optional[str] = None
+    debitos_notificacao: Optional[List[dict]] = None
     mensagem_1: Optional[str] = None
     mensagem_2: Optional[str] = None
     # Flags de servico do .REM (quais servicos esta instalacao possui)
