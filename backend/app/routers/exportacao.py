@@ -4,7 +4,7 @@ from fastapi.responses import PlainTextResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.database import get_db
-from app.models import Cliente, Leitura, Importacao, Exportacao, Usuario, AuditLog
+from app.models import Cliente, Leitura, Importacao, Exportacao, Usuario, AuditLog, Ocorrencia
 from app.schemas import ExportacaoOut
 from app.auth.deps import get_current_user, require_role
 from app.services.gerador_ret import gerar_arquivo_ret
@@ -40,17 +40,36 @@ async def gerar_ret(
     )
     clientes = result.scalars().all()
 
+    # Buscar todas as ocorrencias desta importacao para identificar a de menor codigo (que sera a normal)
+    res_oc = await db.execute(
+        select(Ocorrencia.codigo).where(
+            Ocorrencia.importacao_id == imp_id,
+            Ocorrencia.empresa_id == current_user.empresa_id,
+        )
+    )
+    codigos = res_oc.scalars().all()
+
+    def safe_int(val):
+        try:
+            return int(val)
+        except (ValueError, TypeError):
+            return float('inf')
+
+    codigo_normal = '0000'
+    if codigos:
+        codigo_normal = min(codigos, key=safe_int)
+
     result = await db.execute(
         select(Leitura).where(
             Leitura.importacao_id == imp_id,
             Leitura.empresa_id == current_user.empresa_id,
-            # Incluir: leituras com valor numérico OU com ocorrência especial (≠ 0000)
-            # Ocorrência especial = leiturista registrou impedimento sem poder ler o hidrômetro
+            # Incluir: leituras com valor numérico OU com ocorrência especial
             (
                 Leitura.leitura_atual.isnot(None) |
                 (
                     Leitura.ocorrencia_codigo.isnot(None) &
-                    (Leitura.ocorrencia_codigo != '0000')
+                    (Leitura.ocorrencia_codigo != '0000') &
+                    (Leitura.ocorrencia_codigo != codigo_normal)
                 )
             ),
         )
@@ -86,7 +105,7 @@ async def gerar_ret(
                 },
             })
 
-    conteudo = gerar_arquivo_ret(clientes_leituras)
+    conteudo = gerar_arquivo_ret(clientes_leituras, codigo_normal=codigo_normal)
 
     # Registrar exportação
     agora = datetime.now()

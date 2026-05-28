@@ -215,6 +215,9 @@ class ClienteComLeitura(BaseModel):
     mensagens_fatura: Optional[list] = None
     historico_consumo: Optional[list] = None
     analises_agua: Optional[list] = None
+    desc_agua: Optional[str] = None
+    desc_esgoto: Optional[str] = None
+    desc_lixo: Optional[str] = None
 
     class Config:
         from_attributes = True

@@ -135,6 +135,7 @@ def calcular_conta(
     tarifas_lixo: List[dict],
     percentual_esgoto: float = 70.0,
     consumo_minimo: int = 10,
+    tem_agua: bool = True,
     tem_esgoto: bool = True,
     tem_lixo: bool = True,
 ) -> dict:
@@ -147,14 +148,16 @@ def calcular_conta(
         tarifas_lixo: faixas de tarifa de lixo
         percentual_esgoto: % do valor de agua cobrado como esgoto (configuravel)
         consumo_minimo: m3 incluidos na taxa minima
+        tem_agua: False = instalacao sem taxa/fornecimento de agua
         tem_esgoto: False = instalacao SO AGUA (sem cobranca de esgoto)
         tem_lixo: False = instalacao sem taxa de lixo
 
     Returns:
         Dict com valor_agua, valor_esgoto, valor_lixo, valor_total
     """
-    valor_agua   = calcular_por_faixas(consumo, tarifas_agua, consumo_minimo)
-    valor_esgoto = round(valor_agua * (percentual_esgoto / 100), 2) if tem_esgoto else 0.0
+    valor_agua_teorico = calcular_por_faixas(consumo, tarifas_agua, consumo_minimo)
+    valor_agua   = valor_agua_teorico if tem_agua else 0.0
+    valor_esgoto = round(valor_agua_teorico * (percentual_esgoto / 100), 2) if tem_esgoto else 0.0
     valor_lixo   = calcular_por_faixas(consumo, tarifas_lixo, consumo_minimo) if tem_lixo else 0.0
     valor_total  = round(valor_agua + valor_esgoto + valor_lixo, 2)
 
@@ -164,3 +167,4 @@ def calcular_conta(
         'valor_lixo': valor_lixo,
         'valor_total': valor_total,
     }
+

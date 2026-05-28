@@ -17,6 +17,7 @@ def gerar_linha_d01(
     leitura: dict,
     data_coleta: str,
     hora_coleta: str,
+    codigo_normal: str = '0000',
 ) -> str:
     """
     Gera uma linha D01 do arquivo .RET.
@@ -26,6 +27,7 @@ def gerar_linha_d01(
         leitura: dict com dados da leitura (leitura_atual, consumo, valores, ocorrencia_codigo)
         data_coleta: string DD/MM/YYYY
         hora_coleta: string HH:MM:SS
+        codigo_normal: string representando o código da ocorrência normal
     
     Returns:
         String com a linha D01 formatada
@@ -35,7 +37,9 @@ def gerar_linha_d01(
     valor_agua = leitura.get('valor_agua', 0) or 0
     valor_esgoto = leitura.get('valor_esgoto', 0) or 0
     valor_total = leitura.get('valor_total', 0) or 0
-    ocorrencia = leitura.get('ocorrencia_codigo', '') or '0000'
+    ocorrencia = leitura.get('ocorrencia_codigo', '') or codigo_normal
+    if ocorrencia == '0000':
+        ocorrencia = codigo_normal
     consumo_faturado = max(consumo, 10)
 
     l = ''
@@ -101,12 +105,14 @@ def gerar_linha_d01(
 
 def gerar_arquivo_ret(
     clientes_leituras: List[dict],
+    codigo_normal: str = '0000',
 ) -> str:
     """
     Gera o conteúdo completo do arquivo .RET.
     
     Args:
         clientes_leituras: lista de dicts, cada um com 'cliente' e 'leitura'
+        codigo_normal: código correspondente à ocorrência normal da remessa
     
     Returns:
         Conteúdo do arquivo .RET como string
@@ -119,15 +125,17 @@ def gerar_arquivo_ret(
     for item in clientes_leituras:
         cliente = item['cliente']
         leitura = item['leitura']
-        ocorrencia = leitura.get('ocorrencia_codigo', '') or '0000'
+        ocorrencia = leitura.get('ocorrencia_codigo', '') or codigo_normal
+        if ocorrencia == '0000':
+            ocorrencia = codigo_normal
         tem_leitura = leitura.get('leitura_atual') is not None
-        tem_ocorrencia_especial = ocorrencia and ocorrencia != '0000'
+        tem_ocorrencia_especial = ocorrencia and ocorrencia != codigo_normal
 
         # Incluir no .RET se:
         # 1. Tem leitura numérica digitada, OU
         # 2. Tem ocorrência especial registrada (impedimento, hidrômetro com problema, etc.)
         if tem_leitura or tem_ocorrencia_especial:
-            line = gerar_linha_d01(cliente, leitura, data_coleta, hora_coleta)
+            line = gerar_linha_d01(cliente, leitura, data_coleta, hora_coleta, codigo_normal=codigo_normal)
             lines.append(line)
 
     return '\r\n'.join(lines)

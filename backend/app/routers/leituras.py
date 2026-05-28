@@ -81,6 +81,7 @@ async def salvar_leitura(
         tarifas_lixo=tarifas_lixo,
         percentual_esgoto=perc_esgoto,
         consumo_minimo=consumo_minimo,
+        tem_agua=cliente.tem_agua,
         tem_esgoto=cliente.tem_esgoto,
         tem_lixo=cliente.tem_lixo,
     )
@@ -133,6 +134,9 @@ async def salvar_leitura(
     await db.refresh(leitura)
     return {
         "consumo": consumo,
+        "valor_agua": float(leitura.valor_agua or 0),
+        "valor_esgoto": float(leitura.valor_esgoto or 0),
+        "valor_lixo": float(leitura.valor_lixo or 0),
         "valor_total": float(leitura.valor_total or 0),
         "alerta": alerta,
         "mensagem": mensagem,
@@ -279,7 +283,8 @@ async def list_clientes_com_leituras(
             Importacao.empresa_id == current_user.empresa_id,
         )
     )
-    if not result.scalar_one_or_none():
+    importacao = result.scalar_one_or_none()
+    if not importacao:
         raise HTTPException(status_code=404, detail="Importação não encontrada")
 
     # Buscar clientes com paginação
@@ -415,6 +420,9 @@ async def list_clientes_com_leituras(
             mensagens_fatura=getattr(c, 'mensagens_fatura', []),
             historico_consumo=getattr(c, 'historico_consumo', []),
             analises_agua=analises_agua,
+            desc_agua=importacao.desc_agua if importacao else "FORNECIMENTO DE AGUA",
+            desc_esgoto=importacao.desc_esgoto if importacao else "ESGOTO",
+            desc_lixo=importacao.desc_lixo if importacao else "TAXA DE LIXO",
             mensagem_1=None,
             mensagem_2=None,
             historico=historico_map.get(c.matricula, []),

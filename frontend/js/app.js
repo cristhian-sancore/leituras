@@ -503,6 +503,9 @@ async function salvarLeituraMobileAtual(imprimir = false) {
                 globalC.leitura_atual = leituraAtual;
                 globalC.ocorrencia_codigo = ocorrenciaCod;
                 globalC.consumo = data.consumo;
+                globalC.valor_agua = data.valor_agua;
+                globalC.valor_esgoto = data.valor_esgoto;
+                globalC.valor_lixo = data.valor_lixo;
                 globalC.valor_total = data.valor_total;
             }
             // Refaz a renderizacao mobile para mostrar 'Salva'
@@ -596,6 +599,17 @@ async function salvarLeitura(clienteId) {
         const totCell = document.getElementById(`tot-${clienteId}`);
         consCell.textContent = result.consumo;
         totCell.textContent = fmtMoeda(result.valor_total);
+
+        // Atualizar objeto na lista global para que abrirImpressao use os valores calculados
+        const cObj = (window._allClientesList || []).find(x => x.id === clienteId);
+        if (cObj) {
+            cObj.consumo = result.consumo;
+            cObj.valor_agua = result.valor_agua;
+            cObj.valor_esgoto = result.valor_esgoto;
+            cObj.valor_lixo = result.valor_lixo;
+            cObj.valor_total = result.valor_total;
+            cObj.leitura_atual = leituraAtual;
+        }
 
         // Habilitar botão de impressão: quando tem leitura OU quando ocorrência especial foi salva
         const btnPrint = document.getElementById(`btn-print-${clienteId}`);
@@ -1002,9 +1016,9 @@ async function abrirImpressao(clienteId) {
         data_instalacao:    c.data_instalacao || '',
         endereco_entrega:   c.endereco_entrega || '',
         codigo_barras:      c.codigo_barras || '',
-        desc_agua:          imp.desc_agua || 'FORNEC. E ABASTEC. DE AGUA',
-        desc_esgoto:        imp.desc_esgoto || 'ESGOTO',
-        desc_lixo:          imp.desc_lixo || 'TAXA DE COLETA DE LIXO',
+        desc_agua:          c.desc_agua || imp.desc_agua || 'FORNEC. E ABASTEC. DE AGUA',
+        desc_esgoto:        c.desc_esgoto || imp.desc_esgoto || 'ESGOTO',
+        desc_lixo:          c.desc_lixo || imp.desc_lixo || 'TAXA DE COLETA DE LIXO',
         tem_agua:           c.tem_agua !== undefined ? c.tem_agua : true,
         tem_esgoto:         c.tem_esgoto !== undefined ? c.tem_esgoto : true,
         tem_lixo:           c.tem_lixo !== undefined ? c.tem_lixo : true,
