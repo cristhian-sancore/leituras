@@ -54,6 +54,7 @@ class EmpresaOut(BaseModel):
     max_leituristas: int
     layout_impressao_id: Optional[int] = None
     layout_notificacao_id: Optional[int] = None
+    logo_url: Optional[str] = None
     created_at: datetime
 
     class Config:
