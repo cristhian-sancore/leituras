@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func as sqlfunc
 from app.database import get_db
-from app.models import Cliente, Leitura, Tarifa, Ocorrencia, Importacao, Empresa, Usuario, AuditLog
+from app.models import Cliente, Leitura, Tarifa, Ocorrencia, Importacao, Empresa, Usuario, AuditLog, LayoutImpressao
 from app.schemas import ClienteComLeitura, HistoricoItem, LeituraUpdate, StatsOut, OcorrenciaOut, TarifaOut, SyncBatchRequest, SyncResponse
 from app.auth.deps import get_current_user
 from app.services.calculadora import calcular_consumo, calcular_conta, validar_consumo
@@ -339,18 +339,27 @@ async def get_carga_offline(
     # 1. Configurações e Layout
     empresa_cfg = await _get_empresa_config(db, current_user.empresa_id)
     
-    # Buscar layout
+    # Buscar layout da fatura e da notificação
+    layout_cpcl = None
+    layout_cpcl_notif = None
     try:
-        res_layout = await db.execute(select(Empresa.layout_cpcl).where(Empresa.id == current_user.empresa_id))
-        layout_row = res_layout.first()
-        layout_cpcl = layout_row[0] if layout_row else None
+        result = await db.execute(select(Empresa).where(Empresa.id == current_user.empresa_id))
+        empresa = result.scalar_one_or_none()
+        if empresa:
+            if empresa.layout_impressao_id:
+                res_layout = await db.execute(select(LayoutImpressao.conteudo_cpcl).where(LayoutImpressao.id == empresa.layout_impressao_id))
+                layout_cpcl = res_layout.scalar()
+            if empresa.layout_notificacao_id:
+                res_notif = await db.execute(select(LayoutImpressao.conteudo_cpcl).where(LayoutImpressao.id == empresa.layout_notificacao_id))
+                layout_cpcl_notif = res_notif.scalar()
     except Exception as e:
-        layout_cpcl = None
+        logger.warning(f"[carga_offline] Erro ao buscar layouts: {str(e)}")
 
     config = {
         'percentual_esgoto': empresa_cfg.get('percentual_esgoto', 70.0),
         'consumo_minimo': empresa_cfg.get('consumo_minimo_m3', 10),
-        'layout_cpcl': layout_cpcl
+        'layout_cpcl': layout_cpcl,
+        'layout_cpcl_notificacao': layout_cpcl_notif
     }
 
     # 2. Ocorrências

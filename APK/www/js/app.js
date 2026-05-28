@@ -65,6 +65,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Carregar layout da Zebra ao iniciar
     ZebraPrint.fetchLayout().catch(() => {});
+
+    // Sincronização automática quando voltar a ter internet
+    window.addEventListener('online', () => {
+        console.log("Internet restaurada. Tentando sincronizar leituras...");
+        if (typeof OfflineDB !== 'undefined') {
+            sincronizarLeituras(true);
+        }
+    });
 });
 
 // ============================================
@@ -248,8 +256,29 @@ let _impsAtivas = [];
 
 async function loadLeituras() {
     try {
-        // Buscar TODAS as importações ativas
-        const imps = await api.listImportacoes();
+        let imps;
+        try {
+            imps = await api.listImportacoes();
+        } catch (e) {
+            // MODO OFFLINE: Falha ao buscar importações (ex: "Failed to fetch")
+            console.log("Falha na API, carregando banco offline...");
+            const busca = document.getElementById('search-input')?.value || '';
+            const clientes = await OfflineDB.getClientes(busca);
+            ocorrencias = await OfflineDB.getAllOcorrencias();
+            
+            document.getElementById('stat-total').textContent = clientes.length;
+            const pendentes = clientes.filter(c => c.leitura_atual === null || c.leitura_atual === undefined).length;
+            document.getElementById('stat-pend').textContent = pendentes;
+            
+            let totalConsumo = 0;
+            clientes.forEach(c => totalConsumo += (c.consumo || 0));
+            document.getElementById('stat-consumo').textContent = fmtNumero(totalConsumo) + ' m³';
+            
+            window._allClientesList = clientes;
+            renderClientes(clientes);
+            return;
+        }
+
         _impsAtivas = imps.filter(i => i.status === 'ativo');
 
         if (!_impsAtivas.length) {
@@ -291,6 +320,38 @@ async function loadLeituras() {
                 allClientes = allClientes.concat(clientes);
             } catch {}
         }));
+
+        // SOBREPOR LEITURAS PENDENTES LOCAIS
+        // Se a internet voltou mas o sync não terminou, não queremos mostrar dados desatualizados do backend
+        if (typeof OfflineDB !== 'undefined') {
+            try {
+                const pendentes = await OfflineDB.getLeiturasPendentes();
+                if (pendentes && pendentes.length > 0) {
+                    const mapPendentes = {};
+                    pendentes.forEach(p => mapPendentes[p.cliente_id] = p);
+                    
+                    allClientes.forEach(c => {
+                        if (mapPendentes[c.id]) {
+                            const p = mapPendentes[c.id];
+                            c.leitura_atual = p.leitura_atual;
+                            c.ocorrencia_codigo = p.ocorrencia_codigo;
+                            c.consumo = p.consumo;
+                            c.valor_agua = p.valor_agua;
+                            c.valor_esgoto = p.valor_esgoto;
+                            c.valor_lixo = p.valor_lixo;
+                            c.valor_total = p.valor_total;
+                        }
+                    });
+
+                    // Atualizar estatísticas locais combinadas (se houver pendentes na memória)
+                    const pendCount = allClientes.filter(c => c.leitura_atual === null || c.leitura_atual === undefined).length;
+                    document.getElementById('stat-pend').textContent = pendCount;
+                }
+            } catch (e) {
+                console.error("Erro ao sobrepor leituras pendentes", e);
+            }
+        }
+
         window._allClientesList = allClientes;
         renderClientes(allClientes);
     } catch (err) {
@@ -536,12 +597,54 @@ async function salvarLeituraMobileAtual(imprimir = false) {
             showToast('Todas as leituras desta rota parecem estar concluídas!');
         }
         
+    } catch (err) {
+        console.warn("Falha ao salvar mobile online, salvando offline...", err);
+        // Fallback offline!
+        await salvarLeituraOffline(cliente.id, leituraAtual, ocorrenciaCod, window.currentPos?.lat || null, window.currentPos?.lng || null);
+
+        hideLoading();
+        
+        // Atualiza a lista visualmente nos bastidores sem recarregar tudo
+        const cIdx = window._mobileClientesList.findIndex(c => c.id === cliente.id);
+        if (cIdx !== -1) {
+            window._mobileClientesList[cIdx].leitura_atual = leituraAtual;
+            window._mobileClientesList[cIdx].ocorrencia_codigo = ocorrenciaCod;
+            // Refaz a renderizacao mobile para mostrar 'Salva'
+            renderClientesMobile(window._mobileClientesList, '');
+        }
+
+        if (imprimir) {
+            abrirImpressao(cliente.id);
+        }
+
+        // Ir para o próximo pendente (começando a partir do cliente salvo)
+        let proximo = null;
+        for (let i = cIdx + 1; i < window._mobileClientesList.length; i++) {
+            const tempC = window._mobileClientesList[i];
+            if (tempC.leitura_atual === null && (!tempC.ocorrencia_codigo || tempC.ocorrencia_codigo === '0000')) {
+                proximo = tempC;
+                break;
+            }
+        }
+        if (!proximo) {
+            // Se nao achou pra frente, busca desde o inicio
+            for (let i = 0; i < cIdx; i++) {
+                const tempC = window._mobileClientesList[i];
+                if (tempC.leitura_atual === null && (!tempC.ocorrencia_codigo || tempC.ocorrencia_codigo === '0000')) {
+                    proximo = tempC;
+                    break;
+                }
+            }
+        }
+        
+        if (proximo) {
+            abrirLeituraMobile(proximo.id);
+        } else {
+            closeLeituraMobile();
+        }
+        
         // Dispara atualizacao de stats no background
         updateStats();
-        
-    } catch (err) {
-        hideLoading();
-        showToast(err.message, 'error');
     }
 }
 
@@ -649,7 +752,87 @@ async function salvarLeitura(clienteId) {
         // Atualizar stats (sem bloquear)
         updateStats();
     } catch (err) {
-        showToast('Erro ao salvar: ' + err.message, 'error');
+        // Fallback pra salvar offline!
+        console.warn("Falha ao salvar online, salvando offline...", err);
+        await salvarLeituraOffline(clienteId, leituraAtual, ocorrencia, latitude, longitude);
+    }
+}
+
+async function salvarLeituraOffline(clienteId, leituraAtual, ocorrencia, latitude, longitude) {
+    try {
+        const cliente = await OfflineDB.getCliente(clienteId);
+        if (!cliente) throw new Error("Cliente não encontrado localmente.");
+        
+        const config = await OfflineDB.getConfig();
+        const ocorrData = await OfflineDB.getOcorrencia(ocorrencia);
+        const tarifas = await OfflineDB.getTarifas(cliente.categoria);
+
+        const consumoMinimo = config?.consumo_minimo || 10;
+        const percEsgoto = config?.percentual_esgoto || 70.0;
+
+        const consumo = Calculadora.calcularConsumo(
+            leituraAtual || 0,
+            cliente.leitura_anterior || 0,
+            ocorrData,
+            cliente.consumo_medio || 0,
+            consumoMinimo
+        );
+
+        // A ordem exata na calculadora-offline.js é:
+        // consumo, tarifasAgua, tarifasLixo, percentualEsgoto, consumoMinimo, temAgua, temEsgoto, temLixo
+        const calcValores = Calculadora.calcularConta(
+            consumo,
+            tarifas.agua,
+            tarifas.lixo,
+            percEsgoto,
+            consumoMinimo,
+            cliente.tem_agua,
+            cliente.tem_esgoto,
+            cliente.tem_lixo
+        );
+
+        const leituraData = {
+            cliente_id: clienteId,
+            leitura_atual: leituraAtual,
+            ocorrencia_codigo: ocorrencia || null,
+            consumo: consumo,
+            valor_agua: calcValores.valor_agua,
+            valor_esgoto: calcValores.valor_esgoto,
+            valor_lixo: calcValores.valor_lixo,
+            valor_total: calcValores.valor_total,
+            latitude: latitude,
+            longitude: longitude
+        };
+
+        await OfflineDB.salvarLeitura(leituraData);
+
+        const consCell = document.getElementById(`cons-${clienteId}`);
+        const totCell = document.getElementById(`tot-${clienteId}`);
+        if(consCell) consCell.textContent = consumo;
+        if(totCell) totCell.textContent = fmtMoeda(calcValores.valor_total);
+        showToast('Salvo OFFLINE', 'ok');
+
+        // Atualizar lista global
+        const cObj = (window._allClientesList || []).find(x => x.id === clienteId);
+        if (cObj) {
+            cObj.consumo = consumo;
+            cObj.valor_agua = calcValores.valor_agua;
+            cObj.valor_esgoto = calcValores.valor_esgoto;
+            cObj.valor_lixo = calcValores.valor_lixo;
+            cObj.valor_total = calcValores.valor_total;
+            cObj.leitura_atual = leituraAtual;
+        }
+
+        // Habilitar botão de impressão
+        const btnPrint = document.getElementById(`btn-print-${clienteId}`);
+        if (btnPrint) {
+            btnPrint.disabled = false;
+            btnPrint.style.opacity = '1';
+        }
+
+    } catch (e) {
+        console.error("Erro ao salvar offline:", e);
+        showToast('Erro ao salvar offline: ' + e.message, 'error');
     }
 }
 
@@ -675,6 +858,95 @@ async function updateStats() {
 const debouncedSearch = debounce(() => loadLeituras(), 400);
 function onSearch(value) {
     debouncedSearch();
+}
+
+// ============================================
+// SYNC OFFLINE (APK)
+// ============================================
+async function baixarCargaOffline() {
+    if (!currentImportacao) {
+        showToast('Nenhuma importação ativa para baixar', 'error');
+        return;
+    }
+    showLoading();
+    try {
+        const carga = await api.baixarCargaOffline(currentImportacao.id);
+        
+        // Buscar também o layout customizado da empresa (fatura e notificação) para salvar junto com a rota
+        try {
+            const layoutData = await api.fetch('/empresa/layout');
+            if (layoutData) {
+                if (!carga.config) {
+                    carga.config = {};
+                }
+                carga.config.layout_cpcl = layoutData.conteudo_cpcl || null;
+                carga.config.layout_cpcl_notificacao = layoutData.conteudo_cpcl_notificacao || null;
+                console.log('[App] Layouts CPCL obtidos com sucesso do servidor para carga offline');
+            }
+        } catch (layoutErr) {
+            console.warn('[App] Não foi possível obter os layouts CPCL do servidor:', layoutErr);
+        }
+        
+        // Se a API retornou os dados, salvar no banco offline via Dexie
+        if (typeof OfflineDB !== 'undefined') {
+            await OfflineDB.salvarCarga(carga);
+            showToast('✅ Rotas, configurações e layouts baixados com sucesso! Você pode trabalhar offline agora.');
+            // Recarrega a tela usando o banco local se estiver no modo offline
+            // (a implementação completa da troca online/offline no loadLeituras fica a critério do ambiente)
+        } else {
+            showToast('Banco Offline (Dexie) não encontrado', 'error');
+        }
+    } catch (err) {
+        showToast('Erro ao baixar rotas: ' + err.message, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+async function sincronizarLeituras(silencioso = false) {
+    if (typeof OfflineDB === 'undefined') {
+        if (!silencioso) showToast('Banco Offline (Dexie) não encontrado', 'error');
+        return;
+    }
+    
+    if (!silencioso) showLoading();
+    try {
+        const pendentes = await OfflineDB.getLeiturasPendentes();
+        if (!pendentes || pendentes.length === 0) {
+            if (!silencioso) showToast('Nenhuma leitura pendente para sincronizar.');
+            if (!silencioso) hideLoading();
+            return;
+        }
+
+        // Formata para o backend (SyncBatchRequest)
+        const payload = {
+            leituras: pendentes.map(p => ({
+                cliente_id: p.cliente_id,
+                leitura_atual: p.leitura_atual,
+                ocorrencia_codigo: p.ocorrencia_codigo,
+                latitude: p.latitude,
+                longitude: p.longitude,
+                timestamp: p.timestamp
+            }))
+        };
+
+        const result = await api.sincronizarLeituras(payload);
+        
+        // Marca as enviadas como sincronizadas no banco offline
+        const ids = pendentes.map(p => p.id);
+        await OfflineDB.marcarComoSincronizadas(ids);
+
+        if (!silencioso) showToast(`✅ Sincronização concluída! ${result.processadas} leituras salvas no servidor.`);
+        
+        // Atualiza a tela se necessário
+        if (navigator.onLine) {
+            updateStats();
+        }
+    } catch (err) {
+        if (!silencioso) showToast('Erro na sincronização: ' + err.message, 'error');
+    } finally {
+        if (!silencioso) hideLoading();
+    }
 }
 
 // ============================================
@@ -968,12 +1240,10 @@ async function abrirImpressao(clienteId) {
     // Achar cliente na lista global para obter o resto dos dados
     const c = (window._allClientesList || []).find(x => x.id === clienteId) || {};
 
-    // Coletar dados do DOM (pois a leitura acabou de ser feita e pode não estar na lista global se não recarregou)
-    // Se não achar no DOM (ex: mobile), pega da lista global `c`
-    const leitAtual = document.getElementById(`leit-${clienteId}`)?.value || c.leitura_atual || '0';
-    const consumo = document.getElementById(`cons-${clienteId}`)?.textContent || c.consumo || '0';
-    const total = document.getElementById(`tot-${clienteId}`)?.textContent?.replace(/[^0-9,]/g,'').replace(',','.') || c.valor_total || '0';
-    const ocorr = document.getElementById(`ocorr-${clienteId}`)?.value || c.ocorrencia_codigo || '';
+    const leitAtual = (c.leitura_atual !== undefined && c.leitura_atual !== null) ? c.leitura_atual : (document.getElementById(`leit-${clienteId}`)?.value || '0');
+    const consumo = (c.consumo !== undefined && c.consumo !== null) ? c.consumo : (document.getElementById(`cons-${clienteId}`)?.textContent || '0');
+    const total = (c.valor_total !== undefined && c.valor_total !== null) ? c.valor_total : (document.getElementById(`tot-${clienteId}`)?.textContent?.replace(/[^0-9,]/g,'').replace(',','.') || '0');
+    const ocorr = c.ocorrencia_codigo || document.getElementById(`ocorr-${clienteId}`)?.value || '';
 
     // Salva dados completos no sessionStorage para a janela de impressão ler (evita limite de URL)
     const dados = {

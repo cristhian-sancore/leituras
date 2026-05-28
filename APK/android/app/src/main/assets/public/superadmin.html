@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SAEMI - SuperAdmin</title>
-<link rel="stylesheet" href="/css/style.css?v=4">
+<link rel="stylesheet" href="css/style.css?v=4">
 <style>
 :root{--sa-bg:#0a0f1e;--sa-card:rgba(255,255,255,0.04);--sa-border:rgba(255,255,255,0.08);--sa-text:#e2e8f0;--sa-muted:#64748b;}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -73,7 +73,7 @@ tr:hover td{background:rgba(255,255,255,0.02)}
     <div class="sa-nav" onclick="showTab('tab-audit',this)">📋 Auditoria</div>
     <div class="sa-nav" onclick="showTab('tab-firewall',this)">🛡️ Firewall (Bloqueios)</div>
     <div style="margin-top:auto">
-      <div class="sa-nav" onclick="location.href='/app'">← App Principal</div>
+      <div class="sa-nav" onclick="location.href='app.html'">← App Principal</div>
       <div class="sa-nav" onclick="logout()" style="color:#f87171">🚪 Sair</div>
     </div>
   </aside>
@@ -174,7 +174,7 @@ tr:hover td{background:rgba(255,255,255,0.02)}
     <div id="tab-layouts" class="tab-panel">
       <div class="sa-card">
         <div class="sa-card-title">🖨️ Layouts de Impressão CPCL
-          <button class="btn btn-primary btn-sm" onclick="window.location.href='/superadmin-editor.html'">+ Novo Layout</button>
+          <button class="btn btn-primary btn-sm" onclick="window.location.href='superadmin-editor.html'">+ Novo Layout</button>
         </div>
         <p style="font-size: 0.85rem; color: var(--sa-muted); margin-bottom: 16px;">
           Crie ou edite layouts de impressão Zebra ZQ520 e vincule-os aos clientes.
@@ -247,10 +247,18 @@ tr:hover td{background:rgba(255,255,255,0.02)}
 
 <div class="toast" id="toast"></div>
 
-<script src="/js/api.js"></script>
-<script src="/js/utils.js"></script>
+<script src="js/api.js"></script>
+<script src="js/utils.js"></script>
 <script>
-const BASE = '/api/v1';
+const getApiBase = () => {
+  const isNative = window.Capacitor && window.Capacitor.isNativePlatform();
+  if (isNative) {
+    const serverUrl = localStorage.getItem('saemi_server_url') || 'https://leitura.cristhiansancore.com.br';
+    return serverUrl.replace(/\/+$/, '') + '/api/v1';
+  }
+  return '/api/v1';
+};
+const BASE = getApiBase();
 let token = localStorage.getItem('saemi_token'); // ← corrigido: era 'saemi_access_token'
 
 async function apiFetch(path, opts={}) {
@@ -287,14 +295,14 @@ function logout() {
   localStorage.removeItem('saemi_token');
   localStorage.removeItem('saemi_refresh');
   localStorage.removeItem('saemi_user');
-  location.href='/';
+  location.href='index.html';
 }
 
 // ---------- INIT ----------
 async function init() {
-  if(!token){location.href='/';return;}
+  if(!token){location.href='index.html';return;}
   const user = JSON.parse(localStorage.getItem('saemi_user')||'{}');
-  if(user.role!=='superadmin'){alert('Acesso negado!');location.href='/app';return;}
+  if(user.role!=='superadmin'){alert('Acesso negado!');location.href='app.html';return;}
   document.getElementById('sa-user-badge').textContent = '👤 '+user.nome;
   await loadStats();
   await loadLayouts(); // Carrega tabela e o select de edit
@@ -486,7 +494,7 @@ async function loadLayouts() {
         <td><code>${l.id}</code></td>
         <td><strong>${sanitize(l.nome)}</strong><br><span style="font-size:0.75rem;color:var(--sa-muted)">${sanitize(l.tipo_impressora || 'ZQ520')}</span></td>
         <td>
-          <button class="btn btn-sm btn-primary" onclick="window.location.href='/superadmin-editor.html?id=${l.id}'">✏️ Editar</button>
+          <button class="btn btn-sm btn-primary" onclick="window.location.href='superadmin-editor.html?id=${l.id}'">✏️ Editar</button>
           <button class="btn btn-sm btn-danger" onclick="deleteLayout(${l.id})">🗑️</button>
         </td>
       </tr>

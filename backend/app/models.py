@@ -166,6 +166,10 @@ class Cliente(Base):
     endereco_entrega = Column(Text, nullable=True)
     cep = Column(Text, nullable=True)
     codigo_barras = Column(Text, nullable=True)
+    tem_notificacao = Column(Boolean, default=False, nullable=False, server_default='false')
+    vencimento_notificacao = Column(Text, nullable=True)
+    valor_notificacao = Column(Numeric(12, 2), default=0)
+    codigo_barras_notificacao = Column(Text, nullable=True)
     mensagens_fatura = Column(JSONB, nullable=True)
     historico_consumo = Column(JSONB, nullable=True)
 

@@ -8,6 +8,8 @@ const ZebraPrint = (() => {
   let printCharacteristic = null;
   let customLayout = null;
   let customLayoutNotif = null;
+  let deviceIdCapacitor = null;
+  let isCapacitor = false;
 
   // UUIDs Zebra BLE
   const ZEBRA_SERVICE = '38eb4a80-c570-11e3-9507-0002a5d5c51b';
@@ -15,50 +17,166 @@ const ZebraPrint = (() => {
   const SPP_SERVICE   = '000018f0-0000-1000-8000-00805f9b34fb';
   const SPP_WRITE     = '00002af1-0000-1000-8000-00805f9b34fb';
 
-  // ── Conexao Bluetooth ──────────────────────────────────
+  // ── Conexao Bluetooth Clássico (SPP) ───────────────────
   async function connect() {
-    if (!navigator.bluetooth) {
-      throw new Error('Web Bluetooth nao suportado. Use Chrome no Android.');
-    }
-    try {
-      device = await navigator.bluetooth.requestDevice({
-        acceptAllDevices: true,
-        optionalServices: [ZEBRA_SERVICE, SPP_SERVICE]
+    isCapacitor = window.Capacitor && window.Capacitor.isNativePlatform();
+
+    if (isCapacitor) {
+      // Usa Capacitor com cordova-plugin-bluetooth-serial
+      return new Promise((resolve, reject) => {
+        const bs = window.bluetoothSerial;
+        if (!bs) return reject(new Error("Plugin Bluetooth Serial não instalado no APK."));
+
+        bs.isEnabled(
+          () => {
+            // Está ativado, vamos listar pareados
+            bs.list((devices) => {
+              if (!devices || devices.length === 0) {
+                return reject(new Error("Nenhuma impressora Bluetooth pareada. Vá nas configurações do Android e faça o pareamento da Zebra primeiro."));
+              }
+              showDevicePicker(devices, bs, resolve, reject);
+            }, (err) => reject(new Error("Erro ao listar dispositivos pareados: " + err)));
+          },
+          () => {
+            // Não ativado, pede para ativar (Android)
+            bs.enable(
+              () => reject(new Error("Bluetooth acabou de ser ativado. Por favor, clique em conectar novamente.")),
+              () => reject(new Error("O Bluetooth precisa estar ativado para imprimir."))
+            );
+          }
+        );
       });
-      server = await device.gatt.connect();
-      try {
-        const svc = await server.getPrimaryService(ZEBRA_SERVICE);
-        printCharacteristic = await svc.getCharacteristic(ZEBRA_WRITE);
-      } catch (_) {
-        const svc = await server.getPrimaryService(SPP_SERVICE);
-        printCharacteristic = await svc.getCharacteristic(SPP_WRITE);
+    } else {
+      // Usa Web Bluetooth API (Apenas Chrome/Android nativo web, sem capacitor)
+      if (!navigator.bluetooth) {
+        throw new Error('Web Bluetooth não suportado. Use Chrome no Android ou o App Oficial.');
       }
-      device.addEventListener('gattserverdisconnected', onDisconnected);
-      return true;
-    } catch (e) {
-      console.error('BT connect error:', e);
-      throw new Error('Falha ao conectar: ' + e.message);
+      try {
+        device = await navigator.bluetooth.requestDevice({
+          acceptAllDevices: true,
+          optionalServices: [ZEBRA_SERVICE, SPP_SERVICE]
+        });
+        server = await device.gatt.connect();
+        try {
+          const svc = await server.getPrimaryService(ZEBRA_SERVICE);
+          printCharacteristic = await svc.getCharacteristic(ZEBRA_WRITE);
+        } catch (_) {
+          const svc = await server.getPrimaryService(SPP_SERVICE);
+          printCharacteristic = await svc.getCharacteristic(SPP_WRITE);
+        }
+        device.addEventListener('gattserverdisconnected', onDisconnected);
+        return true;
+      } catch (e) {
+        console.error('BT connect error:', e);
+        throw new Error('Falha ao conectar via Web: ' + e.message);
+      }
     }
   }
 
+  function showDevicePicker(devices, bs, resolve, reject) {
+     // Se tiver só 1 dispositivo pareado, tenta conectar nele direto
+     if (devices.length === 1) {
+         return connectToMac(devices[0].address, bs, resolve, reject);
+     }
+     
+     // Cria modal simples para selecionar qual impressora pareada usar
+     const overlay = document.createElement('div');
+     overlay.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:99999;display:flex;align-items:center;justify-content:center;font-family:sans-serif;";
+     
+     const modal = document.createElement('div');
+     modal.style.cssText = "background:#1e293b;padding:20px;border-radius:12px;width:90%;max-width:400px;color:white;box-shadow:0 10px 25px rgba(0,0,0,0.5);";
+     
+     modal.innerHTML = '<h3 style="margin-top:0;color:#38bdf8;font-size:18px;">Selecione a Impressora</h3><p style="font-size:13px;color:#94a3b8;margin-bottom:15px;">Abaixo estão os dispositivos já pareados no Android:</p>';
+     
+     const list = document.createElement('div');
+     list.style.cssText = "max-height:300px;overflow-y:auto;margin-bottom:15px;display:flex;flex-direction:column;gap:8px;";
+     
+     // Ordena para que as "Zebra" apareçam primeiro
+     devices.sort((a, b) => {
+         const nameA = (a.name || "").toUpperCase();
+         const nameB = (b.name || "").toUpperCase();
+         const isZebraA = nameA.includes('ZEBRA') || nameA.includes('ZQ');
+         const isZebraB = nameB.includes('ZEBRA') || nameB.includes('ZQ');
+         if (isZebraA && !isZebraB) return -1;
+         if (!isZebraA && isZebraB) return 1;
+         return 0;
+     });
+
+     devices.forEach(d => {
+         const btn = document.createElement('button');
+         const isZebra = (d.name || "").toUpperCase().includes('ZEBRA') || (d.name || "").toUpperCase().includes('ZQ');
+         
+         btn.style.cssText = `display:block;width:100%;padding:14px;background:${isZebra ? '#0ea5e9' : '#334155'};color:white;border:none;border-radius:8px;text-align:left;font-size:15px;cursor:pointer;font-weight:${isZebra ? 'bold' : 'normal'};`;
+         btn.innerHTML = `🖨️ ${d.name || "Desconhecido"} <br><small style="opacity:0.7;font-size:11px;font-weight:normal;">MAC: ${d.address}</small>`;
+         
+         btn.onclick = () => {
+             overlay.remove();
+             connectToMac(d.address, bs, resolve, reject);
+         };
+         list.appendChild(btn);
+     });
+     
+     const cancel = document.createElement('button');
+     cancel.style.cssText = "width:100%;padding:14px;background:transparent;color:#f87171;border:1px solid #f87171;border-radius:8px;cursor:pointer;font-weight:bold;font-size:15px;";
+     cancel.innerText = "❌ Cancelar";
+     cancel.onclick = () => {
+         overlay.remove();
+         reject(new Error("Seleção de impressora cancelada."));
+     };
+     
+     modal.appendChild(list);
+     modal.appendChild(cancel);
+     overlay.appendChild(modal);
+     document.body.appendChild(overlay);
+  }
+
+  function connectToMac(mac, bs, resolve, reject) {
+     const st = document.getElementById('printer-status');
+     if(st) { st.className = 'status-loading'; st.textContent = "Conectando a " + mac + "..."; }
+     
+     const onSuccess = () => {
+         printCharacteristic = 'serial_connected'; // flag de conectado
+         deviceIdCapacitor = mac; // guarda o mac
+         
+         // Ouve desconexões acidentais
+         bs.subscribeRawData(() => {}, (err) => {
+             onDisconnected();
+         });
+         
+         resolve(true);
+     };
+
+     // Tenta conexão segura primeiro
+     bs.connect(mac, onSuccess, (err) => {
+         console.warn("Falha no connect seguro, tentando connectInsecure...", err);
+         
+         // Muitas impressoras térmicas exigem conexão Insegura (sem PIN/pareamento forte)
+         bs.connectInsecure(mac, onSuccess, (err2) => {
+             reject(new Error("Falha ao conectar: " + err2));
+         });
+     });
+  }
+
   function onDisconnected() {
-    device = null; server = null; printCharacteristic = null;
+    device = null; server = null; printCharacteristic = null; deviceIdCapacitor = null;
     const el = document.getElementById('printer-status');
     if (el) { el.className = 'status-err'; el.textContent = 'Desconectado'; }
     const btn = document.getElementById('btn-imprimir');
     if (btn) btn.disabled = true;
+    
+    if (isCapacitor && window.bluetoothSerial) {
+        window.bluetoothSerial.disconnect();
+    }
   }
 
   function isConnected() { return printCharacteristic !== null; }
 
-  // ── Envio BLE em chunks ────────────────────────────────
+  // ── Envio CPCL (Serial ou WebBLE) ────────────────────────
   async function sendData(dataStr) {
-    if (!isConnected()) throw new Error('Impressora nao conectada');
-    // Garante que termina exatamente com PRINT\r\n sem nada depois
-    // (bytes extras apos PRINT causam pagina em branco na Zebra)
+    if (!isConnected()) throw new Error('Impressora não conectada');
+    
     dataStr = dataStr.trimEnd();
     if (!dataStr.endsWith('PRINT')) {
-      // Se por algum motivo nao terminou em PRINT, garante
       const printPos = dataStr.lastIndexOf('PRINT');
       if (printPos >= 0) {
         dataStr = dataStr.substring(0, printPos + 5);
@@ -66,30 +184,78 @@ const ZebraPrint = (() => {
     }
     dataStr = dataStr + '\r\n';
     console.log('[ZebraPrint] Enviando CPCL (' + dataStr.length + ' chars):\n', dataStr);
-    const data = new TextEncoder().encode(dataStr);
-    const CHUNK = 512;
-    for (let i = 0; i < data.length; i += CHUNK) {
-      await printCharacteristic.writeValue(data.slice(i, i + CHUNK));
+    
+    if (isCapacitor) {
+        // Envio via Bluetooth Clássico (SPP) usando cordova-plugin-bluetooth-serial
+        return new Promise(async (resolve, reject) => {
+            const bs = window.bluetoothSerial;
+            try {
+                // Chunk size: 1024 bytes (evita estourar o buffer do Android/Impressora)
+                const CHUNK = 1024;
+                for (let i = 0; i < dataStr.length; i += CHUNK) {
+                    const chunkStr = dataStr.substring(i, i + CHUNK);
+                    
+                    // Conversão manual para ASCII ArrayBuffer (Zebra não gosta de UTF-8 puro)
+                    const buf = new Uint8Array(chunkStr.length);
+                    for (let j = 0; j < chunkStr.length; j++) {
+                        buf[j] = chunkStr.charCodeAt(j) & 0xFF;
+                    }
+                    
+                    await new Promise((res, rej) => {
+                        bs.write(buf.buffer, res, rej);
+                    });
+                    
+                    // Pequena pausa para a impressora processar e não travar
+                    await new Promise(r => setTimeout(r, 80));
+                }
+                
+                console.log('[ZebraPrint] CPCL enviado com sucesso via SPP');
+                resolve(true);
+            } catch (err) {
+                console.error('[ZebraPrint] Erro ao escrever SPP:', err);
+                reject(new Error("Falha ao enviar impressão: " + err));
+            }
+        });
+    } else {
+        // Envio via Web Bluetooth API (fallback navegador)
+        const CHUNK = 512;
+        const data = new TextEncoder().encode(dataStr);
+        for (let i = 0; i < data.length; i += CHUNK) {
+          await printCharacteristic.writeValue(data.slice(i, i + CHUNK));
+        }
     }
+    
     return true;
   }
 
-  // ── Busca layouts da API ───────────────────────────────
+  // ── Busca layouts (API ou DB Local) ──────────────────
   async function fetchLayout() {
-    const token = localStorage.getItem('saemi_token');
-    if (!token) return;
+    // 1. Tentar pegar do banco de dados local primeiro (APK Offline)
+    if (typeof OfflineDB !== 'undefined') {
+        try {
+            const config = await OfflineDB.getConfig();
+            if (config && (config.layout_cpcl || config.layout_cpcl_notificacao)) {
+                customLayout = config.layout_cpcl || null;
+                customLayoutNotif = config.layout_cpcl_notificacao || null;
+                console.log('[ZebraPrint] Usando layouts CPCL do banco Offline. Fatura:', !!customLayout, '| Notif:', !!customLayoutNotif);
+                return;
+            }
+        } catch (e) {
+            console.log('[ZebraPrint] Falha ao ler DB Offline, tentando API...', e);
+        }
+    }
+
+    // 2. Se nao achar no local, busca na API (Web / Online)
     try {
-      const res = await fetch('/api/v1/empresa/layout', {
-        headers: { 'Authorization': 'Bearer ' + token }
-      });
-      if (res.ok) {
-        const data = await res.json();
+      if (typeof api !== 'undefined' && api.isLoggedIn()) {
+        const data = await api.fetch('/empresa/layout');
         customLayout      = data.conteudo_cpcl || null;
         customLayoutNotif = data.conteudo_cpcl_notificacao || null;
-        console.log('[ZebraPrint] Fatura:', !!customLayout, '| Notif:', !!customLayoutNotif);
+        console.log('[ZebraPrint] Layouts obtidos via API. Fatura:', !!customLayout, '| Notif:', !!customLayoutNotif);
+        return;
       }
     } catch (e) {
-      console.warn('[ZebraPrint] Sem layout customizado, usando generico.', e);
+      console.warn('[ZebraPrint] Sem layout customizado ou erro ao buscar da API, usando generico.', e);
     }
   }
 

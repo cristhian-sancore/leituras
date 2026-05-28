@@ -69,6 +69,38 @@ def parse_rem(content: str) -> dict:
                     if raw_desc:
                         desc_lixo = raw_desc
 
+    # -----------------------------------------------------------
+    # PRE-PROCESSAMENTO: coletar A17 (notificacoes de debito) por matricula
+    # -----------------------------------------------------------
+    notificacoes_por_mat = {}
+    for line in lines:
+        clean = line.strip()
+        if clean.startswith('A17') and len(clean) >= 40:
+            mat_a17 = line[3:18].strip()
+            venc_notif = line[18:28].strip()
+            val_raw = line[28:40].strip()
+            try:
+                if '.' in val_raw:
+                    valor_notif = float(val_raw)
+                else:
+                    valor_notif = float(val_raw) / 100.0 if val_raw else 0.0
+            except ValueError:
+                valor_notif = 0.0
+            
+            cod_barras_notif = ""
+            if len(line) > 40:
+                cod_barras_notif = line[40:90].strip()
+                cod_barras_notif = ''.join(c for c in cod_barras_notif if c.isdigit())
+            
+            imprime = line[119] if len(line) > 119 else 'S'
+            if imprime != 'N':
+                notificacoes_por_mat[mat_a17] = {
+                    'tem_notificacao': True,
+                    'vencimento_notificacao': venc_notif,
+                    'valor_notificacao': valor_notif,
+                    'codigo_barras_notificacao': cod_barras_notif
+                }
+
     for line in lines:
         clean = line.strip()
         if not clean:
@@ -212,6 +244,14 @@ def parse_rem(content: str) -> dict:
                 # Lixo: indicado por A12 com 'LIXO' para esta matricula
                 tem_lixo = matricula in matriculas_com_lixo
 
+                # Notificação de débito (Alternativa A)
+                notif = notificacoes_por_mat.get(matricula, {
+                    'tem_notificacao': False,
+                    'vencimento_notificacao': None,
+                    'valor_notificacao': 0.0,
+                    'codigo_barras_notificacao': None
+                })
+
             except (ValueError, IndexError):
                 continue
 
@@ -244,6 +284,10 @@ def parse_rem(content: str) -> dict:
                 'data_instalacao': data_instalacao,
                 'endereco_entrega': endereco_entrega,
                 'codigo_barras': codigo_barras,
+                'tem_notificacao': notif['tem_notificacao'],
+                'vencimento_notificacao': notif['vencimento_notificacao'],
+                'valor_notificacao': notif['valor_notificacao'],
+                'codigo_barras_notificacao': notif['codigo_barras_notificacao'],
             })
 
         # ============================================
