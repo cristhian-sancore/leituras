@@ -340,9 +340,12 @@ async def get_carga_offline(
     empresa_cfg = await _get_empresa_config(db, current_user.empresa_id)
     
     # Buscar layout
-    res_layout = await db.execute(select(Empresa.layout_cpcl, Empresa.layout_cpcl_notificacao).where(Empresa.id == current_user.empresa_id))
-    layout_row = res_layout.first()
-    layout_cpcl = layout_row[0] if layout_row else None
+    try:
+        res_layout = await db.execute(select(Empresa.layout_cpcl).where(Empresa.id == current_user.empresa_id))
+        layout_row = res_layout.first()
+        layout_cpcl = layout_row[0] if layout_row else None
+    except Exception as e:
+        layout_cpcl = None
 
     config = {
         'percentual_esgoto': empresa_cfg.get('percentual_esgoto', 70.0),
