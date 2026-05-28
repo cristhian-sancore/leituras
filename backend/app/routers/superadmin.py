@@ -50,6 +50,7 @@ class AtualizarEmpresaRequest(BaseModel):
     percentual_esgoto: Optional[float] = None
     consumo_minimo_m3: Optional[int] = None
     layout_impressao_id: Optional[int] = None
+    layout_notificacao_id: Optional[int] = None
     logo_url: Optional[str] = None
 
 
@@ -303,6 +304,8 @@ async def update_empresa_config(
         empresa.consumo_minimo_m3 = data.consumo_minimo_m3
     if data.layout_impressao_id is not None:
         empresa.layout_impressao_id = data.layout_impressao_id if data.layout_impressao_id > 0 else None
+    if data.layout_notificacao_id is not None:
+        empresa.layout_notificacao_id = data.layout_notificacao_id if data.layout_notificacao_id > 0 else None
     if data.logo_url is not None:
         empresa.logo_url = data.logo_url
     await db.commit()

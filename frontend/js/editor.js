@@ -208,6 +208,8 @@ function loadCanvasJSON(json) {
 
 window.getCanvasJSON = getCanvasJSON;
 window.loadCanvasJSON = loadCanvasJSON;
+window.generateCPCL = generateCPCL;
+window.parseCpclToCanvas = parseCpclToCanvas;
 
 /*** GERAÇÃO DO CPCL ***/
 let isImporting = false;
