@@ -447,8 +447,8 @@ function abrirLeituraMobile(clienteId) {
     // Popula select ocorrencia
     const sel = document.getElementById('mlm-ocorrencia');
     let ocorrOptions = '<option value="0000">0000 - NORMAL</option>';
-    if (window.ocorrencias) {
-        window.ocorrencias.forEach(o => {
+    if (ocorrencias) {
+        ocorrencias.forEach(o => {
             if (o.codigo === '0000') return;
             ocorrOptions += `<option value="${o.codigo}">${o.codigo.padStart(4, '0')} - ${o.descricao}</option>`;
         });
